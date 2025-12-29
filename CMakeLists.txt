@@ -32,7 +32,7 @@
 ############################################################################
 
 #=============================================================================
-# CMAKE CODING STANDARD FOR PX4
+# CMAKE CODING STANDARD FOR SYNAPSEPILOT
 #
 # Structure
 # ---------------------------------------------------------------------------
@@ -45,7 +45,7 @@
 # Formatting
 # ---------------------------------------------------------------------------
 #
-# * Use hard indents to match the px4 source code.
+# * Use hard indents to match the synapse_pilot source code.
 #
 # * All function and script arguments are upper case.
 #
@@ -92,9 +92,9 @@
 # ---------------------------------------------------------------------------
 #
 # * If referencing a string variable, don't put it in quotes.
-#	Don't do "${PX4_PLATFORM}" STREQUAL "posix",
-#	instead type ${PX4_PLATFORM} STREQUAL "posix". This will throw an
-#	error when ${PX4_PLATFORM} is not defined instead of silently
+#	Don't do "${SYNAPSE_PLATFORM}" STREQUAL "posix",
+#	instead type ${SYNAPSE_PLATFORM} STREQUAL "posix". This will throw an
+#	error when ${SYNAPSE_PLATFORM} is not defined instead of silently
 #	evaluating to false.
 #
 #=============================================================================
@@ -145,22 +145,22 @@ string(REGEX MATCH "g([a-f0-9]+)$" GIT_HASH "${PX4_GIT_TAG}")
 set(PX4_GIT_HASH ${CMAKE_MATCH_1})
 
 define_property(GLOBAL PROPERTY PX4_MODULE_LIBRARIES
-                 BRIEF_DOCS "PX4 module libs"
-                 FULL_DOCS "List of all PX4 module libraries"
+                 BRIEF_DOCS "SynapsePilot module libs"
+                 FULL_DOCS "List of all SynapsePilot module libraries"
                  )
 
 define_property(GLOBAL PROPERTY PX4_KERNEL_MODULE_LIBRARIES
-                 BRIEF_DOCS "PX4 kernel side module libs"
-                 FULL_DOCS "List of all PX4 kernel module libraries"
+                 BRIEF_DOCS "SynapsePilot kernel side module libs"
+                 FULL_DOCS "List of all SynapsePilot kernel module libraries"
                  )
 
 define_property(GLOBAL PROPERTY PX4_MODULE_PATHS
-                 BRIEF_DOCS "PX4 module paths"
-                 FULL_DOCS "List of paths to all PX4 modules"
+                 BRIEF_DOCS "SynapsePilot module paths"
+                 FULL_DOCS "List of paths to all SynapsePilot modules"
                  )
 
 define_property(GLOBAL PROPERTY PX4_SRC_FILES
-                 BRIEF_DOCS "src files from all PX4 modules & libs"
+                 BRIEF_DOCS "src files from all SynapsePilot modules & libs"
                  FULL_DOCS "SRC files from px4_add_{module,library}"
                  )
 
@@ -189,8 +189,8 @@ endif()
 
 include(px4_config)
 include(kconfig)
-message(STATUS "PX4 config: ${PX4_CONFIG}")
-message(STATUS "PX4 platform: ${PX4_PLATFORM}")
+message(STATUS "SynapsePilot config: ${PX4_CONFIG}")
+message(STATUS "SynapsePilot platform: ${PX4_PLATFORM}")
 
 if($ENV{CLION_IDE})
 	# CLion automatically executes some compiler commands after configuring the
@@ -202,9 +202,9 @@ endif()
 if(${PX4_PLATFORM} STREQUAL "posix")
 	if(ENABLE_LOCKSTEP_SCHEDULER)
 		add_definitions(-DENABLE_LOCKSTEP_SCHEDULER)
-		message(STATUS "PX4 lockstep: enabled")
+		message(STATUS "SynapsePilot lockstep: enabled")
 	else()
-		message(STATUS "PX4 lockstep: disabled")
+		message(STATUS "SynapsePilot lockstep: disabled")
 	endif()
 endif()
 
@@ -227,17 +227,17 @@ endif()
 #=============================================================================
 # project definition
 #
-project(px4 CXX C ASM)
+project(synapse_pilot CXX C ASM)
 
 # CMake build type (Debug Release RelWithDebInfo MinSizeRel Coverage)
 if(NOT CMAKE_BUILD_TYPE)
 	if(${PX4_PLATFORM} STREQUAL "nuttx")
-		set(PX4_BUILD_TYPE "MinSizeRel")
+		set(SYNAPSE_BUILD_TYPE "MinSizeRel")
 	else()
-		set(PX4_BUILD_TYPE "RelWithDebInfo")
+		set(SYNAPSE_BUILD_TYPE "RelWithDebInfo")
 	endif()
 
-	set(CMAKE_BUILD_TYPE ${PX4_BUILD_TYPE} CACHE STRING "Build type" FORCE)
+	set(CMAKE_BUILD_TYPE ${SYNAPSE_BUILD_TYPE} CACHE STRING "Build type" FORCE)
 endif()
 
 if((CMAKE_BUILD_TYPE STREQUAL "Debug") OR (CMAKE_BUILD_TYPE STREQUAL "Coverage"))
@@ -265,7 +265,7 @@ if(LTO)
     set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
 endif()
 
-set(package-contact "px4users@googlegroups.com")
+set(package-contact "frankwinnovate@gmail.com")
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -303,7 +303,7 @@ endif()
 # Setup install paths
 if(${PX4_PLATFORM} STREQUAL "posix")
 	# This makes it possible to dynamically load code which depends on symbols
-	# inside the px4 executable.
+	# inside the synapse_pilot executable.
 	set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 	set(CMAKE_ENABLE_EXPORTS ON)
 

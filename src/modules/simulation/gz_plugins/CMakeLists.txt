@@ -31,7 +31,7 @@
 #
 ############################################################################
 
-project(px4_gz_plugins)
+project(synapse_gz_plugins)
 
 if(NOT DEFINED ENV{GZ_DISTRO} OR NOT "$ENV{GZ_DISTRO}"  STREQUAL "harmonic")
     find_package(gz-transport NAMES gz-transport gz-transport14 gz-transport13)

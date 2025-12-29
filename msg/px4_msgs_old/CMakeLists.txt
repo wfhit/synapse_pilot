@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.5)
 
-project(px4_msgs_old)
+project(synapse_msgs_old)
 
 list(INSERT CMAKE_MODULE_PATH 0 "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
