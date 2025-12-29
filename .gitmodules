@@ -103,3 +103,6 @@
 [submodule "src/drivers/ins/sbgecom/sbgECom"]
 	path = src/drivers/ins/sbgecom/sbgECom
 	url = https://github.com/PX4/sbgECom.git
+[submodule "Tools/simulation/flightgear/flightgear_bridge"]
+	path = Tools/simulation/flightgear/flightgear_bridge
+	url = https://github.com/PX4/PX4-FlightGear-Bridge.git
