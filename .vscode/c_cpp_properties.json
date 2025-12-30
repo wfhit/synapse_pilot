@@ -4,19 +4,19 @@
             "name": "PX4",
             "includePath": [
                 "${workspaceFolder}/**",
-                "/workspaces/synapse_pilot/boards/wheel_loader/holybro-v6xrt-wl/src",
-                "/workspaces/synapse_pilot/platforms/nuttx/src/px4/nxp/rt117x/include",
-                "/workspaces/synapse_pilot/platforms/nuttx/NuttX/nuttx/include/"
+                "/home/frank/synapse_pilot_ws/SynapsePilot/boards/wheel_loader/holybro-v6xrt-wl/src",
+                "/home/frank/synapse_pilot_ws/SynapsePilot/platforms/nuttx/src/px4/nxp/rt117x/include",
+                "/home/frank/synapse_pilot_ws/SynapsePilot/platforms/nuttx/NuttX/nuttx/include/"
             ],
             "defines": [],
             "macFrameworkPath": [],
             "configurationProvider": "ms-vscode.cmake-tools",
             "cppStandard": "c++14",
             "cStandard": "c11",
-            "dotConfig": "/workspaces/synapse_pilot/build/wheel_loader_holybro-v6xrt-wl_default/NuttX/nuttx/.config",
+            "dotConfig": "/home/frank/synapse_pilot_ws/SynapsePilot/build/wheel_loader_holybro-v6xrt-wl_default/NuttX/nuttx/.config",
             "forcedInclude": [
-                 "/workspaces/synapse_pilot/build/wheel_loader_holybro-v6xrt-wl_default/px4_boardconfig.h",
-                 "/workspaces/synapse_pilot/platforms/common/include/px4_platform_common/defines.h"
+                 "/home/frank/synapse_pilot_ws/SynapsePilot/build/wheel_loader_holybro-v6xrt-wl_default/px4_boardconfig.h",
+                 "/home/frank/synapse_pilot_ws/SynapsePilot/platforms/common/include/px4_platform_common/defines.h"
                  ]
         }
     ],

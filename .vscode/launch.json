@@ -6,7 +6,7 @@
             "gdbPath": "/usr/bin/gdb-multiarch",
             "device": "MIMXRT1176DVMAA",
             "svdFile": "",
-            "rtos": "/workspaces/synapse_pilot/platforms/nuttx/NuttX/nuttx/tools/jlink-nuttx.so",
+            "rtos": "/home/frank/synapse_pilot_ws/SynapsePilot/platforms/nuttx/NuttX/nuttx/tools/jlink-nuttx.so",
             "executable": "${command:cmake.launchTargetPath}",
             "request": "launch",
             "type": "cortex-debug",

@@ -148,7 +148,7 @@ bool SCurvePlanner::planSevenSegment(const TrajectoryPoint &current, float targe
 	// This is a placeholder - use standard time-optimal S-curve algorithm
 
 	float distance = target_position - current.position;
-	float direction = (distance >= 0.f) ? 1.f : -1.f;
+	// float direction = (distance >= 0.f) ? 1.f : -1.f;
 	distance = fabsf(distance);
 
 	// Estimate duration based on trapezoidal velocity profile with jerk limits

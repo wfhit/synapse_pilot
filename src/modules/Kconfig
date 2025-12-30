@@ -1,4 +1,1 @@
 rsource "*/Kconfig"
-
-# Wheel Loader Modules
-rsource "../wheel_loader/Kconfig"

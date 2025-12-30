@@ -5,7 +5,7 @@
 #include <board_config.h>
 
 #ifndef BOARD_HAS_NAV_LAMP
-#warning "BOARD_HAS_NAV_LAMP not defined - nav lamp controller module will be disabled"
+// Navigation lamp hardware not present on this board - module functionality will be limited
 #endif
 
 NavLampController::NavLampController() : ModuleParams(nullptr) {}

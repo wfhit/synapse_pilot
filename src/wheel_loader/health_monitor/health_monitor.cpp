@@ -65,7 +65,7 @@ void HealthMonitor::Run()
 	perf_count(_loop_interval_perf);
 
 	const hrt_abstime now = hrt_absolute_time();
-	const float dt = math::constrain((now - _last_run_timestamp) / 1e6f, 0.001f, 0.5f);
+	// const float dt = math::constrain((now - _last_run_timestamp) / 1e6f, 0.001f, 0.5f);
 	_last_run_timestamp = now;
 
 	// Check all subsystems
@@ -131,25 +131,25 @@ void HealthMonitor::Run()
 	perf_end(_loop_perf);
 }
 
-void HealthMonitorManager::check_sensor_health()
+void HealthMonitor::check_sensor_health()
 {
 	_health_status.sensor_gps = check_gps_health();
 	_health_status.sensor_imu = check_imu_health();
 	_health_status.sensor_mag = check_magnetometer_health();
 	_health_status.sensor_baro = check_barometer_health();
 
-	bool wl_sensors_ok = check_wheel_loader_sensors();
+	// bool wl_sensors_ok = check_wheel_loader_sensors();
 	// Individual WL sensor bits updated in check_wheel_loader_sensors()
 }
 
-bool HealthMonitorManager::check_gps_health()
+bool HealthMonitor::check_gps_health()
 {
 	sensor_gps_s gps;
 	if (_sensor_gps_sub.copy(&gps)) {
 		const hrt_abstime now = hrt_absolute_time();
 		const uint32_t timeout_ms = (now - gps.timestamp) / 1000;
 
-		if (timeout_ms > _param_sensor_timeout_ms.get()) {
+		if ((int32_t)timeout_ms > _param_sensor_timeout_ms.get()) {
 			return false;
 		}
 
@@ -176,7 +176,7 @@ bool HealthMonitor::check_imu_health()
 		const hrt_abstime now = hrt_absolute_time();
 		const uint32_t timeout_ms = (now - sensor.timestamp) / 1000;
 
-		if (timeout_ms > _param_sensor_timeout_ms.get()) {
+		if ((int32_t)timeout_ms > _param_sensor_timeout_ms.get()) {
 			return false;
 		}
 
@@ -218,7 +218,7 @@ bool HealthMonitor::check_magnetometer_health()
 		const hrt_abstime now = hrt_absolute_time();
 		const uint32_t timeout_ms = (now - mag.timestamp) / 1000;
 
-		if (timeout_ms > _param_sensor_timeout_ms.get()) {
+		if ((int32_t)timeout_ms > _param_sensor_timeout_ms.get()) {
 			return false;
 		}
 
@@ -242,7 +242,7 @@ bool HealthMonitor::check_barometer_health()
 		const hrt_abstime now = hrt_absolute_time();
 		const uint32_t timeout_ms = (now - baro.timestamp) / 1000;
 
-		if (timeout_ms > _param_sensor_timeout_ms.get()) {
+		if ((int32_t)timeout_ms > _param_sensor_timeout_ms.get()) {
 			return false;
 		}
 
@@ -259,12 +259,12 @@ bool HealthMonitor::check_barometer_health()
 
 bool HealthMonitor::check_wheel_loader_sensors()
 {
-	wheel_loader_sensor_status_s sensor_status;
-	if (_wl_sensor_status_sub.copy(&sensor_status)) {
-		const hrt_abstime now = hrt_absolute_time();
-		const uint32_t timeout_ms = (now - sensor_status.timestamp) / 1000;
+	// wheel_loader_sensor_status_s sensor_status; // Message not yet defined
+	// if (_wl_sensor_status_sub.copy(&sensor_status)) {
+	// 	const hrt_abstime now = hrt_absolute_time();
+	// 	const uint32_t timeout_ms = (now - sensor_status.timestamp) / 1000;
 
-		if (timeout_ms > _param_sensor_timeout_ms.get()) {
+		// if ((int32_t)timeout_ms > _param_sensor_timeout_ms.get()) {
 			_health_status.sensor_boom = false;
 			_health_status.sensor_tilt = false;
 			_health_status.sensor_articulation = false;
@@ -390,7 +390,7 @@ void HealthMonitor::check_power_health()
 	}
 }
 
-void HealthMonitorManager::check_vehicle_stability()
+void HealthMonitor::check_vehicle_stability()
 {
 	_health_status.tilt_angle_safe = check_tilt_angle();
 	_health_status.slip_ok = check_slip();
@@ -400,7 +400,7 @@ void HealthMonitorManager::check_vehicle_stability()
 	_health_status.temperature_ok = true;
 }
 
-bool HealthMonitorManager::check_tilt_angle()
+bool HealthMonitor::check_tilt_angle()
 {
 	vehicle_attitude_s attitude;
 	if (_vehicle_attitude_sub.copy(&attitude)) {

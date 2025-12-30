@@ -8,7 +8,7 @@ serial_config:
 parameters:
     - group: Interactor Interface
       definitions:
-          CMD_REQUIRE_DEADMAN:
+          CMD_REQ_DEADMAN:
               description:
                   short: Require deadman switch
                   long: Require deadman switch to be active for command execution
@@ -40,7 +40,7 @@ parameters:
               min: 0
               max: 18
 
-          CMD_ESTOP_RC_CHAN:
+          CMD_ESTOP_CH:
               description:
                   short: RC emergency stop channel
                   long: RC channel for emergency stop (active low, 0=disabled)
@@ -49,7 +49,7 @@ parameters:
               min: 0
               max: 18
 
-          CMD_DEADMAN_RC_CHAN:
+          CMD_DEADMAN_CH:
               description:
                   short: RC deadman channel
                   long: RC channel for deadman switch (0=disabled)

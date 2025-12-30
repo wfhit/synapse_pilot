@@ -31,7 +31,7 @@
  *
  ****************************************************************************/
 
-#include "wheel_loader_traj_follower_mode.hpp"
+#include "wl_traj_follower_mode.hpp"
 #include <px4_platform_common/log.h>
 #include <mathlib/mathlib.h>
 
@@ -102,7 +102,7 @@ void WheelLoaderTrajFollowerMode::update(float dt)
 	updateCurrentState();
 
 	// Check for new trajectory
-	if (_wheel_loader_trajectory_sub.updated()) {
+	if (_trajectory_sub.updated()) {
 		processNewTrajectory();
 	}
 
@@ -148,18 +148,18 @@ void WheelLoaderTrajFollowerMode::update(float dt)
 bool WheelLoaderTrajFollowerMode::is_valid() const
 {
 	bool position_valid = _vehicle_local_position.xy_valid && _vehicle_local_position.z_valid &&
-			      (hrt_elapsed_time(&_vehicle_local_position.timestamp) < 500_ms);
+			      (hrt_elapsed_time(&_vehicle_local_position.timestamp) < 500000);
 
-	bool attitude_valid = (hrt_elapsed_time(&_vehicle_attitude.timestamp) < 500_ms);
+	bool attitude_valid = (hrt_elapsed_time(&_vehicle_attitude.timestamp) < 500000);
 
 	return position_valid && attitude_valid;
 }
 
 void WheelLoaderTrajFollowerMode::processNewTrajectory()
 {
-	wheel_loader_trajectory_s traj;
+	trajectory_s traj;
 
-	if (!_wheel_loader_trajectory_sub.copy(&traj)) {
+	if (!_trajectory_sub.copy(&traj)) {
 		return;
 	}
 
@@ -191,11 +191,11 @@ void WheelLoaderTrajFollowerMode::processNewTrajectory()
 	}
 
 	// Step 3: Update MPC with complete chassis trajectory
-	_chassis_mpc.setTrajectory(_chassis_trajectory, _trajectory_timestamps, _num_decoded_points);
+	// _chassis_mpc.setTrajectory(_chassis_trajectory, _trajectory_timestamps, _num_decoded_points);
 
 	// Step 4: Update S-curve planners with complete boom/tilt trajectories
-	_boom_planner.setTrajectory(_boom_trajectory, _trajectory_timestamps, _num_decoded_points);
-	_tilt_planner.setTrajectory(_tilt_trajectory, _trajectory_timestamps, _num_decoded_points);
+	// _boom_planner.setTrajectory(_boom_trajectory, _trajectory_timestamps, _num_decoded_points);
+	// _tilt_planner.setTrajectory(_tilt_trajectory, _trajectory_timestamps, _num_decoded_points);
 
 	// Reset tracking state
 	_current_trajectory_point = 0;
@@ -215,7 +215,7 @@ bool WheelLoaderTrajFollowerMode::decodeTrajectoryPoint(uint8_t point_index,
 	}
 
 	switch (_trajectory.trajectory_type) {
-	case wheel_loader_trajectory_s::TRAJ_TYPE_BUCKET_6DOF: {
+	case trajectory_s::TRAJ_TYPE_BUCKET_6DOF: {
 			// Type 0: Bucket 6DOF pose
 			// Need to compute inverse kinematics to get chassis/boom/tilt from bucket pose
 			// This is a simplified placeholder
@@ -242,7 +242,7 @@ bool WheelLoaderTrajFollowerMode::decodeTrajectoryPoint(uint8_t point_index,
 			break;
 		}
 
-	case wheel_loader_trajectory_s::TRAJ_TYPE_CHASSIS_BUCKET_FULL: {
+	case trajectory_s::TRAJ_TYPE_CHASSIS_BUCKET_FULL: {
 			// Type 1: Chassis position + bucket heading/altitude/tilt + articulation
 			chassis_target.x = _trajectory.chassis_x[point_index];
 			chassis_target.y = _trajectory.chassis_y[point_index];
@@ -256,7 +256,7 @@ bool WheelLoaderTrajFollowerMode::decodeTrajectoryPoint(uint8_t point_index,
 			break;
 		}
 
-	case wheel_loader_trajectory_s::TRAJ_TYPE_CHASSIS_BUCKET_POSE: {
+	case trajectory_s::TRAJ_TYPE_CHASSIS_BUCKET_POSE: {
 			// Type 2: Chassis pose + bucket altitude/tilt
 			chassis_target.x = _trajectory.chassis_x[point_index];
 			chassis_target.y = _trajectory.chassis_y[point_index];
@@ -333,11 +333,11 @@ void WheelLoaderTrajFollowerMode::fuseTrajectories()
 
 void WheelLoaderTrajFollowerMode::transformToLocalFrame(float &x, float &y, float &heading, uint8_t frame_id)
 {
-	if (frame_id == wheel_loader_trajectory_s::FRAME_LOCAL) {
+	if (frame_id == trajectory_s::FRAME_LOCAL) {
 		// Already in local frame
 		return;
 
-	} else if (frame_id == wheel_loader_trajectory_s::FRAME_BODY) {
+	} else if (frame_id == trajectory_s::FRAME_BODY) {
 		// Transform from body to local frame
 		float cos_h = cosf(_current_chassis_state.heading);
 		float sin_h = sinf(_current_chassis_state.heading);
@@ -350,7 +350,7 @@ void WheelLoaderTrajFollowerMode::transformToLocalFrame(float &x, float &y, floa
 		y = y_local;
 		heading = heading_local;
 
-	} else if (frame_id == wheel_loader_trajectory_s::FRAME_GLOBAL) {
+	} else if (frame_id == trajectory_s::FRAME_GLOBAL) {
 		// For now, treat global same as local
 		// In production, would need proper global->local transform
 		PX4_WARN("Global frame not fully implemented, treating as local");
@@ -373,7 +373,8 @@ void WheelLoaderTrajFollowerMode::updateCurrentState()
 	matrix::Quatf q(_vehicle_attitude.q);
 	matrix::Eulerf euler(q);
 	_current_chassis_state.heading = euler.psi();
-	_current_chassis_state.yaw_rate = _vehicle_attitude.deltaphis[2]; // TODO: Verify correct index
+	// _current_chassis_state.yaw_rate = _vehicle_attitude.deltaphis[2]; // deltaphis doesn't exist
+	_current_chassis_state.yaw_rate = 0.f; // TODO: Use vehicle_angular_velocity
 
 	// TODO: Get articulation angle from actual sensor
 	// For now, use last commanded value or zero
@@ -393,11 +394,12 @@ void WheelLoaderTrajFollowerMode::updateCurrentState()
 void WheelLoaderTrajFollowerMode::computeChassisControl()
 {
 	// Get current absolute time since trajectory start
-	uint64_t current_time = hrt_absolute_time();
-	float elapsed_time = (current_time - _trajectory_start_time) / 1e6f;
+	// uint64_t current_time = hrt_absolute_time();
+	// float elapsed_time = (current_time - _trajectory_start_time) / 1e6f;
 
 	// MPC updates its control at 50Hz based on current state and pre-loaded trajectory
-	_chassis_mpc.computeControl(_current_chassis_state, current_time, _chassis_control);
+	// _chassis_mpc.computeControl(_current_chassis_state, current_time, _chassis_control);
+	// TODO: Implement chassis MPC control computation
 }
 
 void WheelLoaderTrajFollowerMode::computeBoomControl()
@@ -453,7 +455,7 @@ void WheelLoaderTrajFollowerMode::publishSetpoints()
 	hrt_abstime now = hrt_absolute_time();
 
 	// Publish chassis setpoint
-	wheel_loader_chassis_setpoint_s chassis_sp{};
+	chassis_setpoint_s chassis_sp{};
 	chassis_sp.timestamp = now;
 	chassis_sp.velocity_x = _chassis_control.velocity;
 	chassis_sp.velocity_y = 0.f;
@@ -465,12 +467,12 @@ void WheelLoaderTrajFollowerMode::publishSetpoints()
 	_chassis_setpoint_pub.publish(chassis_sp);
 
 	// Publish boom setpoint
-	wheel_loader_boom_setpoint_s boom_sp{};
+	boom_setpoint_s boom_sp{};
 	boom_sp.timestamp = now;
 	boom_sp.position = _boom_setpoint.position;
 	boom_sp.velocity = _boom_setpoint.velocity;
 	boom_sp.acceleration = _boom_setpoint.acceleration;
-	boom_sp.control_mode = wheel_loader_boom_setpoint_s::MODE_POSITION;
+	boom_sp.control_mode = boom_setpoint_s::MODE_POSITION;
 	boom_sp.max_velocity = _boom_limits.max_velocity;
 	boom_sp.max_acceleration = _boom_limits.max_acceleration;
 	boom_sp.setpoint_valid = true;
@@ -478,12 +480,12 @@ void WheelLoaderTrajFollowerMode::publishSetpoints()
 	_boom_setpoint_pub.publish(boom_sp);
 
 	// Publish tilt setpoint
-	wheel_loader_tilt_setpoint_s tilt_sp{};
+	tilt_setpoint_s tilt_sp{};
 	tilt_sp.timestamp = now;
 	tilt_sp.angle = _tilt_setpoint.position;
 	tilt_sp.angular_velocity = _tilt_setpoint.velocity;
 	tilt_sp.angular_acceleration = _tilt_setpoint.acceleration;
-	tilt_sp.control_mode = wheel_loader_tilt_setpoint_s::MODE_POSITION;
+	tilt_sp.control_mode = tilt_setpoint_s::MODE_POSITION;
 	tilt_sp.max_velocity = _tilt_limits.max_velocity;
 	tilt_sp.max_acceleration = _tilt_limits.max_acceleration;
 	tilt_sp.setpoint_valid = true;

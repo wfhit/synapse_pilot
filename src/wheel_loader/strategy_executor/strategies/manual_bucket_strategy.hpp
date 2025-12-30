@@ -53,8 +53,8 @@
 
 #include "../strategy_base.hpp"
 #include "manual_bucket_failsafe.hpp"
-#include <uORB/topics/wheel_loader/strategy_cmd.h>
-#include <uORB/topics/wheel_loader/operation_mode_status.h>
+#include <uORB/topics/strategy_cmd.h>
+#include <uORB/topics/operation_mode_status.h>
 #include <uORB/topics/actuator_armed.h>
 #include <uORB/topics/battery_status.h>
 #include <uORB/topics/manual_control_setpoint.h>

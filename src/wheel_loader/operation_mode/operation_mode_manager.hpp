@@ -47,17 +47,17 @@
 #include <uORB/Publication.hpp>
 #include <uORB/Subscription.hpp>
 #include <uORB/SubscriptionCallback.hpp>
-#include <uORB/topics/wheel_loader/operation_mode_cmd.h>
-#include <uORB/topics/wheel_loader/operation_mode_status.h>
-#include <uORB/topics/wheel_loader/operation_control_config.h>
+#include <uORB/topics/operation_mode_cmd.h>
+#include <uORB/topics/operation_mode_status.h>
+#include <uORB/topics/operation_control_config.h>
 #include <uORB/topics/vehicle_status.h>
 
 #include "operation_mode_base.hpp"
-#include "modes/wheel_loader/wheel_loader_traj_follower_mode/wheel_loader_traj_follower_mode.hpp"
-#include "modes/wheel_loader/wheel_loader_manual_bucket_mode/wheel_loader_manual_bucket_mode.hpp"
-#include "modes/wheel_loader/wheel_loader_manual_direct_mode/wheel_loader_manual_direct_mode.hpp"
-#include "modes/wheel_loader/wheel_loader_hold_mode/wheel_loader_hold_mode.hpp"
-#include "modes/wheel_loader/wheel_loader_loiter_mode/wheel_loader_loiter_mode.hpp"
+#include "modes/wheel_loader/wl_traj_follower_mode/wl_traj_follower_mode.hpp"
+#include "modes/wheel_loader/wl_manual_bucket_mode/wl_manual_bucket_mode.hpp"
+#include "modes/wheel_loader/wl_manual_direct_mode/wl_manual_direct_mode.hpp"
+#include "modes/wheel_loader/wl_hold_mode/wl_hold_mode.hpp"
+#include "modes/wheel_loader/wl_loiter_mode/wl_loiter_mode.hpp"
 #include "modes/wheel_loader/wheel_loader_safety_stop_mode/wheel_loader_safety_stop_mode.hpp"
 
 class OperationModeManager : public ModuleBase<OperationModeManager>, public ModuleParams,

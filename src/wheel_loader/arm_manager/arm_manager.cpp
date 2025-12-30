@@ -34,6 +34,7 @@
 #include "arm_manager.hpp"
 
 #include <mathlib/mathlib.h>
+#include <uORB/topics/operation_mode_cmd.h>
 
 ArmManager::ArmManager() :
 	ModuleParams(nullptr),
@@ -145,7 +146,7 @@ bool ArmManager::check_can_arm(bool force)
 	// Check operation mode - don't allow arming in SAFETY_STOP
 	operation_mode_status_s mode_status;
 	if (_operation_mode_status_sub.copy(&mode_status)) {
-		if (mode_status.current_mode == operation_mode_status_s::MODE_WL_SAFETY_STOP) {
+		if (mode_status.current_mode == operation_mode_cmd_s::MODE_WL_SAFETY_STOP) {
 			_arm_status.mode_not_allowed = true;
 			can_arm = false;
 			PX4_DEBUG("Arm blocked: in SAFETY_STOP mode");
@@ -153,7 +154,7 @@ bool ArmManager::check_can_arm(bool force)
 	}
 
 	// Check actuator status - ensure all valid
-	wheel_loader_actuator_status_s actuator_status;
+	actuator_status_s actuator_status;
 	if (_actuator_status_sub.copy(&actuator_status)) {
 		if (!actuator_status.chassis_left_valid ||
 		    !actuator_status.chassis_right_valid ||
@@ -293,8 +294,8 @@ bool ArmManager::check_system_idle()
 	// Check operation mode (HOLD and LOITER are considered idle)
 	operation_mode_status_s mode_status;
 	if (_operation_mode_status_sub.copy(&mode_status)) {
-		if (mode_status.current_mode != operation_mode_status_s::MODE_WL_HOLD &&
-		    mode_status.current_mode != operation_mode_status_s::MODE_WL_LOITER) {
+		if (mode_status.current_mode != operation_mode_cmd_s::MODE_WL_HOLD &&
+		    mode_status.current_mode != operation_mode_cmd_s::MODE_WL_LOITER) {
 			is_idle = false;
 			_last_activity_time = now;
 		}
@@ -324,8 +325,8 @@ void ArmManager::publish_actuator_armed()
 	actuator_armed.armed = _armed;
 	actuator_armed.ready_to_arm = _arm_status.ready_to_arm;
 	actuator_armed.lockdown = false;
-	actuator_armed.manual_lockdown = false;
-	actuator_armed.force_failsafe = !_armed;
+	// actuator_armed.manual_lockdown = false; // Field doesn't exist
+	// actuator_armed.force_failsafe = !_armed; // Field doesn't exist
 	actuator_armed.prearmed = false;
 
 	_actuator_armed_pub.publish(actuator_armed);

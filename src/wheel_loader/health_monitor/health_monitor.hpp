@@ -52,9 +52,9 @@
 #include <uORB/topics/vehicle_command.h>
 #include <uORB/topics/input_rc.h>
 
-#include <uORB/topics/wheel_loader/health_monitor_status.h>
-#include <uORB/topics/wheel_loader/sensor_status.h>
-#include <uORB/topics/wheel_loader/actuator_status.h>
+#include <uORB/topics/health_monitor_status.h>
+#include <uORB/topics/sensor_status.h>
+#include <uORB/topics/actuator_status.h>
 
 /**
  * @brief Health Monitor
@@ -137,10 +137,9 @@ private:
 	uORB::Subscription _vehicle_local_position_sub{ORB_ID(vehicle_local_position)};
 
 	// Wheel loader specific subscriptions
-	uORB::Subscription _wl_sensor_status_sub{ORB_ID(wheel_loader_sensor_status)};
-	uORB::Subscription _wl_actuator_status_sub{ORB_ID(wheel_loader_actuator_status)};
-
-	// Communication subscriptions
+	// uORB::Subscription _wl_sensor_status_sub{ORB_ID(wheel_loader_sensor_status)}; // Message not yet defined
+	// uORB::Subscription _wl_actuator_status_sub{ORB_ID(wheel_loader_actuator_status)}; // Use standard actuator_status instead
+	uORB::Subscription _actuator_status_sub{ORB_ID(actuator_status)};
 	uORB::Subscription _vehicle_command_sub{ORB_ID(vehicle_command)};
 	uORB::Subscription _input_rc_sub{ORB_ID(input_rc)};
 
@@ -184,9 +183,9 @@ private:
 		(ParamFloat<px4::params::HM_BATT_PCT_MIN>) _param_battery_percent_min,
 		(ParamFloat<px4::params::HM_BATT_T_MAX>) _param_battery_temp_max,
 
-		(ParamInt<px4::params::HM_SENSOR_TIMEOUT>) _param_sensor_timeout_ms,
+		(ParamInt<px4::params::HM_SNS_TIMEOUT>) _param_sensor_timeout_ms,
 
-		(ParamInt<px4::params::HM_MAVLINK_TIMEOUT>) _param_mavlink_timeout_ms,
+		(ParamInt<px4::params::HM_MAV_TIMEOUT>) _param_mavlink_timeout_ms,
 		(ParamInt<px4::params::HM_RC_TIMEOUT>) _param_rc_timeout_ms,
 
 		(ParamFloat<px4::params::HM_ACT_CH_ERR>) _param_chassis_error_max,
@@ -196,6 +195,6 @@ private:
 		(ParamInt<px4::params::HM_ACT_TIMEOUT>) _param_actuator_timeout_ms
 	)
 
-	static constexpr uint32_t SCHEDULE_INTERVAL_US = 100_ms;	// 10 Hz
-	static constexpr uint32_t LOG_INTERVAL_US = 1_s;		// 1 Hz logging
+	static constexpr uint32_t SCHEDULE_INTERVAL_US = 100000;	// 10 Hz (100ms)
+	static constexpr uint32_t LOG_INTERVAL_US = 1000000;		// 1 Hz logging (1s)
 };

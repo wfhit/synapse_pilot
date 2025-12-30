@@ -16,7 +16,7 @@ parameters:
               default: 3.0
               min: 1.0
               max: 10.0
-              unit: g
+              unit: g0
               decimal: 1
 
           HM_SLIP_THRESH:
@@ -51,7 +51,7 @@ parameters:
               max: 0.785
               unit: rad
               decimal: 2
-          HM_SENSOR_TIMEOUT:
+          HM_SNS_TIMEOUT:
               description:
                   short: Sensor timeout
                   long: Maximum time without sensor data before timeout fault
@@ -61,7 +61,7 @@ parameters:
               max: 10000
               unit: ms
 
-          HM_MAVLINK_TIMEOUT:
+          HM_MAV_TIMEOUT:
               description:
                   short: MAVLink connection timeout
                   long: Maximum time without MAVLink activity before considering disconnected (0=disabled)
@@ -133,7 +133,7 @@ parameters:
               default: 60.0
               min: 40.0
               max: 80.0
-              unit: degC
+              unit: celcius
               decimal: 1
 
           HM_ACT_CH_ERR:

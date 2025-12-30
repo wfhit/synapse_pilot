@@ -226,7 +226,7 @@ void WheelLoaderHoldMode::computeAndPublishSetpoints()
 	tilt_rate = math::constrain(tilt_rate, -_control_params.max_tilt_rate, _control_params.max_tilt_rate);
 
 	// Publish chassis setpoint
-	wheel_loader_chassis_setpoint_s chassis_sp{};
+	chassis_setpoint_s chassis_sp{};
 	chassis_sp.timestamp = now;
 	chassis_sp.velocity_x = chassis_vel_x;
 	chassis_sp.velocity_y = chassis_vel_y;
@@ -238,12 +238,12 @@ void WheelLoaderHoldMode::computeAndPublishSetpoints()
 	_chassis_setpoint_pub.publish(chassis_sp);
 
 	// Publish boom setpoint
-	wheel_loader_boom_setpoint_s boom_sp{};
+	boom_setpoint_s boom_sp{};
 	boom_sp.timestamp = now;
 	boom_sp.position = _hold_state.boom_position;
 	boom_sp.velocity = boom_velocity;
 	boom_sp.acceleration = 0.f;
-	boom_sp.control_mode = wheel_loader_boom_setpoint_s::MODE_POSITION;
+	boom_sp.control_mode = boom_setpoint_s::MODE_POSITION;
 	boom_sp.max_velocity = _control_params.max_boom_velocity;
 	boom_sp.max_acceleration = 0.5f;
 	boom_sp.setpoint_valid = true;
@@ -251,12 +251,12 @@ void WheelLoaderHoldMode::computeAndPublishSetpoints()
 	_boom_setpoint_pub.publish(boom_sp);
 
 	// Publish tilt setpoint
-	wheel_loader_tilt_setpoint_s tilt_sp{};
+	tilt_setpoint_s tilt_sp{};
 	tilt_sp.timestamp = now;
 	tilt_sp.angle = _hold_state.tilt_angle;
 	tilt_sp.angular_velocity = tilt_rate;
 	tilt_sp.angular_acceleration = 0.f;
-	tilt_sp.control_mode = wheel_loader_tilt_setpoint_s::MODE_POSITION;
+	tilt_sp.control_mode = tilt_setpoint_s::MODE_POSITION;
 	tilt_sp.max_velocity = _control_params.max_tilt_rate;
 	tilt_sp.max_acceleration = 1.0f;
 	tilt_sp.setpoint_valid = true;

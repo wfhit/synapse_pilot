@@ -44,7 +44,7 @@
 #include <px4_platform_common/module_params.h>
 #include <uORB/Publication.hpp>
 #include <uORB/Subscription.hpp>
-#include <uORB/topics/wheel_loader/operation_control_config.h>
+#include <uORB/topics/operation_control_config.h>
 #include <matrix/matrix/math.hpp>
 
 class OperationModeBase : public ModuleParams

@@ -48,14 +48,14 @@
 #include <uORB/topics/manual_control_setpoint.h>
 #include <uORB/topics/input_rc.h>
 #include <uORB/topics/vehicle_status.h>
-#include <uORB/topics/wheel_loader/command_status.h>
-#include <uORB/topics/wheel_loader/arm_cmd.h>
-#include <uORB/topics/wheel_loader/arm_status.h>
-#include <uORB/topics/wheel_loader/operation_mode_cmd.h>
-#include <uORB/topics/wheel_loader/safety_ack_cmd.h>
-#include <uORB/topics/wheel_loader/safety_status.h>
-#include <uORB/topics/wheel_loader/safety_input.h>
-#include <uORB/topics/wheel_loader/health_monitor_status.h>
+#include <uORB/topics/command_status.h>
+#include <uORB/topics/arm_cmd.h>
+#include <uORB/topics/arm_status.h>
+#include <uORB/topics/operation_mode_cmd.h>
+#include <uORB/topics/safety_ack_cmd.h>
+#include <uORB/topics/safety_status.h>
+#include <uORB/topics/safety_input.h>
+#include <uORB/topics/health_monitor_status.h>
 
 /**
  * @brief Operator Interface
@@ -148,7 +148,7 @@ private:
 	 */
 	uint8_t map_rc_task(uint8_t rc_value);
 
-	static constexpr uint32_t SCHEDULE_INTERVAL_US = 50_ms; // 20 Hz
+	static constexpr uint32_t SCHEDULE_INTERVAL_US = 50000; // 20 Hz (50ms)
 
 	// Subscriptions
 	uORB::Subscription _vehicle_command_sub{ORB_ID(vehicle_command)};
@@ -194,12 +194,12 @@ private:
 
 	// Parameters
 	DEFINE_PARAMETERS(
-		(ParamBool<px4::params::CMD_REQUIRE_DEADMAN>) _param_require_deadman,
+		(ParamBool<px4::params::CMD_REQ_DEADMAN>) _param_require_deadman,
 		(ParamBool<px4::params::CMD_RC_PRIORITY>) _param_rc_priority,
 		(ParamInt<px4::params::CMD_ARM_RC_CHAN>) _param_arm_rc_chan,
 		(ParamInt<px4::params::CMD_MODE_RC_CHAN>) _param_mode_rc_chan,
-		(ParamInt<px4::params::CMD_ESTOP_RC_CHAN>) _param_estop_rc_chan,
-		(ParamInt<px4::params::CMD_DEADMAN_RC_CHAN>) _param_deadman_rc_chan,
+		(ParamInt<px4::params::CMD_ESTOP_CH>) _param_estop_rc_chan,
+		(ParamInt<px4::params::CMD_DEADMAN_CH>) _param_deadman_rc_chan,
 		(ParamInt<px4::params::CMD_TASK_RC_CHAN>) _param_task_rc_chan,
 		(ParamInt<px4::params::CMD_RC_THRESHOLD>) _param_rc_threshold
 	)

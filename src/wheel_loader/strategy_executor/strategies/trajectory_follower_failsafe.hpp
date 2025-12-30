@@ -51,7 +51,7 @@
 #pragma once
 
 #include "../failsafe_base.hpp"
-#include <uORB/topics/wheel_loader/operation_mode_cmd.h>
+#include <uORB/topics/operation_mode_cmd.h>
 
 class TrajectoryFollowerFailsafe : public FailsafeBase
 {

@@ -60,8 +60,8 @@
 #include <px4_platform_common/module_params.h>
 #include <drivers/drv_hrt.h>
 #include <uORB/Publication.hpp>
-#include <uORB/topics/wheel_loader/strategy_status.h>
-#include <uORB/topics/wheel_loader/operation_mode_cmd.h>
+#include <uORB/topics/strategy_status.h>
+#include <uORB/topics/operation_mode_cmd.h>
 #include "failsafe_base.hpp"
 
 /**

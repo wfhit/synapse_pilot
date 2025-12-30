@@ -151,7 +151,7 @@ void OperatorInterface::process_mavlink_commands()
 
 				} else {
 					bool arm = (cmd.param1 > 0.5f);
-					send_arm_command(arm, arm_cmd_s::SOURCE_MAVLINK);
+						send_arm_command(arm, arm_cmd_s::SOURCE_GCS);
 					_command_status.last_command_type = arm ? command_status_s::LAST_CMD_ARM : command_status_s::LAST_CMD_DISARM;
 					_command_status.last_command_timestamp = hrt_absolute_time();
 					result = vehicle_command_ack_s::VEHICLE_CMD_RESULT_ACCEPTED;
@@ -167,7 +167,7 @@ void OperatorInterface::process_mavlink_commands()
 				uint8_t mode = static_cast<uint8_t>(cmd.param1);
 
 				if (mode <= 7) {  // Valid mode range
-					send_mode_command(mode, operation_mode_cmd_s::SOURCE_MAVLINK);
+						send_mode_command(mode, operation_mode_cmd_s::SOURCE_GCS);
 					_command_status.last_command_type = command_status_s::LAST_CMD_MODE_CHANGE;
 					_command_status.last_command_timestamp = hrt_absolute_time();
 					result = vehicle_command_ack_s::VEHICLE_CMD_RESULT_ACCEPTED;
@@ -182,11 +182,11 @@ void OperatorInterface::process_mavlink_commands()
 				break;
 			}
 
-		case vehicle_command_s::VEHICLE_CMD_DO_SET_MISSION_CURRENT: {
-				// TODO: Task execution redesign needed
-				result = vehicle_command_ack_s::VEHICLE_CMD_RESULT_UNSUPPORTED;
-				break;
-			}
+		// case vehicle_command_s::VEHICLE_CMD_DO_SET_MISSION_CURRENT: {
+		// 		// TODO: Task execution redesign needed
+		// 		result = vehicle_command_ack_s::VEHICLE_CMD_RESULT_UNSUPPORTED;
+		// 		break;
+		// 	}
 
 		case vehicle_command_s::VEHICLE_CMD_DO_SET_ACTUATOR: {
 				// Use param1 as safety acknowledge command
@@ -208,10 +208,6 @@ void OperatorInterface::process_mavlink_commands()
 		case vehicle_command_s::VEHICLE_CMD_PREFLIGHT_CALIBRATION: {
 				// TODO: Calibration tasks need redesign after task_executor removal
 				result = vehicle_command_ack_s::VEHICLE_CMD_RESULT_UNSUPPORTED;
-				handled = true;
-				break;
-			}
-
 				handled = true;
 				break;
 			}
@@ -272,14 +268,14 @@ void OperatorInterface::process_rc_inputs()
 
 	if (mode_chan > 0 && mode_chan <= 18) {
 		// Map 1000-2000 to 0-7 (8 modes)
-		int mode_value = math::constrain(rc.values[mode_chan - 1], 1000, 2000);
+		int mode_value = math::constrain((int)rc.values[mode_chan - 1], 1000, 2000);
 		rc_mode = (mode_value - 1000) / 125;  // 8 steps of 125us
 		rc_mode = math::min(rc_mode, (uint8_t)7);
 	}
 
 	if (task_chan > 0 && task_chan <= 18) {
 		// Map 1000-2000 to 0-7 (8 tasks)
-		int task_value = math::constrain(rc.values[task_chan - 1], 1000, 2000);
+		int task_value = math::constrain((int)rc.values[task_chan - 1], 1000, 2000);
 		rc_task = (task_value - 1000) / 125;
 		rc_task = math::min(rc_task, (uint8_t)7);
 	}
@@ -339,7 +335,8 @@ void OperatorInterface::process_rc_inputs()
 		uint8_t task_id = map_rc_task(rc_task);
 
 		if (task_id > 0) {
-			send_task_command(task_id, task_executor_cmd_s::ACTION_START, task_executor_cmd_s::SOURCE_RC);
+			// send_task_command(task_id, task_executor_cmd_s::ACTION_START, task_executor_cmd_s::SOURCE_RC);
+			// TODO: Task executor commands need redesign
 			_command_status.last_command_type = command_status_s::LAST_CMD_TASK_START;
 			_command_status.last_command_timestamp = hrt_absolute_time();
 			_rc_cmd_count++;
@@ -356,7 +353,7 @@ void OperatorInterface::send_arm_command(bool arm, uint8_t source)
 {
 	arm_cmd_s cmd{};
 	cmd.timestamp = hrt_absolute_time();
-	cmd.arm = arm;
+	cmd.command = arm ? arm_cmd_s::ARM : arm_cmd_s::DISARM;
 	cmd.source = source;
 	_arm_cmd_pub.publish(cmd);
 

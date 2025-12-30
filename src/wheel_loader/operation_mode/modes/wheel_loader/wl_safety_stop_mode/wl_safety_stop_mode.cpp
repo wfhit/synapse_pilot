@@ -98,7 +98,7 @@ void WheelLoaderSafetyStopMode::publishStopSetpoints()
 	hrt_abstime now = hrt_absolute_time();
 
 	// Publish chassis zero velocity setpoint
-	wheel_loader_chassis_setpoint_s chassis_sp{};
+	chassis_setpoint_s chassis_sp{};
 	chassis_sp.timestamp = now;
 	chassis_sp.velocity_x = 0.f;
 	chassis_sp.velocity_y = 0.f;
@@ -110,12 +110,12 @@ void WheelLoaderSafetyStopMode::publishStopSetpoints()
 	_chassis_setpoint_pub.publish(chassis_sp);
 
 	// Publish boom zero velocity setpoint
-	wheel_loader_boom_setpoint_s boom_sp{};
+	boom_setpoint_s boom_sp{};
 	boom_sp.timestamp = now;
 	boom_sp.position = 0.f;
 	boom_sp.velocity = 0.f;
 	boom_sp.acceleration = 0.f;
-	boom_sp.control_mode = wheel_loader_boom_setpoint_s::MODE_VELOCITY;
+	boom_sp.control_mode = boom_setpoint_s::MODE_VELOCITY;
 	boom_sp.max_velocity = 0.f;
 	boom_sp.max_acceleration = 0.f;
 	boom_sp.setpoint_valid = true;
@@ -123,12 +123,12 @@ void WheelLoaderSafetyStopMode::publishStopSetpoints()
 	_boom_setpoint_pub.publish(boom_sp);
 
 	// Publish tilt zero rate setpoint
-	wheel_loader_tilt_setpoint_s tilt_sp{};
+	tilt_setpoint_s tilt_sp{};
 	tilt_sp.timestamp = now;
 	tilt_sp.angle = 0.f;
 	tilt_sp.angular_velocity = 0.f;
 	tilt_sp.angular_acceleration = 0.f;
-	tilt_sp.control_mode = wheel_loader_tilt_setpoint_s::MODE_VELOCITY;
+	tilt_sp.control_mode = tilt_setpoint_s::MODE_VELOCITY;
 	tilt_sp.max_velocity = 0.f;
 	tilt_sp.max_acceleration = 0.f;
 	tilt_sp.setpoint_valid = true;

@@ -48,12 +48,12 @@
 #include <uORB/topics/vehicle_status.h>
 #include <uORB/topics/manual_control_setpoint.h>
 
-#include <uORB/topics/wheel_loader/arm_cmd.h>
-#include <uORB/topics/wheel_loader/arm_status.h>
-#include <uORB/topics/wheel_loader/operation_mode_status.h>
-#include <uORB/topics/wheel_loader/health_monitor_status.h>
-#include <uORB/topics/wheel_loader/strategy_status.h>
-#include <uORB/topics/wheel_loader/actuator_status.h>
+#include <uORB/topics/arm_cmd.h>
+#include <uORB/topics/arm_status.h>
+#include <uORB/topics/operation_mode_status.h>
+#include <uORB/topics/health_monitor_status.h>
+#include <uORB/topics/strategy_status.h>
+#include <uORB/topics/actuator_status.h>
 
 /**
  * @brief Arm Manager
@@ -130,7 +130,7 @@ private:
 	uORB::Subscription _health_monitor_status_sub{ORB_ID(health_monitor_status)};
 	uORB::Subscription _strategy_status_sub{ORB_ID(strategy_status)};
 	uORB::Subscription _vehicle_local_position_sub{ORB_ID(vehicle_local_position)};
-	uORB::Subscription _actuator_status_sub{ORB_ID(wheel_loader_actuator_status)};
+	uORB::Subscription _actuator_status_sub{ORB_ID(actuator_status)};
 	uORB::Subscription _manual_control_sub{ORB_ID(manual_control_setpoint)};
 
 	// Publications
@@ -159,10 +159,10 @@ private:
 	DEFINE_PARAMETERS(
 		(ParamFloat<px4::params::ARM_IDLE_TIMEOUT>) _param_idle_timeout,
 		(ParamFloat<px4::params::ARM_IDLE_VEL>) _param_idle_velocity,
-		(ParamBool<px4::params::ARM_REQUIRE_HEALTH>) _param_require_health,
+		(ParamBool<px4::params::ARM_REQ_HEALTH>) _param_require_health,
 		(ParamBool<px4::params::ARM_AUTO_DISARM>) _param_auto_disarm,
-		(ParamInt<px4::params::ARM_MANUAL_TIMEOUT>) _param_manual_timeout
+		(ParamInt<px4::params::ARM_MAN_TIMEOUT>) _param_manual_timeout
 	)
 
-	static constexpr uint32_t SCHEDULE_INTERVAL_US = 50_ms;	// 20 Hz
+	static constexpr uint32_t SCHEDULE_INTERVAL_US = 50000;	// 20 Hz (50ms)
 };

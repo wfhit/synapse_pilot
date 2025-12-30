@@ -63,8 +63,8 @@
 #include <uORB/PublicationMulti.hpp>
 #include <uORB/Subscription.hpp>
 #include <uORB/SubscriptionCallback.hpp>
-#include <uORB/topics/wheel_loader/strategy_cmd.h>
-#include <uORB/topics/wheel_loader/strategy_status.h>
+#include <uORB/topics/strategy_cmd.h>
+#include <uORB/topics/strategy_status.h>
 #include <uORB/topics/actuator_armed.h>
 #include <uORB/topics/battery_status.h>
 #include <uORB/topics/vehicle_status.h>

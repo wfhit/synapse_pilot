@@ -21,29 +21,6 @@ parameters:
               reboot_required: false
               category: System
 
-          VLA_CONFIG:
-              description:
-                  short: VLA Serial Port Configuration
-                  long: |
-                      Configure on which serial port to run VLA Proxy Driver.
-              type: enum
-              values:
-                  0: Disabled
-                  6: UART 6
-                  101: TELEM 1
-                  102: TELEM 2
-                  103: TELEM 3
-                  104: TELEM/SERIAL 4
-                  201: GPS 1
-                  202: GPS 2
-                  203: GPS 3
-                  300: Radio Controller
-                  301: Wifi Port
-                  401: EXT2
-              default: 0
-              reboot_required: true
-              category: System
-
           VLA_BAUDRATE:
               description:
                   short: VLA Serial Port Baud Rate

@@ -109,7 +109,7 @@ void WheelLoaderLoiterMode::publishZeroSetpoints()
 
 	// Publish chassis zero velocity setpoint
 	if (_loiter_params.enable_chassis) {
-		wheel_loader_chassis_setpoint_s chassis_sp{};
+		chassis_setpoint_s chassis_sp{};
 		chassis_sp.timestamp = now;
 		chassis_sp.velocity_x = 0.f;
 		chassis_sp.velocity_y = 0.f;
@@ -123,12 +123,12 @@ void WheelLoaderLoiterMode::publishZeroSetpoints()
 
 	// Publish boom zero velocity setpoint
 	if (_loiter_params.enable_boom) {
-		wheel_loader_boom_setpoint_s boom_sp{};
+		boom_setpoint_s boom_sp{};
 		boom_sp.timestamp = now;
 		boom_sp.position = 0.f;
 		boom_sp.velocity = 0.f;
 		boom_sp.acceleration = 0.f;
-		boom_sp.control_mode = wheel_loader_boom_setpoint_s::MODE_VELOCITY;
+		boom_sp.control_mode = boom_setpoint_s::MODE_VELOCITY;
 		boom_sp.max_velocity = 0.f;
 		boom_sp.max_acceleration = 0.f;
 		boom_sp.setpoint_valid = true;
@@ -138,12 +138,12 @@ void WheelLoaderLoiterMode::publishZeroSetpoints()
 
 	// Publish tilt zero rate setpoint
 	if (_loiter_params.enable_tilt) {
-		wheel_loader_tilt_setpoint_s tilt_sp{};
+		tilt_setpoint_s tilt_sp{};
 		tilt_sp.timestamp = now;
 		tilt_sp.angle = 0.f;
 		tilt_sp.angular_velocity = 0.f;
 		tilt_sp.angular_acceleration = 0.f;
-		tilt_sp.control_mode = wheel_loader_tilt_setpoint_s::MODE_VELOCITY;
+		tilt_sp.control_mode = tilt_setpoint_s::MODE_VELOCITY;
 		tilt_sp.max_velocity = 0.f;
 		tilt_sp.max_acceleration = 0.f;
 		tilt_sp.setpoint_valid = true;

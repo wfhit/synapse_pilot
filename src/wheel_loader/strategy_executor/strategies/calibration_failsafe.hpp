@@ -46,7 +46,7 @@
 #pragma once
 
 #include "../failsafe_base.hpp"
-#include <uORB/topics/wheel_loader/operation_mode_cmd.h>
+#include <uORB/topics/operation_mode_cmd.h>
 #include <uORB/topics/vehicle_local_position.h>
 #include <uORB/topics/vehicle_attitude.h>
 #include <uORB/Subscription.hpp>

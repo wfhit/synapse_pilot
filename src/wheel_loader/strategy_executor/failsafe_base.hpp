@@ -70,8 +70,8 @@
 #include <drivers/drv_hrt.h>
 #include <uORB/Subscription.hpp>
 #include <uORB/Publication.hpp>
-#include <uORB/topics/wheel_loader/operation_mode_cmd.h>
-#include <uORB/topics/wheel_loader/operation_mode_status.h>
+#include <uORB/topics/operation_mode_cmd.h>
+#include <uORB/topics/operation_mode_status.h>
 #include <uORB/topics/actuator_armed.h>
 #include <uORB/topics/sensor_combined.h>
 
