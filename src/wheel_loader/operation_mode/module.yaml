@@ -1,0 +1,50 @@
+module_name: Operation Mode Manager
+serial_config:
+    - command: operation_mode start
+      port_config_param:
+          name: OP_MODE_CONFIG
+          group: Operation Mode
+
+parameters:
+    - group: Operation Mode
+      definitions:
+          OP_MODE_RATE:
+              description:
+                  short: Operation mode update rate
+                  long: Update rate for operation mode manager in Hz
+              type: float
+              default: 100.0
+              min: 10.0
+              max: 250.0
+              unit: Hz
+              decimal: 1
+
+          OP_MANUAL_GAIN:
+              description:
+                  short: Manual mode control gain
+                  long: Gain parameter for manual mode control
+              type: float
+              default: 1.0
+              min: 0.1
+              max: 2.0
+              decimal: 2
+
+          OP_ASSIST_GAIN:
+              description:
+                  short: Assist mode control gain
+                  long: Gain parameter for assist mode control
+              type: float
+              default: 1.0
+              min: 0.1
+              max: 2.0
+              decimal: 2
+
+          OP_TRAJ_GAIN:
+              description:
+                  short: Trajectory follower control gain
+                  long: Gain parameter for trajectory following mode
+              type: float
+              default: 1.0
+              min: 0.1
+              max: 2.0
+              decimal: 2

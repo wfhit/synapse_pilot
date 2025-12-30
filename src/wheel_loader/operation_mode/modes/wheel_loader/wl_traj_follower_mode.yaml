@@ -1,0 +1,515 @@
+# Wheel Loader Trajectory Follower Mode Configuration
+
+# PX4 Parameters
+parameters:
+  - group: Wheel Loader Vehicle
+    definitions:
+      WL_FRONT_LEN:
+        description:
+          short: Front section length
+          long: Length of front chassis section
+        type: float
+        default: 2.5
+        min: 0.5
+        max: 10.0
+        unit: m
+        decimal: 2
+
+      WL_REAR_LEN:
+        description:
+          short: Rear section length
+          long: Length of rear chassis section
+        type: float
+        default: 2.0
+        min: 0.5
+        max: 10.0
+        unit: m
+        decimal: 2
+
+      WL_WHEELBASE:
+        description:
+          short: Wheelbase
+          long: Effective wheelbase of the vehicle
+        type: float
+        default: 3.0
+        min: 1.0
+        max: 10.0
+        unit: m
+        decimal: 2
+
+      WL_TRACK_WIDTH:
+        description:
+          short: Track width
+          long: Distance between left and right wheels
+        type: float
+        default: 2.0
+        min: 0.5
+        max: 5.0
+        unit: m
+        decimal: 2
+
+      WL_BOOM_MIN:
+        description:
+          short: Boom minimum position
+          long: Minimum boom extension or angle
+        type: float
+        default: 0.0
+        min: -5.0
+        max: 5.0
+        unit: m
+        decimal: 2
+
+      WL_BOOM_MAX:
+        description:
+          short: Boom maximum position
+          long: Maximum boom extension or angle
+        type: float
+        default: 3.0
+        min: 0.0
+        max: 10.0
+        unit: m
+        decimal: 2
+
+      WL_BOOM_LEN:
+        description:
+          short: Boom length
+          long: Total length of boom arm
+        type: float
+        default: 3.5
+        min: 0.5
+        max: 15.0
+        unit: m
+        decimal: 2
+
+      WL_TILT_MIN:
+        description:
+          short: Tilt minimum angle
+          long: Minimum bucket tilt angle
+        type: float
+        default: -1.57
+        min: -3.14
+        max: 0.0
+        unit: rad
+        decimal: 2
+
+      WL_TILT_MAX:
+        description:
+          short: Tilt maximum angle
+          long: Maximum bucket tilt angle
+        type: float
+        default: 1.57
+        min: 0.0
+        max: 3.14
+        unit: rad
+        decimal: 2
+
+  - group: Wheel Loader Limits
+    definitions:
+      WL_MAX_FWD_VEL:
+        description:
+          short: Maximum forward velocity
+          long: Maximum forward velocity for chassis
+        type: float
+        default: 2.0
+        min: 0.1
+        max: 10.0
+        unit: m/s
+        decimal: 1
+
+      WL_MAX_BWD_VEL:
+        description:
+          short: Maximum backward velocity
+          long: Maximum backward velocity for chassis
+        type: float
+        default: 1.5
+        min: 0.1
+        max: 10.0
+        unit: m/s
+        decimal: 1
+
+      WL_MAX_YAW_RATE:
+        description:
+          short: Maximum yaw rate
+          long: Maximum yaw rate for chassis steering
+        type: float
+        default: 0.5
+        min: 0.1
+        max: 2.0
+        unit: rad/s
+        decimal: 2
+
+      WL_MAX_ART_ANG:
+        description:
+          short: Maximum articulation angle
+          long: Maximum articulation steering angle
+        type: float
+        default: 0.785
+        min: 0.1
+        max: 1.57
+        unit: rad
+        decimal: 3
+
+      WL_MIN_ART_ANG:
+        description:
+          short: Minimum articulation angle
+          long: Minimum articulation steering angle
+        type: float
+        default: -0.785
+        min: -1.57
+        max: -0.1
+        unit: rad
+        decimal: 3
+
+      WL_MAX_ART_RATE:
+        description:
+          short: Maximum articulation rate
+          long: Maximum rate of change for articulation angle
+        type: float
+        default: 0.3
+        min: 0.05
+        max: 1.0
+        unit: rad/s
+        decimal: 2
+
+      WL_BOOM_MAX_VEL:
+        description:
+          short: Maximum boom velocity
+          long: Maximum velocity for boom movement
+        type: float
+        default: 0.5
+        min: 0.1
+        max: 2.0
+        unit: m/s
+        decimal: 2
+
+      WL_BOOM_MAX_ACC:
+        description:
+          short: Maximum boom acceleration
+          long: Maximum acceleration for boom movement
+        type: float
+        default: 0.3
+        min: 0.05
+        max: 1.0
+        unit: m/s^2
+        decimal: 2
+
+      WL_BOOM_MAX_JRK:
+        description:
+          short: Maximum boom jerk
+          long: Maximum jerk for boom movement
+        type: float
+        default: 1.0
+        min: 0.1
+        max: 10.0
+        unit: m/s^3
+        decimal: 1
+
+      WL_TILT_MAX_VEL:
+        description:
+          short: Maximum tilt velocity
+          long: Maximum angular velocity for bucket tilt
+        type: float
+        default: 0.8
+        min: 0.1
+        max: 2.0
+        unit: rad/s
+        decimal: 2
+
+      WL_TILT_MAX_ACC:
+        description:
+          short: Maximum tilt acceleration
+          long: Maximum angular acceleration for bucket tilt
+        type: float
+        default: 0.5
+        min: 0.1
+        max: 2.0
+        unit: rad/s^2
+        decimal: 2
+
+      WL_TILT_MAX_JRK:
+        description:
+          short: Maximum tilt jerk
+          long: Maximum angular jerk for bucket tilt
+        type: float
+        default: 2.0
+        min: 0.1
+        max: 20.0
+        unit: rad/s^3
+        decimal: 1
+
+  - group: Wheel Loader MPC
+    definitions:
+      WL_MPC_PRED_HZ:
+        description:
+          short: MPC prediction horizon
+          long: Number of steps for MPC prediction horizon
+        type: int32
+        default: 10
+        min: 5
+        max: 20
+
+      WL_MPC_CTRL_HZ:
+        description:
+          short: MPC control horizon
+          long: Number of steps for MPC control horizon
+        type: int32
+        default: 5
+        min: 2
+        max: 15
+
+      WL_MPC_W_POS_X:
+        description:
+          short: MPC weight position X
+          long: Cost weight for X position error
+        type: float
+        default: 10.0
+        min: 0.0
+        max: 100.0
+        decimal: 1
+
+      WL_MPC_W_POS_Y:
+        description:
+          short: MPC weight position Y
+          long: Cost weight for Y position error
+        type: float
+        default: 10.0
+        min: 0.0
+        max: 100.0
+        decimal: 1
+
+      WL_MPC_W_HEAD:
+        description:
+          short: MPC weight heading
+          long: Cost weight for heading error
+        type: float
+        default: 5.0
+        min: 0.0
+        max: 100.0
+        decimal: 1
+
+      WL_MPC_W_ART:
+        description:
+          short: MPC weight articulation
+          long: Cost weight for articulation error
+        type: float
+        default: 3.0
+        min: 0.0
+        max: 100.0
+        decimal: 1
+
+      WL_MPC_W_VEL:
+        description:
+          short: MPC weight velocity
+          long: Cost weight for velocity control effort
+        type: float
+        default: 1.0
+        min: 0.0
+        max: 100.0
+        decimal: 1
+
+      WL_MPC_W_YAW:
+        description:
+          short: MPC weight yaw rate
+          long: Cost weight for yaw rate control effort
+        type: float
+        default: 1.0
+        min: 0.0
+        max: 100.0
+        decimal: 1
+
+      WL_MPC_W_ART_R:
+        description:
+          short: MPC weight articulation rate
+          long: Cost weight for articulation rate control effort
+        type: float
+        default: 1.5
+        min: 0.0
+        max: 100.0
+        decimal: 1
+
+      WL_MPC_W_VEL_C:
+        description:
+          short: MPC weight velocity change
+          long: Cost weight for velocity smoothness
+        type: float
+        default: 0.5
+        min: 0.0
+        max: 100.0
+        decimal: 1
+
+      WL_MPC_W_YAW_C:
+        description:
+          short: MPC weight yaw rate change
+          long: Cost weight for yaw rate smoothness
+        type: float
+        default: 0.5
+        min: 0.0
+        max: 100.0
+        decimal: 1
+
+      WL_MPC_W_TPOS:
+        description:
+          short: MPC terminal weight position
+          long: Terminal cost weight for position error
+        type: float
+        default: 20.0
+        min: 0.0
+        max: 100.0
+        decimal: 1
+
+      WL_MPC_W_THEAD:
+        description:
+          short: MPC terminal weight heading
+          long: Terminal cost weight for heading error
+        type: float
+        default: 10.0
+        min: 0.0
+        max: 100.0
+        decimal: 1
+
+      WL_MPC_W_TART:
+        description:
+          short: MPC terminal weight articulation
+          long: Terminal cost weight for articulation error
+        type: float
+        default: 5.0
+        min: 0.0
+        max: 100.0
+        decimal: 1
+
+  - group: Wheel Loader S-Curve
+    definitions:
+      WL_BOOM_PROF:
+        description:
+          short: Boom profile type
+          long: S-curve profile type for boom (0=quintic, 1=7segment)
+        type: int32
+        default: 0
+        min: 0
+        max: 1
+
+      WL_BOOM_POS_TOL:
+        description:
+          short: Boom position tolerance
+          long: Position tolerance for boom trajectory completion
+        type: float
+        default: 0.01
+        min: 0.001
+        max: 0.1
+        unit: m
+        decimal: 3
+
+      WL_BOOM_VEL_TOL:
+        description:
+          short: Boom velocity tolerance
+          long: Velocity tolerance for boom trajectory completion
+        type: float
+        default: 0.01
+        min: 0.001
+        max: 0.1
+        unit: m/s
+        decimal: 3
+
+      WL_TILT_PROF:
+        description:
+          short: Tilt profile type
+          long: S-curve profile type for tilt (0=quintic, 1=7segment)
+        type: int32
+        default: 0
+        min: 0
+        max: 1
+
+      WL_TILT_POS_TOL:
+        description:
+          short: Tilt position tolerance
+          long: Position tolerance for tilt trajectory completion
+        type: float
+        default: 0.02
+        min: 0.001
+        max: 0.1
+        unit: rad
+        decimal: 3
+
+      WL_TILT_VEL_TOL:
+        description:
+          short: Tilt velocity tolerance
+          long: Velocity tolerance for tilt trajectory completion
+        type: float
+        default: 0.02
+        min: 0.001
+        max: 0.1
+        unit: rad/s
+        decimal: 3
+
+  - group: Wheel Loader Sync
+    definitions:
+      WL_SYNC_ENABLE:
+        description:
+          short: Enable time synchronization
+          long: Enable time synchronization across all controllers
+        type: int32
+        default: 1
+        min: 0
+        max: 1
+
+      WL_SYNC_TOL:
+        description:
+          short: Sync tolerance
+          long: Time synchronization tolerance
+        type: float
+        default: 0.05
+        min: 0.01
+        max: 1.0
+        unit: s
+        decimal: 2
+
+      WL_SYNC_MAX_DES:
+        description:
+          short: Max time desync
+          long: Maximum allowed time desynchronization
+        type: float
+        default: 0.5
+        min: 0.1
+        max: 5.0
+        unit: s
+        decimal: 2
+
+      WL_BLEND_EN:
+        description:
+          short: Enable smooth blending
+          long: Enable smooth blending for new trajectories
+        type: int32
+        default: 1
+        min: 0
+        max: 1
+
+      WL_BLEND_DUR:
+        description:
+          short: Trajectory blend duration
+          long: Duration for smooth blending when switching trajectories
+        type: float
+        default: 1.0
+        min: 0.1
+        max: 5.0
+        unit: s
+        decimal: 1
+
+      WL_BLEND_POS_F:
+        description:
+          short: Position blend factor
+          long: Position blending factor (0-1)
+        type: float
+        default: 0.5
+        min: 0.0
+        max: 1.0
+        decimal: 2
+
+      WL_BLEND_VEL_F:
+        description:
+          short: Velocity blend factor
+          long: Velocity blending factor (0-1)
+        type: float
+        default: 0.3
+        min: 0.0
+        max: 1.0
+        decimal: 2

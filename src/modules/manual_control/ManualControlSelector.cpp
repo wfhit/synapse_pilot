@@ -46,7 +46,7 @@ void ManualControlSelector::updateWithNewInputSample(uint64_t now, const manual_
 	// First check if the chosen input got invalid, so it can get replaced
 	updateValidityOfChosenInput(now);
 
-	// Update with input sample if it's valid and should be chosen according to COM_RC_IN_MODE
+	// Update with input sample if it's valid and should be chosen according to MAN_RC_IN_MODE
 	if (isInputValid(input, now)) {
 		_setpoint = input;
 		_setpoint.valid = true;
@@ -68,7 +68,7 @@ bool ManualControlSelector::isInputValid(const manual_control_setpoint_s &input,
 	// Check if source matches the configuration
 	bool match = false;
 
-	switch (_rc_in_mode) { // COM_RC_IN_MODE
+	switch (_rc_in_mode) { // MAN_RC_IN_MODE
 	case RcInMode::RcOnly:
 		match = isRc(input.data_source);
 		break;

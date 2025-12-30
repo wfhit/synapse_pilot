@@ -1,0 +1,6 @@
+menuconfig DRIVERS_MAG_ENCODER_AS5600
+	bool "AS5600 magnetic encoder"
+	default n
+	---help---
+		Enable support for AS5600 magnetic rotary position sensor
+

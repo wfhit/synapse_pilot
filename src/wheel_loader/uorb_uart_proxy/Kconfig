@@ -1,0 +1,16 @@
+menuconfig MODULES_UORB_UART_PROXY
+	bool "uorb_uart_proxy"
+	default n
+	---help---
+		Enable support for uORB UART Proxy module.
+
+		This module provides transparent uORB messaging over UART
+		for distributed systems. It runs on NXT-Dual controller boards
+		and communicates with the X7+ main board.
+
+menuconfig USER_UORB_UART_PROXY
+	bool "uorb_uart_proxy running as userspace module"
+	default n
+	depends on BOARD_PROTECTED && MODULES_UORB_UART_PROXY
+	---help---
+		Put uorb_uart_proxy in userspace memory

@@ -1,0 +1,7 @@
+menuconfig MODULES_STRATEGY_EXECUTOR
+	bool "strategy_executor"
+	default n
+	---help---
+		Enable support for strategy executor module
+		Executes high-level automation strategies and manages failsafe behaviors
+		for autonomous wheel loader operations.

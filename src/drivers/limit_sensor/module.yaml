@@ -1,0 +1,87 @@
+__max_num_config_instances: &max_num_config_instances 4
+
+module_name: Limit Sensors
+
+parameters:
+  - group: Limit Sensors
+    definitions:
+      LS_POLL_RATE:
+        description:
+          short: Limit Sensor Poll Rate
+          long: |
+            Polling frequency for limit sensor readings in Hz.
+            Higher values provide faster response but use more CPU.
+            Affects all limit sensor instances.
+        type: int32
+        min: 10
+        max: 1000
+        default: 200
+        unit: Hz
+        decimal: 0
+        increment: 10
+        reboot_required: false
+
+      LS_DEBOUNCE_US:
+        description:
+          short: Limit Sensor Debounce Time
+          long: |
+            Debounce time for limit sensor inputs in microseconds.
+            Prevents false triggers from electrical noise.
+            Affects all limit sensor instances.
+        type: int32
+        min: 1000
+        max: 100000
+        default: 10000
+        unit: us
+        decimal: 0
+        increment: 1000
+        reboot_required: false
+
+      LIMIT_SENSOR_EN:
+        description:
+          short: Enable Limit Sensor System
+          long: |
+            Enable the limit sensor system globally.
+            When disabled, no limit sensor instances will be started.
+            This is a system-level enable for all limit sensor functionality.
+        type: boolean
+        default: false
+        reboot_required: true
+
+      LS_DIAG_ENABLE:
+        description:
+          short: Limit Sensor Diagnostics Enable
+          long: |
+            Enable diagnostic output and fault detection for limit sensors.
+            0=Disabled, 1=Enabled. Affects all instances.
+        type: boolean
+        default: true
+        reboot_required: false
+
+      LS_${i}_ENABLE:
+        description:
+          short: Enable Limit Sensor Instance ${i}
+          long: |
+            Enable limit sensor instance ${i}.
+        type: boolean
+        default: [false, false, false, false]
+        reboot_required: true
+        num_instances: *max_num_config_instances
+
+      LS_${i}_FUNCTION:
+        description:
+          short: Instance ${i} Function
+          long: |
+            Function assignment for limit sensor instance ${i}.
+            Determines the operational behavior and uORB topic instance.
+        type: enum
+        values:
+          0: Bucket Load
+          1: Bucket Dump
+          2: Boom Up
+          3: Boom Down
+          4: Steering Left
+          5: Steering Right
+        default: [0, 1, 2, 3]
+        reboot_required: true
+        num_instances: *max_num_config_instances

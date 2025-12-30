@@ -1,0 +1,92 @@
+module_name: uorb_uart_proxy
+serial_config:
+    - command: uorb_uart_proxy start -d ${SERIAL_DEV} -b ${BAUD}
+      port_config_param:
+        name: UORB_PX_DEV
+        group: uORB UART Proxy
+      baudrate_config_param:
+        name: UORB_PX_BAUD
+        group: uORB UART Proxy
+
+parameters:
+    - group: uORB UART Proxy
+      definitions:
+        UORB_PX_EN:
+            description:
+                short: uORB UART Proxy Enable
+                long: |
+                    Enable the uORB UART Proxy module for distributed uORB messaging.
+                    This module runs on NXT-Dual controller boards and communicates
+                    with the X7+ main board.
+            type: int32
+            values:
+                0: Disabled
+                1: Enabled
+            default: 1
+
+        UORB_PX_UART:
+            description:
+                short: uORB UART Proxy Port
+                long: |
+                    Serial port selection for uORB UART Proxy.
+                    Specifies which UART port to use for communication with the X7+ main board.
+            type: int32
+            values:
+                1: ttyS1
+                2: ttyS2
+                3: ttyS3
+                4: ttyS4
+            min: 1
+            max: 4
+            default: 1
+            reboot_required: true
+
+        UORB_PX_BAUD:
+            description:
+                short: uORB UART Proxy Baudrate
+                long: |
+                    Serial communication baudrate for uORB UART Proxy.
+                    Must match the baudrate configured on the X7+ main board.
+            type: int32
+            values:
+                9600: 9600 baud
+                19200: 19200 baud
+                38400: 38400 baud
+                57600: 57600 baud
+                115200: 115200 baud
+                230400: 230400 baud
+                460800: 460800 baud
+                921600: 921600 baud
+                1000000: 1000000 baud
+            min: 9600
+            max: 1000000
+            default: 921600
+            reboot_required: true
+
+        UORB_PX_NODE_ID:
+            description:
+                short: Board Node ID
+                long: |
+                    Node ID identification for message routing.
+                    This determines which messages are processed by this proxy instance.
+                    Must match the physical board configuration.
+            type: int32
+            values:
+                2: Front NXT Board
+                3: Rear NXT Board
+            min: 2
+            max: 3
+            default: 2
+            reboot_required: true
+
+        UORB_PX_STATS:
+            description:
+                short: Enable Statistics
+                long: |
+                    Enable periodic statistics output for debugging and monitoring.
+                    Shows connection status, packet counts, and error rates.
+            type: int32
+            values:
+                0: Disabled
+                1: Enabled
+            default: 0

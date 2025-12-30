@@ -1,0 +1,9 @@
+menuconfig MODULES_STEERING_CONTROLLER
+	bool "steering_controller"
+	default n
+	---help---
+		Enable articulated chassis steering controller with PID position control
+		and servo PWM output for hydraulic steering systems.
+		
+		Provides precise steering angle control for articulated wheel loaders
+		with feedback from magnetic encoders and hydraulic valve control.

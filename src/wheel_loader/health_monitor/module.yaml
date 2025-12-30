@@ -1,0 +1,191 @@
+module_name: Health Monitor Manager
+serial_config:
+    - command: health_monitor start
+      port_config_param:
+          name: None
+          group: Health Monitor
+
+parameters:
+    - group: Health Monitor
+      definitions:
+          HM_SHOCK_THRESH:
+              description:
+                  short: Shock detection threshold
+                  long: Maximum acceleration magnitude before shock is detected (in g's)
+              type: float
+              default: 3.0
+              min: 1.0
+              max: 10.0
+              unit: g
+              decimal: 1
+
+          HM_SLIP_THRESH:
+              description:
+                  short: Slip detection threshold
+                  long: Maximum slip ratio before slip is detected
+              type: float
+              default: 0.2
+              min: 0.05
+              max: 0.5
+              unit: norm
+              decimal: 2
+
+          HM_ROLL_MAX:
+              description:
+                  short: Maximum roll angle
+                  long: Maximum vehicle roll angle before tilt warning
+              type: float
+              default: 0.349
+              min: 0.1
+              max: 0.785
+              unit: rad
+              decimal: 2
+
+          HM_PITCH_MAX:
+              description:
+                  short: Maximum pitch angle
+                  long: Maximum vehicle pitch angle before tilt warning
+              type: float
+              default: 0.349
+              min: 0.1
+              max: 0.785
+              unit: rad
+              decimal: 2
+          HM_SENSOR_TIMEOUT:
+              description:
+                  short: Sensor timeout
+                  long: Maximum time without sensor data before timeout fault
+              type: int32
+              default: 1000
+              min: 100
+              max: 10000
+              unit: ms
+
+          HM_MAVLINK_TIMEOUT:
+              description:
+                  short: MAVLink connection timeout
+                  long: Maximum time without MAVLink activity before considering disconnected (0=disabled)
+              type: int32
+              default: 3000
+              min: 0
+              max: 30000
+              unit: ms
+
+          HM_RC_TIMEOUT:
+              description:
+                  short: RC connection timeout
+                  long: Maximum time without RC signal before considering disconnected (0=disabled)
+              type: int32
+              default: 1000
+              min: 0
+              max: 10000
+              unit: ms
+
+          HM_BATT_V_MIN:
+              description:
+                  short: Minimum battery voltage
+                  long: Minimum acceptable battery voltage
+              type: float
+              default: 22.0
+              min: 10.0
+              max: 30.0
+              unit: V
+              decimal: 1
+
+          HM_BATT_V_MAX:
+              description:
+                  short: Maximum battery voltage
+                  long: Maximum acceptable battery voltage
+              type: float
+              default: 29.4
+              min: 20.0
+              max: 35.0
+              unit: V
+              decimal: 1
+
+          HM_BATT_I_MAX:
+              description:
+                  short: Maximum battery current
+                  long: Maximum acceptable battery discharge current
+              type: float
+              default: 100.0
+              min: 10.0
+              max: 500.0
+              unit: A
+              decimal: 1
+
+          HM_BATT_PCT_MIN:
+              description:
+                  short: Minimum battery percentage
+                  long: Minimum acceptable battery charge percentage
+              type: float
+              default: 15.0
+              min: 5.0
+              max: 30.0
+              unit: '%'
+              decimal: 1
+
+          HM_BATT_T_MAX:
+              description:
+                  short: Maximum battery temperature
+                  long: Maximum acceptable battery temperature
+              type: float
+              default: 60.0
+              min: 40.0
+              max: 80.0
+              unit: degC
+              decimal: 1
+
+          HM_ACT_CH_ERR:
+              description:
+                  short: Chassis tracking error threshold
+                  long: Maximum chassis actuator tracking error
+              type: float
+              default: 0.2
+              min: 0.05
+              max: 1.0
+              unit: m
+              decimal: 2
+
+          HM_ACT_BOOM_ERR:
+              description:
+                  short: Boom tracking error threshold
+                  long: Maximum boom actuator tracking error
+              type: float
+              default: 0.05
+              min: 0.01
+              max: 0.2
+              unit: m
+              decimal: 3
+
+          HM_ACT_TILT_ERR:
+              description:
+                  short: Tilt tracking error threshold
+                  long: Maximum tilt actuator tracking error
+              type: float
+              default: 0.1
+              min: 0.01
+              max: 0.5
+              unit: rad
+              decimal: 2
+
+          HM_ACT_ART_ERR:
+              description:
+                  short: Articulation tracking error threshold
+                  long: Maximum articulation actuator tracking error
+              type: float
+              default: 0.1
+              min: 0.01
+              max: 0.5
+              unit: rad
+              decimal: 2
+
+          HM_ACT_TIMEOUT:
+              description:
+                  short: Actuator timeout
+                  long: Maximum time without actuator feedback before timeout fault
+              type: int32
+              default: 500
+              min: 100
+              max: 5000
+              unit: ms

@@ -1,0 +1,34 @@
+menuconfig MODULES_TILT_CONTROL
+	bool "tilt_control"
+	default n
+	---help---
+		Enable support for tilt control module
+
+		This module provides advanced tilt control for wheel loader applications
+		including kinematic calculations, motion planning, boom compensation,
+		and state management with calibration.
+
+if MODULES_TILT_CONTROL
+
+config TILT_CONTROL_BOOM_COMPENSATION
+	bool "Enable boom compensation"
+	default y
+	---help---
+		Enable boom angle compensation to maintain tilt orientation
+		relative to ground when boom moves.
+
+config TILT_CONTROL_CALIBRATION
+	bool "Enable automatic calibration"
+	default y
+	---help---
+		Enable automatic calibration sequence to determine actuator
+		limits and tilt angle ranges.
+
+config TILT_CONTROL_PERFORMANCE_MONITORING
+	bool "Enable performance monitoring"
+	default y
+	---help---
+		Enable performance metrics collection for control system
+		analysis and tuning.
+
+endif # MODULES_TILT_CONTROL

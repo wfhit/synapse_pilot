@@ -1,0 +1,70 @@
+module_name: hbridge
+
+parameters:
+  - group: HBridge
+    definitions:
+      HBRIDGE_DIR_REV0:
+        description:
+          short: Channel 0 direction reverse
+          long: |
+            Reverse the direction signal for channel 0.
+            Set to 1 to invert the direction GPIO signal (0=forward becomes 1=forward).
+        type: int32
+        min: 0
+        max: 1
+        default: 0
+
+      HBRIDGE_DIR_REV1:
+        description:
+          short: Channel 1 direction reverse
+          long: |
+            Reverse the direction signal for channel 1.
+            Set to 1 to invert the direction GPIO signal (0=forward becomes 1=forward).
+        type: int32
+        min: 0
+        max: 1
+        default: 0
+
+      HBRIDGE_0_FLIM:
+        description:
+          short: Channel 0 forward limit sensor function
+          long: |
+            Limit sensor function ID that will stop channel 0 when moving forward.
+            Set to 255 to disable limit checking for channel 0 forward direction.
+        type: int32
+        min: 0
+        max: 255
+        default: 255
+
+      HBRIDGE_0_RLIM:
+        description:
+          short: Channel 0 reverse limit sensor function
+          long: |
+            Limit sensor function ID that will stop channel 0 when moving reverse.
+            Set to 255 to disable limit checking for channel 0 reverse direction.
+        type: int32
+        min: 0
+        max: 255
+        default: 255
+
+      HBRIDGE_1_FLIM:
+        description:
+          short: Channel 1 forward limit sensor function
+          long: |
+            Limit sensor function ID that will stop channel 1 when moving forward.
+            Set to 255 to disable limit checking for channel 1 forward direction.
+        type: int32
+        min: 0
+        max: 255
+        default: 255
+
+      HBRIDGE_1_RLIM:
+        description:
+          short: Channel 1 reverse limit sensor function
+          long: |
+            Limit sensor function ID that will stop channel 1 when moving reverse.
+            Set to 255 to disable limit checking for channel 1 reverse direction.
+        type: int32
+        min: 0
+        max: 255
+        default: 255

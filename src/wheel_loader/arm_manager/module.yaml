@@ -1,0 +1,55 @@
+module_name: Arm Manager
+serial_config:
+    - command: arm_manager start
+      port_config_param:
+          name: None
+          group: Arm Manager
+
+parameters:
+    - group: Arm Manager
+      definitions:
+          ARM_IDLE_TIMEOUT:
+              description:
+                  short: Idle timeout for auto-disarm
+                  long: Time in seconds of inactivity before automatic disarm
+              type: float
+              default: 60.0
+              min: 10.0
+              max: 600.0
+              unit: s
+              decimal: 1
+
+          ARM_IDLE_VEL:
+              description:
+                  short: Idle velocity threshold
+                  long: Velocity below this value is considered idle
+              type: float
+              default: 0.05
+              min: 0.01
+              max: 0.5
+              unit: m/s
+              decimal: 2
+
+          ARM_REQUIRE_HEALTH:
+              description:
+                  short: Require health check before arming
+                  long: Require health monitor to report system healthy
+              type: boolean
+              default: 1
+
+          ARM_AUTO_DISARM:
+              description:
+                  short: Enable automatic disarm
+                  long: Automatically disarm on idle or health failures
+              type: boolean
+              default: 1
+
+          ARM_MANUAL_TIMEOUT:
+              description:
+                  short: Manual control timeout
+                  long: Maximum time without manual control before blocking arm (0=disabled)
+              type: int32
+              default: 5000
+              min: 0
+              max: 10000
+              unit: ms

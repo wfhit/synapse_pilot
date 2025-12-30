@@ -143,6 +143,69 @@ serial_ports = {
         "default_baudrate": 57600,
         },
 
+    # UWB Ports
+    "UWB1": {
+        "label": "UWB 1",
+        "index": 501,
+        "default_baudrate": 921600,
+        },
+    "UWB2": {
+        "label": "UWB 2",
+        "index": 502,
+        "default_baudrate": 921600,
+        },
+    "UWB3": {
+        "label": "UWB 3",
+        "index": 503,
+        "default_baudrate": 921600,
+        },
+    "UWB4": {
+        "label": "UWB 4",
+        "index": 504,
+        "default_baudrate": 921600,
+        },
+
+    # Servo Ports
+    "SRV1": {
+        "label": "SERVO 1",
+        "index": 601,
+        "default_baudrate": 115200,
+        },
+    "SRV2": {
+        "label": "SERVO 2",
+        "index": 602,
+        "default_baudrate": 115200,
+        },
+
+    # Test Ports
+    "TST1": {
+        "label": "TEST 1",
+        "index": 701,
+        "default_baudrate": 115200,
+        },
+
+    # UART Bridge Ports (WK2132 I2C-to-UART)
+    "UBR1": {
+        "label": "UART Bridge 1",
+        "index": 801,
+        "default_baudrate": 57600,
+        },
+    "UBR2": {
+        "label": "UART Bridge 2",
+        "index": 802,
+        "default_baudrate": 57600,
+        },
+    "UBR3": {
+        "label": "UART Bridge 3",
+        "index": 803,
+        "default_baudrate": 57600,
+        },
+    "UBR4": {
+        "label": "UART Bridge 4",
+        "index": 804,
+        "default_baudrate": 57600,
+        },
+
     }
 
 parser = argparse.ArgumentParser(description='Generate Serial params & startup script')

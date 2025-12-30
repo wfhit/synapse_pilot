@@ -1,0 +1,5 @@
+menuconfig DRIVERS_SMART_SERVO_ST3215
+	bool "ST3215 servo driver"
+	default n
+	---help---
+		Enable support for ST3215 smart servo driver

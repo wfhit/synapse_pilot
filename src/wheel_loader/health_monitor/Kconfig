@@ -1,0 +1,6 @@
+menuconfig MODULES_HEALTH_MONITOR
+	bool "health_monitor"
+	default n
+	---help---
+		Enable support for health monitor module
+		Monitors system health, sensor status, and actuator performance for wheel loader.

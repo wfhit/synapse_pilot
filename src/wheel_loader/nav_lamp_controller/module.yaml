@@ -1,0 +1,46 @@
+module_name: Navigation Lamp Controller
+
+parameters:
+    - group: Navigation Lamp
+      definitions:
+        NLAMP_PULSE_MS:
+            description:
+                short: State indicator trigger pulse width
+                long: Width of trigger pulse to change state indicator lamp state in milliseconds
+            type: int32
+            min: 10
+            max: 1000
+            default: 1000
+            unit: ms
+
+        NLAMP_INT_MS:
+            description:
+                short: Interval between state changes
+                long: Delay between consecutive pulses when changing multiple states on state indicator
+            type: int32
+            min: 50
+            max: 2000
+            default: 2000
+            unit: ms
+
+        NLAMP_ST_INVERT:
+            description:
+                short: Invert state indicator trigger logic
+                long: |
+                    0: Active high (idle LOW, pulse HIGH)
+                    1: Active low (idle HIGH, pulse LOW)
+            type: int32
+            min: 0
+            max: 1
+            default: 1
+
+        NLAMP_LT_INVERT:
+            description:
+                short: Invert illumination control logic
+                long: |
+                    0: Light on with HIGH, off with LOW
+                    1: Light on with LOW, off with HIGH
+            type: int32
+            min: 0
+            max: 1
+            default: 1

@@ -239,6 +239,47 @@ set(msg_files
 	VelocityLimits.msg
 	WheelEncoders.msg
 	YawEstimatorStatus.msg
+	wheel_loader/ActuatorStatus.msg
+	wheel_loader/ArmCmd.msg
+	wheel_loader/ArmStatus.msg
+	wheel_loader/BoomControlSetpoint.msg
+	wheel_loader/BoomSetpoint.msg
+	wheel_loader/BoomStatus.msg
+	wheel_loader/BucketStatus.msg
+	wheel_loader/CalibrationData.msg
+	wheel_loader/ChassisSetpoint.msg
+	wheel_loader/CommandStatus.msg
+	wheel_loader/DrivetrainSetpoint.msg
+	wheel_loader/DrivetrainStatus.msg
+	wheel_loader/HbridgeSetpoint.msg
+	wheel_loader/HbridgeStatus.msg
+	wheel_loader/HealthMonitorStatus.msg
+	wheel_loader/LoadLampCommand.msg
+	wheel_loader/NavLampCommand.msg
+	wheel_loader/OperationControlConfig.msg
+	wheel_loader/OperationModeCmd.msg
+	wheel_loader/OperationModeStatus.msg
+	wheel_loader/RoboticServoSetpoint.msg
+	wheel_loader/RoboticServoStatus.msg
+	wheel_loader/SafetyAckCmd.msg
+	wheel_loader/SafetyInput.msg
+	wheel_loader/SafetyStatus.msg
+	wheel_loader/SensorLimitSwitch.msg
+	wheel_loader/SensorMagEncoder.msg
+	wheel_loader/SensorQuadEncoder.msg
+	wheel_loader/SensorQuadEncoderReset.msg
+	wheel_loader/SensorStatus.msg
+	wheel_loader/SteeringSetpoint.msg
+	wheel_loader/SteeringStatus.msg
+	wheel_loader/StrategyCmd.msg
+	wheel_loader/StrategyStatus.msg
+	wheel_loader/TiltCalibrationCmd.msg
+	wheel_loader/TiltControlSetpoint.msg
+	wheel_loader/TiltSetpoint.msg
+	wheel_loader/TiltStatus.msg
+	wheel_loader/TractionSetpoint.msg
+	wheel_loader/TractionStatus.msg
+	wheel_loader/Trajectory.msg
 	versioned/ActuatorMotors.msg
 	versioned/ActuatorServos.msg
 	versioned/AirspeedValidated.msg

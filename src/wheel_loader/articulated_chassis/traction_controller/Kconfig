@@ -1,0 +1,6 @@
+menuconfig MODULES_ARTICULATED_CHASSIS_TRACTION_CONTROLLER
+	bool "Traction Controller"
+	default n
+	help
+		Enable advanced traction control for articulated wheel loader
+		with slip estimation and dynamic torque distribution for mining operations

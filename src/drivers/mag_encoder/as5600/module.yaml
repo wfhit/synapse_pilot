@@ -1,0 +1,29 @@
+module_name: AS5600 Magnetic Encoder
+
+parameters:
+  - group: Sensors
+    definitions:
+      SENS_EN_AS5600:
+        description:
+          short: AS5600 magnetic encoder enable
+          long: Enable AS5600 magnetic rotary position sensor
+        type: int32
+        values:
+          0: Disabled
+          1: Enabled
+        default: 1
+        reboot_required: true
+
+      AS5600_I2C_BUS:
+        description:
+          short: AS5600 I2C bus
+          long: I2C bus for AS5600 magnetic encoder
+        type: int32
+        values:
+          -1: Disabled
+          1: I2C Bus 1
+          2: I2C Bus 2
+          3: I2C Bus 3
+          4: I2C Bus 4
+        default: 1
+        reboot_required: true

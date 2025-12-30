@@ -1,0 +1,9 @@
+menuconfig DRIVERS_LIMIT_SENSOR
+	bool "limit_sensor"
+	default n
+	---help---
+		Enable support for Limit Sensor driver.
+
+		This module provides GPIO-based limit switch monitoring for
+		hydraulic components with support for up to 8 sensor instances,
+		optional dual-switch redundancy, debouncing, and safety integration.

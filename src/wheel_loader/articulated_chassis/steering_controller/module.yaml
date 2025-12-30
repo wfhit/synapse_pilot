@@ -1,0 +1,89 @@
+module_name: Steering Controller
+
+parameters:
+  - group: Steering Controller
+    definitions:
+      STEER_MAX_ANG:
+        description:
+          short: Maximum steering angle
+          long: |
+            Maximum allowed steering angle in radians for the articulated wheel loader.
+            Default corresponds to ±45 degrees (±0.785 rad).
+        type: float
+        default: 0.785398
+        min: 0.1
+        max: 1.57
+        unit: rad
+        decimal: 3
+
+      STEER_ST3125_ID:
+        description:
+          short: ST3125 Servo ID
+          long: |
+            CAN ID for the ST3125 steering servo.
+            Must match the configured ID on the servo.
+        type: int32
+        default: 1
+        min: 1
+        max: 254
+
+      STEER_ST3125_CR:
+        description:
+          short: ST3125 Current limit
+          long: |
+            Maximum current limit for the ST3125 servo.
+            Should not exceed servo specifications to prevent damage.
+        type: float
+        default: 2.0
+        min: 0.5
+        max: 10.0
+        unit: A
+        decimal: 1
+
+      STEER_LT_LF_ID:
+        description:
+          short: Left limit sensor instance
+          long: |
+            Instance ID of the left steering limit sensor.
+            Must match the configured instance in the limit sensor module.
+        type: int32
+        default: 0
+        min: 0
+        max: 255
+
+      STEER_LT_RT_ID:
+        description:
+          short: Right limit sensor instance
+          long: |
+            Instance ID of the right steering limit sensor.
+            Must match the configured instance in the limit sensor module.
+        type: int32
+        default: 1
+        min: 0
+        max: 255
+
+      STEER_CMD_TO:
+        description:
+          short: Command timeout
+          long: |
+            Timeout for steering commands in milliseconds.
+            Controller returns to center if no commands received within this time.
+        type: float
+        default: 500.0
+        min: 100
+        max: 5000
+        unit: ms
+        decimal: 0
+
+      STEER_FB_TO:
+        description:
+          short: Servo feedback timeout
+          long: |
+            Timeout for servo feedback in milliseconds.
+            Servo is considered unhealthy if no feedback received within this time.
+        type: float
+        default: 100.0
+        min: 50
+        max: 1000
+        unit: ms
+        decimal: 0

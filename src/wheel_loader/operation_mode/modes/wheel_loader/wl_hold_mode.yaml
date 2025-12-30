@@ -1,0 +1,168 @@
+# Wheel Loader Hold Mode Configuration
+
+parameters:
+  - group: WL Hold Position Control
+    definitions:
+      WLH_CHAS_POS_G:
+        description:
+          short: Chassis position gain
+          long: Proportional gain for chassis position control
+        type: float
+        default: 1.0
+        min: 0.1
+        max: 5.0
+        decimal: 2
+
+      WLH_CHAS_HEAD_G:
+        description:
+          short: Chassis heading gain
+          long: Proportional gain for chassis heading control
+        type: float
+        default: 1.0
+        min: 0.1
+        max: 5.0
+        decimal: 2
+
+      WLH_ART_G:
+        description:
+          short: Articulation gain
+          long: Proportional gain for articulation angle control
+        type: float
+        default: 1.0
+        min: 0.1
+        max: 5.0
+        decimal: 2
+
+      WLH_BOOM_G:
+        description:
+          short: Boom position gain
+          long: Proportional gain for boom position control
+        type: float
+        default: 2.0
+        min: 0.1
+        max: 10.0
+        decimal: 2
+
+      WLH_TILT_G:
+        description:
+          short: Tilt angle gain
+          long: Proportional gain for tilt angle control
+        type: float
+        default: 2.0
+        min: 0.1
+        max: 10.0
+        decimal: 2
+
+  - group: WL Hold Velocity Limits
+    definitions:
+      WLH_MAX_CHAS_V:
+        description:
+          short: Max chassis velocity
+          long: Maximum chassis velocity for position control
+        type: float
+        default: 0.3
+        min: 0.05
+        max: 1.0
+        unit: m/s
+        decimal: 2
+
+      WLH_MAX_YAW_R:
+        description:
+          short: Max yaw rate
+          long: Maximum chassis yaw rate for heading control
+        type: float
+        default: 0.3
+        min: 0.05
+        max: 1.0
+        unit: rad/s
+        decimal: 2
+
+      WLH_MAX_ART_R:
+        description:
+          short: Max articulation rate
+          long: Maximum articulation rate for angle control
+        type: float
+        default: 0.2
+        min: 0.05
+        max: 1.0
+        unit: rad/s
+        decimal: 2
+
+      WLH_MAX_BOOM_V:
+        description:
+          short: Max boom velocity
+          long: Maximum boom velocity for position control
+        type: float
+        default: 0.3
+        min: 0.05
+        max: 1.0
+        unit: m/s
+        decimal: 2
+
+      WLH_MAX_TILT_R:
+        description:
+          short: Max tilt rate
+          long: Maximum tilt rate for angle control
+        type: float
+        default: 0.3
+        min: 0.05
+        max: 1.0
+        unit: rad/s
+        decimal: 2
+
+  - group: WL Hold Tolerances
+    definitions:
+      WLH_CHAS_POS_T:
+        description:
+          short: Chassis position tolerance
+          long: Deadband for chassis position error
+        type: float
+        default: 0.02
+        min: 0.0
+        max: 0.1
+        unit: m
+        decimal: 3
+
+      WLH_CHAS_HEAD_T:
+        description:
+          short: Chassis heading tolerance
+          long: Deadband for chassis heading error
+        type: float
+        default: 0.05
+        min: 0.0
+        max: 0.2
+        unit: rad
+        decimal: 3
+
+      WLH_ART_TOL:
+        description:
+          short: Articulation tolerance
+          long: Deadband for articulation angle error
+        type: float
+        default: 0.05
+        min: 0.0
+        max: 0.2
+        unit: rad
+        decimal: 3
+
+      WLH_BOOM_POS_T:
+        description:
+          short: Boom position tolerance
+          long: Deadband for boom position error
+        type: float
+        default: 0.02
+        min: 0.0
+        max: 0.1
+        unit: m
+        decimal: 3
+
+      WLH_TILT_TOL:
+        description:
+          short: Tilt angle tolerance
+          long: Deadband for tilt angle error
+        type: float
+        default: 0.05
+        min: 0.0
+        max: 0.2
+        unit: rad
+        decimal: 3

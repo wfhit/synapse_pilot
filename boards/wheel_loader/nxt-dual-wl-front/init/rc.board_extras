@@ -1,0 +1,43 @@
+#!/bin/sh
+#
+# NXT-Dual-WL-Front board specific extras init
+# Tilt control and front wheel board
+#------------------------------------------------------------------------------
+
+# Start quadrature encoders for position feedback
+echo "Starting quadrature encoders"
+quadrature_encoder start
+
+# Start H-bridge driver for tilt and front wheel actuators
+echo "Starting H-bridge motor drivers"
+hbridge start
+
+# Start limit sensors for safety (bucket load/dump limits)
+if param compare LIMIT_SENSOR_EN 1
+then
+	echo "Starting limit sensor system"
+	limit_sensor start
+fi
+
+# Start tilt control module (controls bucket tilt)
+if param compare TILT_CTRL_EN 1
+then
+	echo "Starting tilt control module"
+	tilt_control start
+	echo "Tilt control module started"
+fi
+
+# Start front wheel control module (controls front wheel drive)
+if param compare WL_FRONT_WHEEL_EN 1
+then
+	echo "Starting front wheel control module"
+	wheel_controller start
+	echo "Front wheel control module started"
+fi
+
+# Start uORB UART proxy for distributed system communication
+echo "Starting uORB UART proxy"
+uorb_uart_proxy start
+
+# CDC ACM already auto-started for NSH console
+echo "CDC ACM enabled for NSH console access"

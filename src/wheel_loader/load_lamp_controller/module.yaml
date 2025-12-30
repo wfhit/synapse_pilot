@@ -1,0 +1,44 @@
+module_name: Load Lamp Controller
+
+parameters:
+    - group: Load Lamp Controller
+      definitions:
+        LOAD_LAMP_LOW:
+            description:
+                short: Load threshold low
+                long: |
+                    First load threshold for blink rate change.
+
+                    Below this threshold: slow blink (2 Hz)
+                    Above this threshold: medium blink (5 Hz)
+            type: float
+            min: 0.0
+            max: 1.0
+            default: 0.3
+            decimal: 2
+
+        LOAD_LAMP_MED:
+            description:
+                short: Load threshold medium
+                long: |
+                    Second load threshold for blink rate change.
+
+                    Above this threshold: fast blink (10 Hz)
+            type: float
+            min: 0.0
+            max: 1.0
+            default: 0.6
+            decimal: 2
+
+        LOAD_LAMP_HIGH:
+            description:
+                short: Load threshold high
+                long: |
+                    Third load threshold for blink rate change.
+
+                    Above this threshold: very fast blink (20 Hz)
+            type: float
+            min: 0.0
+            max: 1.0
+            default: 0.8
+            decimal: 2

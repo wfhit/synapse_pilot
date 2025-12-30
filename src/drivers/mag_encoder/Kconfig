@@ -1,0 +1,10 @@
+menu "Magnetic Encoders"
+	menuconfig COMMON_MAG_ENCODER
+		bool "Common Magnetic Encoders"
+		default n
+		select DRIVERS_MAG_ENCODER_AS5600
+		---help---
+			Enable default set of magnetic encoder drivers
+
+	rsource "*/Kconfig"
+endmenu

@@ -143,18 +143,18 @@ private:
 	bool _vtol{false};
 
 	DEFINE_PARAMETERS(
-		(ParamInt<px4::params::COM_RC_IN_MODE>) _param_com_rc_in_mode,
-		(ParamFloat<px4::params::COM_RC_LOSS_T>) _param_com_rc_loss_t,
-		(ParamFloat<px4::params::COM_RC_STICK_OV>) _param_com_rc_stick_ov,
+		(ParamInt<px4::params::MAN_RC_IN_MODE>) _param_com_rc_in_mode,
+		(ParamFloat<px4::params::MAN_RC_LOSS_T>) _param_com_rc_loss_t,
+		(ParamFloat<px4::params::MAN_RC_STICK_OV>) _param_com_rc_stick_ov,
 		(ParamBool<px4::params::MAN_ARM_GESTURE>) _param_man_arm_gesture,
 		(ParamFloat<px4::params::MAN_KILL_GEST_T>) _param_man_kill_gest_t,
-		(ParamInt<px4::params::COM_RC_ARM_HYST>) _param_com_rc_arm_hyst,
-		(ParamBool<px4::params::COM_ARM_SWISBTN>) _param_com_arm_swisbtn,
-		(ParamInt<px4::params::COM_FLTMODE1>) _param_fltmode_1,
-		(ParamInt<px4::params::COM_FLTMODE2>) _param_fltmode_2,
-		(ParamInt<px4::params::COM_FLTMODE3>) _param_fltmode_3,
-		(ParamInt<px4::params::COM_FLTMODE4>) _param_fltmode_4,
-		(ParamInt<px4::params::COM_FLTMODE5>) _param_fltmode_5,
-		(ParamInt<px4::params::COM_FLTMODE6>) _param_fltmode_6
+		(ParamInt<px4::params::MAN_RC_ARM_HYST>) _param_com_rc_arm_hyst,
+		(ParamBool<px4::params::MAN_ARM_SWISBTN>) _param_com_arm_swisbtn,
+		(ParamInt<px4::params::MAN_FLTMODE1>) _param_fltmode_1,
+		(ParamInt<px4::params::MAN_FLTMODE2>) _param_fltmode_2,
+		(ParamInt<px4::params::MAN_FLTMODE3>) _param_fltmode_3,
+		(ParamInt<px4::params::MAN_FLTMODE4>) _param_fltmode_4,
+		(ParamInt<px4::params::MAN_FLTMODE5>) _param_fltmode_5,
+		(ParamInt<px4::params::MAN_FLTMODE6>) _param_fltmode_6
 	)
 };

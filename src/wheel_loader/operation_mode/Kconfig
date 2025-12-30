@@ -1,0 +1,5 @@
+menuconfig MODULES_OPERATION_MODE
+	bool "operation_mode"
+	default n
+	---help---
+		Enable support for operation mode manager

@@ -47,3 +47,4 @@ add_subdirectory(../imxrt/dshot dshot)
 
 add_subdirectory(px4io_serial)
 add_subdirectory(ssarc)
+add_subdirectory(serial)

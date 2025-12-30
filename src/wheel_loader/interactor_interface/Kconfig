@@ -1,0 +1,6 @@
+menuconfig MODULES_INTERACTOR_INTERFACE
+	bool "interactor_interface"
+	default n
+	---help---
+		Enable support for interactor interface module
+		Provides interface for external interaction and control of wheel loader functions.

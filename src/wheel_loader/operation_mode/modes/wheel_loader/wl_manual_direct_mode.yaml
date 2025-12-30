@@ -1,0 +1,126 @@
+# Wheel Loader Manual Direct Mode Configuration
+
+parameters:
+  - group: WL Manual Direct Control
+    definitions:
+      WLMD_RC_DEADBAND:
+        description:
+          short: RC deadband
+          long: RC input deadband threshold
+        type: float
+        default: 0.05
+        min: 0.0
+        max: 0.2
+        decimal: 2
+
+      WLMD_MAX_CHAS_V:
+        description:
+          short: Max chassis velocity
+          long: Maximum chassis forward/backward velocity
+        type: float
+        default: 1.0
+        min: 0.1
+        max: 3.0
+        unit: m/s
+        decimal: 2
+
+      WLMD_MAX_BOOM_V:
+        description:
+          short: Max boom velocity
+          long: Maximum boom height velocity
+        type: float
+        default: 0.5
+        min: 0.1
+        max: 2.0
+        unit: m/s
+        decimal: 2
+
+      WLMD_MAX_ART_R:
+        description:
+          short: Max articulation rate
+          long: Maximum articulation angle rate
+        type: float
+        default: 0.3
+        min: 0.05
+        max: 1.0
+        unit: rad/s
+        decimal: 2
+
+      WLMD_MAX_TILT_R:
+        description:
+          short: Max tilt rate
+          long: Maximum bucket tilt rate
+        type: float
+        default: 0.5
+        min: 0.1
+        max: 2.0
+        unit: rad/s
+        decimal: 2
+
+  - group: WL Manual Direct Limits
+    definitions:
+      WLMD_BOOM_MIN:
+        description:
+          short: Boom minimum position
+          long: Minimum boom extension/position
+        type: float
+        default: 0.5
+        min: 0.0
+        max: 2.0
+        unit: m
+        decimal: 2
+
+      WLMD_BOOM_MAX:
+        description:
+          short: Boom maximum position
+          long: Maximum boom extension/position
+        type: float
+        default: 3.0
+        min: 1.0
+        max: 10.0
+        unit: m
+        decimal: 2
+
+      WLMD_TILT_MIN:
+        description:
+          short: Minimum tilt angle
+          long: Minimum bucket tilt angle
+        type: float
+        default: -1.57
+        min: -3.14
+        max: 0.0
+        unit: rad
+        decimal: 2
+
+      WLMD_TILT_MAX:
+        description:
+          short: Maximum tilt angle
+          long: Maximum bucket tilt angle
+        type: float
+        default: 1.57
+        min: 0.0
+        max: 3.14
+        unit: rad
+        decimal: 2
+
+      WLMD_ART_MIN:
+        description:
+          short: Minimum articulation angle
+          long: Minimum articulation steering angle
+        type: float
+        default: -0.785
+        min: -1.57
+        max: 0.0
+        unit: rad
+        decimal: 3
+
+      WLMD_ART_MAX:
+        description:
+          short: Maximum articulation angle
+          long: Maximum articulation steering angle
+        type: float
+        default: 0.785
+        min: 0.0
+        max: 1.57
+        unit: rad
+        decimal: 3

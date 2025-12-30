@@ -1,0 +1,16 @@
+menuconfig MODULES_UORB_UART_BRIDGE
+	bool "uorb_uart_bridge"
+	default n
+	---help---
+		Enable support for uORB UART Bridge module.
+
+		This module provides transparent uORB messaging over UART
+		for distributed systems. It runs on the X7+ main board and
+		forwards uORB messages to/from NXT controller boards.
+
+menuconfig USER_UORB_UART_BRIDGE
+	bool "uorb_uart_bridge running as userspace module"
+	default n
+	depends on BOARD_PROTECTED && MODULES_UORB_UART_BRIDGE
+	---help---
+		Put uorb_uart_bridge in userspace memory

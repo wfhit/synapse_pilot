@@ -1,0 +1,78 @@
+module_name: Interactor Interface
+serial_config:
+    - command: interactor_interface start
+      port_config_param:
+          name: None
+          group: Interactor Interface
+
+parameters:
+    - group: Interactor Interface
+      definitions:
+          CMD_REQUIRE_DEADMAN:
+              description:
+                  short: Require deadman switch
+                  long: Require deadman switch to be active for command execution
+              type: boolean
+              default: 1
+
+          CMD_RC_PRIORITY:
+              description:
+                  short: RC has priority
+                  long: RC safety inputs (emergency stop) override MAVLink commands
+              type: boolean
+              default: 1
+
+          CMD_ARM_RC_CHAN:
+              description:
+                  short: RC arm channel
+                  long: RC channel for arm/disarm switch (0=disabled)
+              type: int32
+              default: 5
+              min: 0
+              max: 18
+
+          CMD_MODE_RC_CHAN:
+              description:
+                  short: RC mode channel
+                  long: RC channel for operation mode selection (0=disabled)
+              type: int32
+              default: 6
+              min: 0
+              max: 18
+
+          CMD_ESTOP_RC_CHAN:
+              description:
+                  short: RC emergency stop channel
+                  long: RC channel for emergency stop (active low, 0=disabled)
+              type: int32
+              default: 7
+              min: 0
+              max: 18
+
+          CMD_DEADMAN_RC_CHAN:
+              description:
+                  short: RC deadman channel
+                  long: RC channel for deadman switch (0=disabled)
+              type: int32
+              default: 8
+              min: 0
+              max: 18
+
+          CMD_TASK_RC_CHAN:
+              description:
+                  short: RC task trigger channel
+                  long: RC channel for task execution trigger (0=disabled)
+              type: int32
+              default: 9
+              min: 0
+              max: 18
+
+          CMD_RC_THRESHOLD:
+              description:
+                  short: RC switch threshold
+                  long: RC PWM value threshold for switch detection
+              type: int32
+              default: 1500
+              min: 1000
+              max: 2000
+              unit: us

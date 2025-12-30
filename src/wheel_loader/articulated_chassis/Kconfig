@@ -1,0 +1,32 @@
+menuconfig MODULES_ARTICULATED_CHASSIS
+	bool "articulated_chassis"
+	default n
+	help
+		Enable support for articulated chassis control system for wheel loaders.
+		This includes wheel control, steering, traction management, safety monitoring,
+		and advanced terrain adaptation capabilities.
+
+if MODULES_ARTICULATED_CHASSIS
+
+config ARTICULATED_CHASSIS_WHEEL_CONTROLLER
+	bool "Enable wheel controller"
+	default y
+	help
+		Unified wheel controller for front and rear wheel velocity control
+		with PID feedback and quad encoder integration.
+
+config ARTICULATED_CHASSIS_STEERING_CONTROLLER
+	bool "Enable steering controller"
+	default y
+	help
+		Articulated chassis steering controller with PID position control
+		and servo PWM output for hydraulic steering systems.
+
+config ARTICULATED_CHASSIS_TRACTION_CONTROL
+	bool "Enable traction control"
+	default y
+	help
+		Advanced traction control for articulated wheel loader
+		with slip estimation and dynamic torque distribution for mining operations.
+
+endif # MODULES_ARTICULATED_CHASSIS

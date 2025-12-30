@@ -1,0 +1,79 @@
+#!/bin/sh
+#
+# NXT-Dual-WL-Front board specific defaults
+# Front wheel and bucket control board
+#------------------------------------------------------------------------------
+param set-default BAT1_A_PER_V 17
+param set-default BAT1_N_CELLS 4
+param set-default BAT1_V_CHARGED 4.2
+param set-default BAT1_V_DIV 10.1
+param set-default BAT1_V_EMPTY 3.2
+
+param set-default SYS_HAS_MAG 0
+param set-default PWM_MAIN_TIM0 -4
+param set-default RC_INPUT_PROTO -1
+
+param set-default IMU_GYRO_RATEMAX 2000
+param set-default SYS_AUTOSTART 4001
+param set-default MC_PITCHRATE_K 0.4
+param set-default MC_ROLLRATE_K 0.35
+param set-default MC_YAWRATE_K 1.2
+param set-default MC_YAWRATE_MAX 360
+param set-default MAV_TYPE 2
+param set-default CA_AIRFRAME 0
+param set-default CA_ROTOR_COUNT 4
+param set-default CBRK_SUPPLY_CHK 894281
+
+# USB CDC ACM auto-start configuration
+param set-default SYS_USB_AUTO 1
+
+# AS5600 magnetic encoder configuration for tilt position feedback
+param set-default SENS_EN_AS5600 1
+param set-default AS5600_I2C_BUS 1
+param set-default AS5600_OFFSET 0.0
+
+# Tilt Control Configuration (front board controls tilt/bucket)
+param set-default TILT_CTRL_EN 1
+param set-default TILT_KP 1.0
+param set-default TILT_KI 0.1
+param set-default TILT_KD 0.05
+param set-default TILT_MAX_ANGLE 60.0
+param set-default TILT_MIN_ANGLE -10.0
+
+# Front Wheel Control Parameters (motor drive)
+param set-default WL_FRONT_WHEEL_EN 1
+param set-default WL_FRONT_WHEEL_KP 0.5
+param set-default WL_FRONT_WHEEL_KI 0.1
+param set-default WL_FRONT_WHEEL_KD 0.05
+
+# Quadrature Encoder Configuration
+# Global encoder update rate
+param set-default QE_POLL_RATE 100
+
+# Encoder 0 (Front Wheel) Configuration
+param set-default QE_0_ENABLE 1        # Enable encoder 0
+param set-default QE_0_RESOLUTION 0.120919  # Resolution: 2*pi/52 rad/pulse for 13-line encoder (2*pi/52 = 0.120919)
+param set-default QE_0_REVERSE 0       # Normal direction
+param set-default QE_0_OVERFLOW 0      # No auto-reset (0 disables)
+
+# Encoder 1 (Bucket) Configuration
+param set-default QE_1_ENABLE 1        # Enable encoder 1
+param set-default QE_1_RESOLUTION 0.224399  # Resolution: 2*pi/28 rad/pulse for 7-line encoder (2*pi/28 = 0.224399)
+param set-default QE_1_REVERSE 0       # Normal direction
+param set-default QE_1_OVERFLOW 0      # No auto-reset (0 disables)
+
+# Limit Sensor System Configuration
+param set-default LIMIT_SENSOR_EN 1    # Enable limit sensor system
+param set-default LS_0_ENABLE 1       # Bucket Load Limit (with redundancy)
+param set-default LS_1_ENABLE 1       # Bucket Dump Limit (with redundancy)
+param set-default LS_2_ENABLE 0       # Not configured on front board
+param set-default LS_3_ENABLE 0       # Not configured on front board
+
+# H-Bridge Configuration for Front Board
+param set-default HBRIDGE_ENABLE 1     # Enable H-Bridge system
+param set-default HBRIDGE_DIR_REV0 0   # Channel 0 direction normal
+param set-default HBRIDGE_DIR_REV1 0   # Channel 1 direction normal
+param set-default HBRIDGE_0_FLIM 0     # Channel 0 forward limit disabled (bucket) instance 0
+param set-default HBRIDGE_0_RLIM 1     # Channel 0 reverse limit disabled (bucket) instance 1
+param set-default HBRIDGE_1_FLIM 255   # Channel 1 forward limit disabled
+param set-default HBRIDGE_1_RLIM 255   # Channel 1 reverse limit disabled

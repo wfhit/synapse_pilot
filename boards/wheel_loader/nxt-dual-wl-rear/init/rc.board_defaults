@@ -1,0 +1,81 @@
+#!/bin/sh
+#
+# NXT-Dual-WL-Rear board specific defaults
+# Rear wheel and boom control board
+#------------------------------------------------------------------------------
+param set-default BAT1_A_PER_V 17
+param set-default BAT1_N_CELLS 4
+param set-default BAT1_V_CHARGED 4.2
+param set-default BAT1_V_DIV 10.1
+param set-default BAT1_V_EMPTY 3.2
+
+param set-default SYS_HAS_MAG 0
+param set-default PWM_MAIN_TIM0 -4
+param set-default RC_INPUT_PROTO -1
+
+param set-default IMU_GYRO_RATEMAX 2000
+param set-default SYS_AUTOSTART 4001
+param set-default MC_PITCHRATE_K 0.4
+param set-default MC_ROLLRATE_K 0.35
+param set-default MC_YAWRATE_K 1.2
+param set-default MC_YAWRATE_MAX 360
+param set-default MAV_TYPE 2
+param set-default CA_AIRFRAME 0
+param set-default CA_ROTOR_COUNT 4
+param set-default CBRK_SUPPLY_CHK 894281
+
+# USB CDC ACM auto-start configuration
+param set-default SYS_USB_AUTO 1
+
+# AS5600 magnetic encoder configuration for wheel loader
+param set-default SENS_EN_AS5600 1
+param set-default AS5600_I2C_BUS 1
+param set-default AS5600_OFFSET 0.0
+
+# ST3215 Servo Configuration - Use SRV1 port
+# Serial manager will automatically start the servo driver
+param set-default ST3215_CONFIG 601  # Use SRV1 port (index 601)
+param set-default ST3215_ID 1        # Servo ID
+param set-default ST3215_BAUDRATE 115200 # Baudrate for ST3215
+param set-default ST3215_MIN_POS -2.618  # Min position (rad)
+param set-default ST3215_MAX_POS 2.618   # Max position (rad)
+param set-default ST3215_MAX_SPD 2.0     # Max speed (rad/s)
+param set-default ST3215_LEFT_LMT 2      # Use steering left limit (function 4) instance 2
+param set-default ST3215_RIGHT_LMT 3     # Use steering right limit (function 5) instance 3
+
+# Rear wheel loader specific parameters
+# Enable boom control module
+param set-default BOOM_CTRL_EN 1
+
+# Rear wheel control parameters
+param set-default WL_REAR_WHEEL_EN 1
+param set-default WL_REAR_WHEEL_KP 0.5
+param set-default WL_REAR_WHEEL_KI 0.1
+param set-default WL_REAR_WHEEL_KD 0.05
+
+# Quadrature encoder configuration
+param set-default QE_POLL_RATE 100       # Global encoder update rate (Hz)
+
+param set-default QE_0_ENABLE 1          # Enable quadrature encoder 0
+param set-default QE_0_RESOLUTION 0.120919  # Resolution: 2*pi/52 rad/pulse for 13-line encoder (2*pi/52 = 0.120919)
+param set-default QE_0_REVERSE 0         # Normal direction
+param set-default QE_0_OVERFLOW 0        # No auto-reset (0 disables)
+
+# Test Serial Driver Configuration
+param set-default TEST_CFG_DEV 701    # Use TST1 port (index 701)
+
+# Limit Sensor System Configuration
+param set-default LIMIT_SENSOR_EN 1   # Enable limit sensor system
+param set-default LS_0_ENABLE 1       # Boom Up Limit
+param set-default LS_1_ENABLE 1       # Boom Down Limit
+param set-default LS_2_ENABLE 1       # Steering Left Limit
+param set-default LS_3_ENABLE 1       # Steering Right Limit
+
+# H-Bridge Configuration for Rear Board
+param set-default HBRIDGE_ENABLE 1     # Enable H-Bridge system
+param set-default HBRIDGE_DIR_REV0 1   # Channel 0 direction reverse
+param set-default HBRIDGE_DIR_REV1 0   # Channel 1 direction normal
+param set-default HBRIDGE_0_FLIM 0     # Channel 0 forward limit (boom) instance 0
+param set-default HBRIDGE_0_RLIM 1     # Channel 0 reverse limit (boom) instance 1
+param set-default HBRIDGE_1_FLIM 255   # Channel 1 forward limit (rear_wheel)
+param set-default HBRIDGE_1_RLIM 255   # Channel 1 reverse limit (rear_wheel)

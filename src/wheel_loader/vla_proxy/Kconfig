@@ -1,0 +1,16 @@
+menuconfig DRIVERS_VLA_PROXY
+	bool "VLA Proxy Driver"
+	default n
+	---help---
+		Enable support for VLA (Vision-Language-Action) proxy driver.
+		This driver provides a UART-based interface between PX4 and a VLA model,
+		handling bidirectional communication for autonomous wheel loader operation.
+
+		Features:
+		- Sends wheel loader status (position, velocity, boom, bucket, chassis) via UART
+		- Receives 6DOF trajectory waypoints from VLA model
+		- Robust packet protocol with headers (0xAA 0x55), checksums, and timeouts
+		- Runs at 50Hz with configurable status send rate (default 20Hz)
+		- Waypoint buffering for smooth trajectory execution
+
+		The driver follows the ST3215 servo driver pattern for reliable UART communication.

@@ -1,0 +1,149 @@
+module_name: Traction Control
+
+parameters:
+  - group: Traction Control
+    definitions:
+      TC_ENABLE:
+        description:
+          short: Enable traction control
+          long: Enable automatic traction control system
+        type: int32
+        default: 1
+        min: 0
+        max: 1
+
+      TC_SLIP_P:
+        description:
+          short: Slip controller P gain
+          long: Proportional gain for slip control PID controller
+        type: float
+        default: 1.0
+        min: 0.0
+        max: 2.0
+        decimal: 3
+
+      TC_SLIP_I:
+        description:
+          short: Slip controller I gain
+          long: Integral gain for slip control PID controller
+        type: float
+        default: 0.2
+        min: 0.0
+        max: 1.0
+        decimal: 3
+
+      TC_SLIP_D:
+        description:
+          short: Slip controller D gain
+          long: Derivative gain for slip control PID controller
+        type: float
+        default: 0.1
+        min: 0.0
+        max: 0.5
+        decimal: 3
+
+      TC_TARGET_SLIP:
+        description:
+          short: Target slip ratio for maximum traction
+          long: Optimal slip ratio for maximum traction performance
+        type: float
+        default: 0.08
+        min: 0.0
+        max: 0.3
+        decimal: 3
+
+      TC_MAX_SLIP:
+        description:
+          short: Maximum allowed slip ratio
+          long: Maximum slip ratio before intervention
+        type: float
+        default: 0.15
+        min: 0.05
+        max: 0.5
+        decimal: 3
+
+      TC_FORCE_DIST:
+        description:
+          short: Default front force distribution ratio
+          long: Front force distribution ratio (0=all rear, 1=all front)
+        type: float
+        default: 0.4
+        min: 0.1
+        max: 0.9
+        decimal: 2
+
+      TC_WHEEL_RADIUS:
+        description:
+          short: Wheel radius
+          long: Wheel radius in meters
+        type: float
+        default: 0.8
+        min: 0.3
+        max: 2.0
+        decimal: 2
+        unit: m
+
+      TC_GEAR_RATIO:
+        description:
+          short: Motor to wheel gear ratio
+          long: Gear ratio between motor and wheel
+        type: float
+        default: 20.0
+        min: 5.0
+        max: 100.0
+        decimal: 1
+
+      TC_VEHICLE_MASS:
+        description:
+          short: Vehicle mass
+          long: Total vehicle mass in kg
+        type: float
+        default: 15000.0
+        min: 5000.0
+        max: 50000.0
+        decimal: 0
+        unit: kg
+
+      TC_WHEELBASE:
+        description:
+          short: Wheelbase
+          long: Distance between front and rear axles
+        type: float
+        default: 3.5
+        min: 2.0
+        max: 5.0
+        decimal: 2
+        unit: m
+
+      TC_MAX_ARTIC:
+        description:
+          short: Maximum articulation angle
+          long: Maximum articulation angle in radians
+        type: float
+        default: 0.6
+        min: 0.3
+        max: 0.8
+        decimal: 2
+        unit: rad
+
+      TC_STALL_THRESH:
+        description:
+          short: Minimum speed threshold for stall detection
+          long: Speed threshold below which stall is detected
+        type: float
+        default: 0.05
+        min: 0.01
+        max: 0.5
+        decimal: 3
+        unit: m/s
+
+      TC_MAX_FORCE:
+        description:
+          short: Maximum force command per axle
+          long: Maximum force command per axle in Newtons
+        type: float
+        default: 10000.0
+        min: 1000.0
+        max: 50000.0
+        decimal: 0
+        unit: N

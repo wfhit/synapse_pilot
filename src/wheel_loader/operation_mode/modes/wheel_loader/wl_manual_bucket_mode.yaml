@@ -1,0 +1,191 @@
+# Wheel Loader Manual Bucket Mode Configuration
+
+parameters:
+  - group: WL Manual Bucket Control
+    definitions:
+      WLMB_RC_DEADBAND:
+        description:
+          short: RC deadband
+          long: RC input deadband threshold
+        type: float
+        default: 0.05
+        min: 0.0
+        max: 0.2
+        decimal: 2
+
+      WLMB_MAX_VEL_X:
+        description:
+          short: Max bucket X velocity
+          long: Maximum bucket forward/backward velocity
+        type: float
+        default: 0.5
+        min: 0.1
+        max: 2.0
+        unit: m/s
+        decimal: 2
+
+      WLMB_MAX_VEL_Z:
+        description:
+          short: Max bucket Z velocity
+          long: Maximum bucket height velocity
+        type: float
+        default: 0.3
+        min: 0.1
+        max: 1.0
+        unit: m/s
+        decimal: 2
+
+      WLMB_MAX_RATE_H:
+        description:
+          short: Max bucket heading rate
+          long: Maximum bucket heading rotation rate
+        type: float
+        default: 0.3
+        min: 0.1
+        max: 1.0
+        unit: rad/s
+        decimal: 2
+
+      WLMB_MAX_RATE_T:
+        description:
+          short: Max bucket tilt rate
+          long: Maximum bucket tilt rotation rate
+        type: float
+        default: 0.5
+        min: 0.1
+        max: 2.0
+        unit: rad/s
+        decimal: 2
+
+      WLMB_CHAS_GAIN:
+        description:
+          short: Chassis position gain
+          long: Proportional gain for chassis position control
+        type: float
+        default: 0.5
+        min: 0.1
+        max: 2.0
+        decimal: 2
+
+      WLMB_CHAS_MAX_V:
+        description:
+          short: Max chassis velocity
+          long: Maximum chassis velocity
+        type: float
+        default: 0.3
+        min: 0.1
+        max: 2.0
+        unit: m/s
+        decimal: 2
+
+  - group: WL Manual Bucket Geometry
+    definitions:
+      WLMB_BOOM_LEN:
+        description:
+          short: Boom length
+          long: Total length of boom arm
+        type: float
+        default: 3.5
+        min: 0.5
+        max: 10.0
+        unit: m
+        decimal: 2
+
+      WLMB_BOOM_MIN:
+        description:
+          short: Boom minimum position
+          long: Minimum boom extension/angle
+        type: float
+        default: 0.5
+        min: 0.0
+        max: 5.0
+        unit: m
+        decimal: 2
+
+      WLMB_BOOM_MAX:
+        description:
+          short: Boom maximum position
+          long: Maximum boom extension/angle
+        type: float
+        default: 3.0
+        min: 0.5
+        max: 10.0
+        unit: m
+        decimal: 2
+
+      WLMB_TILT_MIN:
+        description:
+          short: Minimum tilt angle
+          long: Minimum bucket tilt angle
+        type: float
+        default: -1.57
+        min: -3.14
+        max: 0.0
+        unit: rad
+        decimal: 2
+
+      WLMB_TILT_MAX:
+        description:
+          short: Maximum tilt angle
+          long: Maximum bucket tilt angle
+        type: float
+        default: 1.57
+        min: 0.0
+        max: 3.14
+        unit: rad
+        decimal: 2
+
+      WLMB_BUCKET_X_MIN:
+        description:
+          short: Minimum bucket X
+          long: Minimum bucket X position relative to chassis
+        type: float
+        default: -1.0
+        min: -5.0
+        max: 0.0
+        unit: m
+        decimal: 2
+
+      WLMB_BUCKET_X_MAX:
+        description:
+          short: Maximum bucket X
+          long: Maximum bucket X position relative to chassis
+        type: float
+        default: 4.0
+        min: 0.0
+        max: 10.0
+        unit: m
+        decimal: 2
+
+      WLMB_BUCKET_Z_MIN:
+        description:
+          short: Minimum bucket Z
+          long: Minimum bucket height above ground
+        type: float
+        default: 0.0
+        min: 0.0
+        max: 2.0
+        unit: m
+        decimal: 2
+
+      WLMB_BUCKET_Z_MAX:
+        description:
+          short: Maximum bucket Z
+          long: Maximum bucket height above ground
+        type: float
+        default: 3.5
+        min: 1.0
+        max: 10.0
+        unit: m
+        decimal: 2
+
+      WLMB_BOOM_OFFSET:
+        description:
+          short: Boom base offset
+          long: Distance from chassis center to boom base
+        type: float
+        default: 1.5
+        min: 0.0
+        max: 5.0
+        unit: m
+        decimal: 2

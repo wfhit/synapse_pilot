@@ -1,0 +1,157 @@
+/****************************************************************************
+ *
+ *   Copyright (c) 2024 PX4 Development Team. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in
+ *    the documentation and/or other materials provided with the
+ *    distribution.
+ * 3. Neither the name PX4 nor the names of its contributors may be
+ *    used to endorse or promote products derived from this software
+ *    without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+ * COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
+ * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+ * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+ * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ *
+ ****************************************************************************/
+
+/**
+ * @file law_of_cosines_quadratic_backup.cpp
+ * @brief Backup of the original quadratic equation implementation for law of cosines
+ * 
+ * This file contains the original complex implementation of the law_of_cosines_side
+ * function that used quadratic equation solving. It was replaced with a simpler
+ * direct law of cosines calculation, but is preserved here for reference.
+ * 
+ * The original implementation was more complex and solved a different geometric
+ * problem where the angle was specified differently in the triangle relationship.
+ */
+
+#include <px4_platform_common/log.h>
+#include <mathlib/mathlib.h>
+
+/**
+ * @brief Original quadratic equation implementation of law of cosines
+ * @param side_a First side length
+ * @param side_b Second side length  
+ * @param angle_between_a_and_c Angle at vertex opposite to side_c (in radians)
+ * @param min_result Minimum allowed result value
+ * @param max_result Maximum allowed result value
+ * @return Third side length, or -1.0f if no valid solution
+ */
+float law_of_cosines_side_quadratic(float side_a, float side_b, float angle_between_a_and_c,
+                                   float min_result, float max_result)
+{
+	// Law of cosines: c² = a² + b² - 2ab*cos(C)
+	// Where C is the angle opposite to side c
+	// Rearranging to solve for c when we know a, b, and angle between a and c:
+	// c² - 2a*cos(angle)*c + (a² - b²) = 0
+	// This is a quadratic equation: Ac² + Bc + C = 0
+	// where: A = 1, B = -2a*cos(angle), C = a² - b²
+
+	float cos_angle = cosf(angle_between_a_and_c);
+
+	// Quadratic equation coefficients
+	float A = 1.0f;
+	float B = -2.0f * side_a * cos_angle;
+	float C = side_a * side_a - side_b * side_b;
+
+	// Calculate discriminant
+	float discriminant = B * B - 4.0f * A * C;
+
+	if (discriminant < 0.0f) {
+		// No real solution - triangle is impossible
+		PX4_DEBUG("Law of cosines: no real solution (discriminant=%.2f)", (double)discriminant);
+		return -1.0f;
+	}
+
+	// Solve quadratic equation: x = (-B ± √discriminant) / 2A
+	float sqrt_discriminant = sqrtf(discriminant);
+	float solution1 = (-B + sqrt_discriminant) / (2.0f * A);
+	float solution2 = (-B - sqrt_discriminant) / (2.0f * A);
+
+	// Choose the positive solution within the specified range
+	if (solution1 > 0.0f && solution1 >= min_result && solution1 <= max_result) {
+		return solution1;
+	} else if (solution2 > 0.0f && solution2 >= min_result && solution2 <= max_result) {
+		return solution2;
+	}
+
+	// No valid solution within constraints
+	PX4_DEBUG("Law of cosines: solutions outside bounds (%.2f, %.2f)",
+	          (double)solution1, (double)solution2);
+	return -1.0f;
+}
+
+/**
+ * @brief Current simplified implementation for comparison
+ * @param side_a First side length
+ * @param side_b Second side length
+ * @param included_angle Angle between side_a and side_b (in radians)
+ * @param min_result Minimum allowed result value
+ * @param max_result Maximum allowed result value
+ * @return Third side length, or -1.0f if no valid solution
+ */
+float law_of_cosines_side_simple(float side_a, float side_b, float included_angle,
+                                float min_result, float max_result)
+{
+	// Calculate the third side of a triangle given two sides and included angle
+	// c² = a² + b² - 2ab*cos(C)
+	float side_c_squared = side_a * side_a + side_b * side_b - 2.0f * side_a * side_b * cosf(included_angle);
+	
+	// Check for invalid triangle (negative discriminant)
+	if (side_c_squared < 0.0f) {
+		PX4_DEBUG("Law of cosines: invalid triangle (c²=%.2f)", (double)side_c_squared);
+		return -1.0f;
+	}
+	
+	float side_c = sqrtf(side_c_squared);
+	
+	// Check if result is within specified bounds
+	if (side_c < min_result || side_c > max_result) {
+		PX4_DEBUG("Law of cosines: result outside bounds (%.2f not in [%.2f, %.2f])",
+		          (double)side_c, (double)min_result, (double)max_result);
+		return -1.0f;
+	}
+	
+	return side_c;
+}
+
+/**
+ * NOTES ON THE DIFFERENCE BETWEEN IMPLEMENTATIONS:
+ * 
+ * 1. Quadratic Implementation (Original):
+ *    - Solves for side c when given sides a, b and angle opposite to c
+ *    - More complex mathematically, using quadratic formula
+ *    - Handles ambiguous cases (two possible solutions)
+ *    - Used when the angle is NOT between the two known sides
+ * 
+ * 2. Simple Implementation (Current):
+ *    - Solves for side c when given sides a, b and included angle between them
+ *    - Direct application of law of cosines formula
+ *    - Single solution (no ambiguity)
+ *    - Used when the angle IS between the two known sides
+ * 
+ * The key difference is the geometric setup:
+ * - Quadratic: Triangle with sides a, b and angle opposite to unknown side c
+ * - Simple: Triangle with sides a, b and angle between those known sides
+ * 
+ * For the boom mechanism, we have sides OA, OB and angle OAB between them,
+ * so the simple implementation is geometrically correct and more efficient.
+ */

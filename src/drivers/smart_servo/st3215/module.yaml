@@ -1,0 +1,96 @@
+module_name: ST3215 Servo Driver
+serial_config:
+    - command: st3215_servo start -d ${SERIAL_DEV}
+      port_config_param:
+          name: ST3215_CONFIG
+          group: Serial
+          description:
+              short: ST3215 serial port configuration
+              long: |
+                  Configure on which serial port to run ST3215 servo driver.
+          type: enum
+          values:
+              0: Disabled
+              6: UART 6
+              101: TELEM 1
+              102: TELEM 2
+              103: TELEM 3
+              201: GPS 1
+              202: GPS 2
+              401: UART 4
+              402: UART 7
+              403: UART 8
+              601: SERVO 1
+              602: SERVO 2
+          reboot_required: true
+parameters:
+    - group: ST3215 Servo
+      definitions:
+          ST3215_ID:
+              description:
+                  short: ST3215 servo ID
+                  long: ID of the ST3215 servo to control (1-253)
+              type: int32
+              min: 1
+              max: 253
+              default: 1
+          ST3215_BAUDRATE:
+              description:
+                  short: ST3215 serial baudrate
+                  long: Baudrate for the ST3215 servo communication
+              type: int32
+              min: 9600
+              max: 4000000
+              default: 115200
+          ST3215_MIN_POS:
+              description:
+                  short: ST3215 minimum position limit
+                  long: Minimum allowable position for the servo in radians
+              type: float
+              min: -2.618
+              max: 0.0
+              default: -2.618
+              decimal: 3
+              unit: rad
+          ST3215_MAX_POS:
+              description:
+                  short: ST3215 maximum position limit
+                  long: Maximum allowable position for the servo in radians
+              type: float
+              min: 0.0
+              max: 2.618
+              default: 2.618
+              decimal: 3
+              unit: rad
+          ST3215_MAX_SPD:
+              description:
+                  short: ST3215 maximum speed
+                  long: Maximum speed for servo movement in radians per second
+              type: float
+              min: 0.1
+              max: 5.236
+              default: 2.0
+              decimal: 3
+              unit: rad/s
+          ST3215_LEFT_LMT:
+              description:
+                  short: ST3215 left rotation limit sensor function
+                  long: |
+                      Limit sensor function ID that blocks left rotation (positive direction).
+                      Set to 255 to disable limit checking for left rotation.
+                      For NXT rear: use steering left limit function ID.
+              type: int32
+              min: 0
+              max: 255
+              default: 255
+          ST3215_RIGHT_LMT:
+              description:
+                  short: ST3215 right rotation limit sensor function
+                  long: |
+                      Limit sensor function ID that blocks right rotation (negative direction).
+                      Set to 255 to disable limit checking for right rotation.
+                      For NXT rear: use steering right limit function ID.
+              type: int32
+              min: 0
+              max: 255
+              default: 255

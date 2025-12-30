@@ -1,0 +1,15 @@
+menuconfig DRIVERS_QUADRATURE_ENCODER
+	bool "quadrature encoder"
+	default n
+	---help---
+		Enable support for GPIO-based quadrature encoders
+
+if DRIVERS_QUADRATURE_ENCODER
+
+config DRIVERS_QUADRATURE_ENCODER_DEBUG
+	bool "Enable debug output"
+	default n
+	---help---
+		Enable additional debug output for quadrature encoder
+
+endif # DRIVERS_QUADRATURE_ENCODER

@@ -75,3 +75,115 @@ PARAM_DEFINE_FLOAT(MAN_KILL_GEST_T, -1.f);
  * @group Manual Control
  */
 PARAM_DEFINE_FLOAT(MAN_DEADZONE, 0.1f);
+
+/**
+ * RC input mode
+ *
+ * The default value of 3 allows RC stick input, RC joystick input, and virtual sticks.
+ *
+ * @min 0
+ * @max 4
+ * @value 0 None
+ * @value 1 RC sticks only
+ * @value 2 RC joystick only
+ * @value 3 RC sticks and joystick
+ * @value 4 Stick input disabled
+ * @group Manual Control
+ */
+PARAM_DEFINE_INT32(MAN_RC_IN_MODE, 3);
+
+/**
+ * Manual control loss timeout
+ *
+ * The time in seconds without a new setpoint from RC or Joystick.
+ *
+ * @group Manual Control
+ * @unit s
+ * @min 0
+ * @max 35
+ * @decimal 1
+ * @increment 0.1
+ */
+PARAM_DEFINE_FLOAT(MAN_RC_LOSS_T, 0.5f);
+
+/**
+ * Stick override threshold
+ *
+ * @group Manual Control
+ * @unit %
+ * @min 5
+ * @max 80
+ */
+PARAM_DEFINE_FLOAT(MAN_RC_STICK_OV, 30.0f);
+
+/**
+ * Manual control input arm/disarm command duration
+ *
+ * @group Manual Control
+ * @min 100
+ * @max 1500
+ * @unit ms
+ */
+PARAM_DEFINE_INT32(MAN_RC_ARM_HYST, 1000);
+
+/**
+ * Arm switch is a momentary button
+ *
+ * @group Manual Control
+ * @boolean
+ */
+PARAM_DEFINE_INT32(MAN_ARM_SWISBTN, 0);
+
+/**
+ * Flight mode 1
+ *
+ * @group Manual Control
+ * @min -1
+ * @max 6
+ */
+PARAM_DEFINE_INT32(MAN_FLTMODE1, -1);
+
+/**
+ * Flight mode 2
+ *
+ * @group Manual Control
+ * @min -1
+ * @max 6
+ */
+PARAM_DEFINE_INT32(MAN_FLTMODE2, -1);
+
+/**
+ * Flight mode 3
+ *
+ * @group Manual Control
+ * @min -1
+ * @max 6
+ */
+PARAM_DEFINE_INT32(MAN_FLTMODE3, -1);
+
+/**
+ * Flight mode 4
+ *
+ * @group Manual Control
+ * @min -1
+ * @max 6
+ */
+PARAM_DEFINE_INT32(MAN_FLTMODE4, -1);
+
+/**
+ * Flight mode 5
+ *
+ * @group Manual Control
+ * @min -1
+ * @max 6
+ */
+PARAM_DEFINE_INT32(MAN_FLTMODE5, -1);
+
+/**
+ * Flight mode 6
+ *
+ * @group Manual Control
+ * @min -1
+ * @max 6
+ */
+PARAM_DEFINE_INT32(MAN_FLTMODE6, -1);

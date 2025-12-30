@@ -1,0 +1,112 @@
+module_name: VLA Proxy Driver
+serial_config:
+    - command: vla_proxy start -d ${SERIAL_DEV}
+      port_config_param:
+          name: VLA_CONFIG
+          group: VLA
+
+parameters:
+    - group: VLA
+      definitions:
+          VLA_ENABLED:
+              description:
+                  short: Enable VLA proxy driver
+                  long: |
+                      Enable the VLA (Vision-Language-Action) proxy driver for
+                      wheel loader autonomous operation.
+              type: int32
+              default: 0
+              min: 0
+              max: 1
+              reboot_required: false
+              category: System
+
+          VLA_CONFIG:
+              description:
+                  short: VLA Serial Port Configuration
+                  long: |
+                      Configure on which serial port to run VLA Proxy Driver.
+              type: enum
+              values:
+                  0: Disabled
+                  6: UART 6
+                  101: TELEM 1
+                  102: TELEM 2
+                  103: TELEM 3
+                  104: TELEM/SERIAL 4
+                  201: GPS 1
+                  202: GPS 2
+                  203: GPS 3
+                  300: Radio Controller
+                  301: Wifi Port
+                  401: EXT2
+              default: 0
+              reboot_required: true
+              category: System
+
+          VLA_BAUDRATE:
+              description:
+                  short: VLA Serial Port Baud Rate
+                  long: |
+                      Baud rate for the VLA serial port.
+                      Higher baud rates allow for faster data transfer.
+              type: int32
+              default: 115200
+              values:
+                  9600: 9600 baud
+                  19200: 19200 baud
+                  38400: 38400 baud
+                  57600: 57600 baud
+                  115200: 115200 baud
+                  230400: 230400 baud
+                  460800: 460800 baud
+                  921600: 921600 baud
+                  1000000: 1000000 baud
+              unit: bit/s
+              reboot_required: false
+              category: System
+
+          VLA_STATUS_RATE:
+              description:
+                  short: Status send rate to VLA
+                  long: |
+                      Rate at which robot status is sent to VLA model.
+                      Higher rates provide more frequent updates but use more bandwidth.
+              type: float
+              default: 20.0
+              min: 1.0
+              max: 50.0
+              unit: Hz
+              decimal: 1
+              increment: 1.0
+              reboot_required: false
+              category: System
+
+          VLA_TIMEOUT_MS:
+              description:
+                  short: VLA communication timeout
+                  long: |
+                      Maximum time without receiving waypoints before marking
+                      VLA as inactive. Prevents using stale trajectory commands.
+              type: int32
+              default: 1000
+              min: 100
+              max: 10000
+              unit: ms
+              reboot_required: false
+              category: System
+
+          VLA_DEBUG:
+              description:
+                  short: VLA debug level
+                  long: |
+                      Debug logging level for VLA proxy driver:
+                      0 = Errors only
+                      1 = Warnings and errors
+                      2 = Info, warnings and errors (verbose)
+              type: int32
+              default: 0
+              min: 0
+              max: 2
+              reboot_required: false
+              category: System

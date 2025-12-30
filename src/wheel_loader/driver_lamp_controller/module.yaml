@@ -1,0 +1,20 @@
+module_name: Driver Lamp Controller
+serial_config:
+    - command: driver_lamp_controller start
+      port_config_param:
+        name: # No serial port needed
+parameters:
+    - group: Driver Lamp Controller
+      definitions:
+        DRV_LAMP_BLINK:
+            description:
+                short: Turn signal blink rate
+                long: |
+                    Rate at which turn signals blink in Hz.
+                    Default is 1.5 Hz (standard automotive rate).
+            type: float
+            unit: Hz
+            min: 0.5
+            max: 5.0
+            default: 1.5
+            decimal: 1

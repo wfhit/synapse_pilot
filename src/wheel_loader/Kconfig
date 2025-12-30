@@ -1,0 +1,27 @@
+# Wheel Loader Specific Modules
+
+menuconfig WHEEL_LOADER_MODULES
+	bool "Wheel Loader Modules"
+	default n
+	help
+		Enable wheel loader specific modules for articulated chassis control,
+		boom/tilt control, lamp controllers, and system management.
+
+if WHEEL_LOADER_MODULES
+
+rsource "articulated_chassis/Kconfig"
+rsource "boom_control/Kconfig"
+rsource "tilt_control/Kconfig"
+rsource "load_lamp_controller/Kconfig"
+rsource "driver_lamp_controller/Kconfig"
+rsource "nav_lamp_controller/Kconfig"
+rsource "uorb_uart_bridge/Kconfig"
+rsource "uorb_uart_proxy/Kconfig"
+rsource "vla_proxy/Kconfig"
+rsource "operation_mode/Kconfig"
+rsource "arm_manager/Kconfig"
+rsource "health_monitor/Kconfig"
+rsource "interactor_interface/Kconfig"
+rsource "strategy_executor/Kconfig"
+
+endif # WHEEL_LOADER_MODULES

@@ -1,0 +1,7 @@
+#!/bin/sh
+#
+# Board specific extras for CUAV X7Plus-WL
+#
+
+# Start status lamp controller
+nav_lamp_controller start

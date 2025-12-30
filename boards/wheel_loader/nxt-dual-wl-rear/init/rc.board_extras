@@ -1,0 +1,37 @@
+#!/bin/sh
+#
+# NXT-Dual-WL-Rear board specific extras init
+# Rear wheel and boom control board
+#------------------------------------------------------------------------------
+
+# Start boom control module
+if param compare BOOM_CTRL_EN 1
+then
+	echo "Starting boom control module"
+	boom_control start
+
+	# Wait for module to initialize
+	sleep 1
+
+	echo "Boom control module started successfully"
+fi
+
+# Start H-bridge driver for boom actuator
+hbridge start
+
+
+# Start lamp controllers
+echo "Starting load lamp controller"
+load_lamp_controller start
+
+echo "Starting driver lamp controller"
+driver_lamp_controller start
+
+
+# Initialize rear wheel motor control
+echo "Initializing rear wheel motor control"
+
+# Start quadrature encoder for rear wheel motor
+echo "Starting quadrature encoder for rear wheel"
+quadrature_encoder start
+

@@ -1,0 +1,32 @@
+# Wheel Loader Loiter Mode Configuration
+
+parameters:
+  - group: WL Loiter Control
+    definitions:
+      WLL_EN_CHASSIS:
+        description:
+          short: Enable chassis loiter
+          long: Enable zero velocity command for chassis
+        type: boolean
+        default: true
+
+      WLL_EN_BOOM:
+        description:
+          short: Enable boom loiter
+          long: Enable zero velocity command for boom
+        type: boolean
+        default: true
+
+      WLL_EN_TILT:
+        description:
+          short: Enable tilt loiter
+          long: Enable zero rate command for tilt
+        type: boolean
+        default: true
+
+      WLL_EN_ART:
+        description:
+          short: Enable articulation loiter
+          long: Enable zero rate command for articulation
+        type: boolean
+        default: true

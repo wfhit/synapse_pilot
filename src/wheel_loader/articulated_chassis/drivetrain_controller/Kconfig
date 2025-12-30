@@ -1,0 +1,18 @@
+menuconfig MODULES_ARTICULATED_CHASSIS_DRIVETRAIN_CONTROLLER
+	bool "Drivetrain Controller"
+	default n
+	---help---
+		Enable closed-loop drivetrain controller for articulated wheel loader.
+
+		This module provides individual wheel speed control using:
+		- PID control with quadrature encoder feedback
+		- DRV8701 H-bridge motor driver interface
+		- Low-pass filtering for noise reduction
+		- Safety monitoring and emergency stop
+		- Multi-instance support for front/rear axles
+		- Configurable control parameters via PX4 parameter system
+
+		The controller accepts speed setpoints and maintains precise wheel
+		velocity control for traction optimization and stable operation
+		in mining environments.
+

@@ -1,0 +1,87 @@
+module_name: uorb_uart_bridge
+
+parameters:
+    - group: uORB UART Bridge
+      definitions:
+        UORB_BR_EN:
+            description:
+                short: uORB UART Bridge Enable
+                long: |
+                    Enable the uORB UART Bridge module for distributed uORB messaging.
+                    This module provides transparent uORB messaging over UART
+                    for distributed systems. It runs on the X7+ main board and
+                    forwards uORB messages to/from NXT controller boards.
+            type: int32
+            values:
+                0: Disabled
+                1: Enabled
+            default: 1
+
+        UORB_BR_F_PORT:
+            description:
+                short: Front NXT UART Port
+                long: |
+                    Serial port selection for Front NXT controller board.
+                    Specifies which UART port to use for communication with Front NXT.
+            type: int32
+            values:
+                1: ttyS1
+                2: ttyS2
+                3: ttyS3
+                4: ttyS4
+            min: 1
+            max: 4
+            default: 2
+            reboot_required: true
+
+        UORB_BR_R_PORT:
+            description:
+                short: Rear NXT UART Port
+                long: |
+                    Serial port selection for Rear NXT controller board.
+                    Specifies which UART port to use for communication with Rear NXT.
+            type: int32
+            values:
+                1: ttyS1
+                2: ttyS2
+                3: ttyS3
+                4: ttyS4
+            min: 1
+            max: 4
+            default: 3
+            reboot_required: true
+
+        UORB_BR_BAUD:
+            description:
+                short: uORB UART Bridge Baudrate
+                long: |
+                    Serial communication baudrate for uORB UART Bridge.
+                    Higher baudrates provide better performance but may be less reliable
+                    over longer cable distances.
+            type: int32
+            values:
+                9600: 9600 baud
+                19200: 19200 baud
+                38400: 38400 baud
+                57600: 57600 baud
+                115200: 115200 baud
+                230400: 230400 baud
+                460800: 460800 baud
+                921600: 921600 baud
+                1000000: 1000000 baud
+            min: 9600
+            max: 1000000
+            default: 921600
+            reboot_required: true
+
+        UORB_BR_STATS:
+            description:
+                short: Enable Statistics
+                long: |
+                    Enable periodic statistics output for debugging and monitoring.
+                    Shows connection status, packet counts, and error rates.
+            type: int32
+            values:
+                0: Disabled
+                1: Enabled
+            default: 0

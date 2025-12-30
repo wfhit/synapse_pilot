@@ -1,0 +1,5 @@
+menuconfig MODULES_DRIVER_LAMP_CONTROLLER
+	bool "driver_lamp_controller"
+	default n
+	---help---
+		Enable support for driver lamp controller (turn signals and reverse lamps)

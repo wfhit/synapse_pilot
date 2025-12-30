@@ -1,0 +1,6 @@
+menuconfig MODULES_ARM_MANAGER
+	bool "arm_manager"
+	default n
+	---help---
+		Enable support for arm manager module
+		Manages the arming/disarming state and safety checks for wheel loader systems.

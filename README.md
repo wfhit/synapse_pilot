@@ -32,6 +32,7 @@ SynapsePilot maintains compatibility with the PX4 ecosystem while extending its 
   * [VTOL](https://docs.px4.io/main/en/frames_vtol/)
   * [Rovers](https://docs.px4.io/main/en/frames_rover/)
   * [Unmanned Underwater Vehicles](https://docs.px4.io/main/en/frames_sub/)
+  * **[Wheel Loader](boards/wheel_loader/)** - Articulated chassis autonomous vehicle
   * Additional experimental types (Blimps, Boats, High Altitude Balloons, Spacecraft, etc)
 
 ## Getting Started
@@ -55,6 +56,10 @@ make px4_sitl_default
 - **PX4 User Guide**: https://docs.px4.io/main/en/ (Base system documentation)
 - **Developer Guide**: https://docs.px4.io/main/en/development/development.html
 - **SynapsePilot Extensions**: (Coming soon)
+- **Wheel Loader Integration**:
+  - [WHEEL_LOADER_INTEGRATION_LOG.md](WHEEL_LOADER_INTEGRATION_LOG.md) - Complete integration status
+  - [WHEEL_LOADER_FEATURES.md](WHEEL_LOADER_FEATURES.md) - Feature group descriptions
+  - [COMPARISON_PX4_v1.16.0.md](COMPARISON_PX4_v1.16.0.md) - Comparison with PX4 v1.16.0 baseline
 
 ## Architecture Enhancements
 

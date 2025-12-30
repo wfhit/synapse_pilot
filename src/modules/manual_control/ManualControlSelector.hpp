@@ -51,7 +51,7 @@ private:
 	static bool isRc(uint8_t source);
 	static bool isMavlink(uint8_t source);
 
-	// COM_RC_IN_MODE parameter values
+	// MAN_RC_IN_MODE parameter values
 	enum class RcInMode : int32_t {
 		RcOnly = 0,
 		MavLinkOnly = 1,

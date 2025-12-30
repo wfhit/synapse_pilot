@@ -1,0 +1,10 @@
+menu "Smart Servos"
+	menuconfig COMMON_SMART_SERVO
+		bool "Common Smart Servos"
+		default n
+		select DRIVERS_SMART_SERVO_ST3215
+		---help---
+			Enable default set of smart servo drivers
+
+	rsource "*/Kconfig"
+endmenu

@@ -1,0 +1,10 @@
+config MODULES_NAV_LAMP_CONTROLLER
+	bool "Navigation Lamp Controller Module"
+	default n
+	help
+	  Enable the Navigation Lamp Controller module, which receives lamp state commands
+	  and outputs trigger pulses to change the lamp state sequentially.
+
+	  Note: This module requires BOARD_HAS_STATUS_LAMP_TRIGGER to be defined
+	  in the board configuration. On unsupported boards, the module will start
+	  but GPIO operations will be disabled.

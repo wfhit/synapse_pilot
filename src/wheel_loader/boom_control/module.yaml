@@ -1,0 +1,408 @@
+module_name: boom_control
+parameters:
+    - group: Boom Control
+      definitions:
+        BOOM_EN:
+          description:
+            short: Boom control enable
+            long: Enable boom control module
+          type: int32
+          default: 1
+          min: 0
+          max: 1
+
+        BOOM_RATE:
+          description:
+            short: Boom control update rate
+            long: Control loop update frequency
+          type: float
+          default: 50.0
+          min: 10.0
+          max: 100.0
+          unit: Hz
+          decimal: 1
+
+        # IK parameters for bucket height to boom angle conversion
+        BOOM_LEN:
+          description:
+            short: Boom length for IK
+            long: Length of boom from pivot to bucket attachment, used for IK computation
+          type: float
+          default: 2.5
+          min: 0.5
+          max: 10.0
+          unit: m
+          decimal: 2
+
+        BOOM_PIVOT_H:
+          description:
+            short: Pivot height for IK
+            long: Height of boom pivot point above ground level, used for IK computation
+          type: float
+          default: 1.0
+          min: 0.0
+          max: 5.0
+          unit: m
+          decimal: 2
+
+        BOOM_PIV_BASE:
+          description:
+            short: Pivot to actuator base length
+            long: Distance from boom pivot to actuator base mount point
+          type: float
+          default: 583.0
+          min: 100.0
+          max: 3000.0
+          unit: mm
+          decimal: 1
+
+        BOOM_ACT_PIV_LEN:
+          description:
+            short: Actuator joint to pivot length
+            long: Distance from actuator joint attachment point to boom pivot
+          type: float
+          default: 800.0
+          min: 100.0
+          max: 3000.0
+          unit: mm
+          decimal: 1
+
+        BOOM_PIV_BUK_LEN:
+          description:
+            short: Boom length
+            long: Length of boom from pivot point to bucket attachment point
+          type: float
+          default: 1200.0
+          min: 200.0
+          max: 5000.0
+          unit: mm
+          decimal: 1
+
+        BOOM_ACT_JNT_LEN:
+          description:
+            short: Actuator joint to boom end length
+            long: Distance between actuator joint and boom end attachment point
+          type: float
+          default: 600.0
+          min: 100.0
+          max: 2000.0
+          unit: mm
+          decimal: 1
+
+        BOOM_ACT_ZERO:
+          description:
+            short: Actuator length at zero angle
+            long: Linear actuator length when boom is at zero angle
+          type: float
+          default: 400.0
+          min: 100.0
+          max: 1000.0
+          unit: mm
+          decimal: 1
+
+        BOOM_PIV_HEIGHT:
+          description:
+            short: Pivot height from ground
+            long: Height of boom pivot point above ground level
+          type: float
+          default: 1500.0
+          min: 0.0
+          max: 5000.0
+          unit: mm
+          decimal: 1
+
+        BOOM_ENC_MIN_ANG:
+          description:
+            short: Encoder angle at minimum position
+            long: AS5600 encoder reading when actuator is at minimum length
+          type: float
+          default: 45.0
+          min: 0.0
+          max: 360.0
+          unit: deg
+          decimal: 1
+
+        BOOM_ENC_MAX_ANG:
+          description:
+            short: Encoder angle at maximum position
+            long: AS5600 encoder reading when actuator is at maximum length
+          type: float
+          default: 135.0
+          min: 0.0
+          max: 360.0
+          unit: deg
+          decimal: 1
+
+        BOOM_ENC_ZERO:
+          description:
+            short: Encoder angle at zero boom angle
+            long: AS5600 encoder reading when boom angle is zero degrees
+          type: float
+          default: 90.0
+          min: 0.0
+          max: 360.0
+          unit: deg
+          decimal: 1
+
+        BOOM_ENC_INST:
+          description:
+            short: Encoder instance
+            long: AS5600 encoder instance to use
+          type: int32
+          default: 0
+          min: 0
+          max: 3
+
+        BOOM_ENC_SCALE:
+          description:
+            short: Encoder scale factor
+            long: Scale factor for encoder readings
+          type: float
+          default: 1.0
+          min: 0.1
+          max: 10.0
+          decimal: 3
+
+        BOOM_ENC_OFF:
+          description:
+            short: Encoder offset
+            long: Offset for encoder calibration
+          type: float
+          default: 0.0
+          min: -180.0
+          max: 180.0
+          unit: deg
+          decimal: 1
+
+        BOOM_ENC_REV:
+          description:
+            short: Encoder reverse
+            long: Reverse encoder direction
+          type: int32
+          default: 0
+          min: 0
+          max: 1
+
+        BOOM_POS_P:
+          description:
+            short: Position controller P gain
+            long: Position controller proportional gain
+          type: float
+          default: 2.0
+          min: 0.0
+          max: 10.0
+          decimal: 2
+
+        BOOM_POS_I:
+          description:
+            short: Position controller I gain
+            long: Position controller integral gain
+          type: float
+          default: 0.1
+          min: 0.0
+          max: 5.0
+          decimal: 3
+
+        BOOM_POS_D:
+          description:
+            short: Position controller D gain
+            long: Position controller derivative gain
+          type: float
+          default: 0.05
+          min: 0.0
+          max: 1.0
+          decimal: 3
+
+        BOOM_VEL_P:
+          description:
+            short: Velocity controller P gain
+            long: Velocity controller proportional gain
+          type: float
+          default: 3.0
+          min: 0.0
+          max: 10.0
+          decimal: 2
+
+        BOOM_VEL_I:
+          description:
+            short: Velocity controller I gain
+            long: Velocity controller integral gain
+          type: float
+          default: 0.2
+          min: 0.0
+          max: 5.0
+          decimal: 3
+
+        BOOM_VEL_D:
+          description:
+            short: Velocity controller D gain
+            long: Velocity controller derivative gain
+          type: float
+          default: 0.01
+          min: 0.0
+          max: 1.0
+          decimal: 3
+
+        BOOM_MAX_VEL:
+          description:
+            short: Maximum velocity
+            long: Maximum boom angular velocity
+          type: float
+          default: 1.0
+          min: 0.1
+          max: 5.0
+          unit: rad/s
+          decimal: 2
+
+        BOOM_MAX_ACC:
+          description:
+            short: Maximum acceleration
+            long: Maximum boom angular acceleration
+          type: float
+          default: 2.0
+          min: 0.1
+          max: 10.0
+          unit: rad/s^2
+          decimal: 2
+
+        BOOM_MAX_JERK:
+          description:
+            short: Maximum jerk
+            long: Maximum boom angular jerk
+          type: float
+          default: 10.0
+          min: 1.0
+          max: 50.0
+          unit: ""
+          decimal: 1
+
+        BOOM_DEADZONE:
+          description:
+            short: Motor deadzone
+            long: Motor deadzone compensation
+          type: float
+          default: 0.05
+          min: 0.0
+          max: 0.5
+          decimal: 3
+
+        BOOM_FF_GAIN:
+          description:
+            short: Feedforward gain
+            long: Feedforward control gain
+          type: float
+          default: 0.1
+          min: 0.0
+          max: 2.0
+          decimal: 3
+
+        BOOM_LOAD_COM:
+          description:
+            short: Load compensation gain
+            long: Load compensation control gain
+          type: float
+          default: 0.0
+          min: 0.0
+          max: 2.0
+          decimal: 3
+
+        BOOM_MOTOR_IDX:
+          description:
+            short: Motor index
+            long: H-bridge motor index to use
+          type: int32
+          default: 0
+          min: 0
+          max: 7
+
+        BOOM_CUR_LIM:
+          description:
+            short: Current limit
+            long: Motor current limit
+          type: float
+          default: 20.0
+          min: 0.5
+          max: 50.0
+          unit: A
+          decimal: 1
+
+        BOOM_DUTY_MAX:
+          description:
+            short: Maximum duty cycle
+            long: Maximum motor duty cycle
+          type: float
+          default: 1.0
+          min: 0.1
+          max: 1.0
+          decimal: 2
+
+        BOOM_LMT_UP_IDX:
+          description:
+            short: Boom up limit sensor index
+            long: Device index for boom up limit switch sensor
+          type: int32
+          default: 0
+          min: 0
+          max: 7
+
+        BOOM_LMT_DN_IDX:
+          description:
+            short: Boom down limit sensor index
+            long: Device index for boom down limit switch sensor
+          type: int32
+          default: 1
+          min: 0
+          max: 7
+
+        BOOM_CAL_REQ:
+          description:
+            short: Calibration required
+            long: Require calibration on startup
+          type: int32
+          default: 1
+          min: 0
+          max: 1
+
+        BOOM_CAL_TO:
+          description:
+            short: Calibration timeout
+            long: Maximum time for calibration
+          type: float
+          default: 60.0
+          min: 10.0
+          max: 300.0
+          unit: s
+          decimal: 0
+
+        BOOM_SET_TIME:
+          description:
+            short: Settle time
+            long: Time to wait for system to settle
+          type: float
+          default: 2.0
+          min: 0.5
+          max: 10.0
+          unit: s
+          decimal: 1
+
+        BOOM_ANG_MIN:
+          description:
+            short: Minimum angle OAB
+            long: Minimum angle OAB measured by AS5600
+          type: float
+          default: 30.0
+          min: 0.0
+          max: 180.0
+          unit: deg
+          decimal: 1
+
+        BOOM_ANG_MAX:
+          description:
+            short: Maximum angle OAB
+            long: Maximum angle OAB measured by AS5600
+          type: float
+          default: 150.0
+          min: 30.0
+          max: 180.0
+          unit: deg
+          decimal: 1

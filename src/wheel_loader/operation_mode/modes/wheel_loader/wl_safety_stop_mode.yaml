@@ -1,0 +1,14 @@
+# Wheel Loader Safety Stop Mode Configuration
+
+# This mode has minimal configurable parameters as it is designed
+# for safety-critical immediate stop functionality.
+
+parameters:
+  - group: WL Safety Stop
+    definitions:
+      WLS_ENABLE:
+        description:
+          short: Enable safety stop mode
+          long: Enable the safety stop mode in the mode manager
+        type: boolean
+        default: true
