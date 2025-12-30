@@ -431,7 +431,9 @@ if(EXISTS "${PX4_BOARD_DIR}/CMakeLists.txt")
 	add_subdirectory(${PX4_BOARD_DIR})
 endif()
 
+message(STATUS "DEBUG: config_module_list = ${config_module_list}")
 foreach(module ${config_module_list})
+	message(STATUS "DEBUG: Adding module: src/${module}")
 	add_subdirectory(src/${module})
 endforeach()
 

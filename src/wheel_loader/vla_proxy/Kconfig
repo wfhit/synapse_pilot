@@ -1,4 +1,4 @@
-menuconfig DRIVERS_VLA_PROXY
+menuconfig WHEEL_LOADER_VLA_PROXY
 	bool "VLA Proxy Driver"
 	default n
 	---help---

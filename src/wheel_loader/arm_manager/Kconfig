@@ -1,4 +1,4 @@
-menuconfig MODULES_ARM_MANAGER
+menuconfig WHEEL_LOADER_ARM_MANAGER
 	bool "arm_manager"
 	default n
 	---help---

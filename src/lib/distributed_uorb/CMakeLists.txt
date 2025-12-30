@@ -31,11 +31,20 @@
 #
 ############################################################################
 
-px4_add_module(
-	MODULE wheel_loader__strategy_executor
-	MAIN strategy_executor
-	SRCS
-		strategy_manager.cpp
-	DEPENDS
-		px4_work_queue
-	)
+# Distributed uORB library for inter-board communication
+px4_add_library(distributed_uorb
+    distributed_uorb_protocol.cpp
+    distributed_uorb_topic_registry.cpp
+)
+
+target_link_libraries(distributed_uorb
+    PUBLIC
+        px4_platform
+    PRIVATE
+        uORB
+)
+
+target_include_directories(distributed_uorb
+    PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}
+)

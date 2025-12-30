@@ -1,4 +1,4 @@
-menuconfig MODULES_HEALTH_MONITOR
+menuconfig WHEEL_LOADER_HEALTH_MONITOR
 	bool "health_monitor"
 	default n
 	---help---

@@ -1,4 +1,4 @@
-menuconfig MODULES_ARTICULATED_CHASSIS
+menuconfig WHEEL_LOADER_ARTICULATED_CHASSIS
 	bool "articulated_chassis"
 	default n
 	help
@@ -6,7 +6,7 @@ menuconfig MODULES_ARTICULATED_CHASSIS
 		This includes wheel control, steering, traction management, safety monitoring,
 		and advanced terrain adaptation capabilities.
 
-if MODULES_ARTICULATED_CHASSIS
+if WHEEL_LOADER_ARTICULATED_CHASSIS
 
 config ARTICULATED_CHASSIS_WHEEL_CONTROLLER
 	bool "Enable wheel controller"
@@ -29,4 +29,4 @@ config ARTICULATED_CHASSIS_TRACTION_CONTROL
 		Advanced traction control for articulated wheel loader
 		with slip estimation and dynamic torque distribution for mining operations.
 
-endif # MODULES_ARTICULATED_CHASSIS
+endif # WHEEL_LOADER_ARTICULATED_CHASSIS

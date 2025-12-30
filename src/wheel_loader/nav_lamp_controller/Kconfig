@@ -1,4 +1,4 @@
-config MODULES_NAV_LAMP_CONTROLLER
+config WHEEL_LOADER_NAV_LAMP_CONTROLLER
 	bool "Navigation Lamp Controller Module"
 	default n
 	help

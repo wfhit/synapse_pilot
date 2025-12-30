@@ -201,16 +201,41 @@ if(EXISTS ${BOARD_DEFCONFIG})
 				list(APPEND config_module_list modules/${module_p1_folder}/${module_p1_subfolder})
 			elseif(EXISTS ${PX4_SOURCE_DIR}/src/modules/${module_p2_folder}/${module_p2_subfolder})
 				list(APPEND config_module_list modules/${module_p2_folder}/${module_p2_subfolder})
-			elseif(EXISTS ${PX4_SOURCE_DIR}/src/wheel_loader/${module})
-				list(APPEND config_module_list wheel_loader/${module})
-			elseif(EXISTS ${PX4_SOURCE_DIR}/src/wheel_loader/${module_path})
-				list(APPEND config_module_list wheel_loader/${module_path})
-			elseif(EXISTS ${PX4_SOURCE_DIR}/src/wheel_loader/${module_p1_folder}/${module_p1_subfolder})
-				list(APPEND config_module_list wheel_loader/${module_p1_folder}/${module_p1_subfolder})
-			elseif(EXISTS ${PX4_SOURCE_DIR}/src/wheel_loader/${module_p2_folder}/${module_p2_subfolder})
-				list(APPEND config_module_list wheel_loader/${module_p2_folder}/${module_p2_subfolder})
 			else()
 				message(FATAL_ERROR "Couldn't find path for ${module}")
+			endif()
+		endif()
+
+		# Find variable name
+		string(REGEX MATCH "^CONFIG_WHEEL_LOADER[^=]+" WheelLoader ${NameAndValue})
+
+		if(WheelLoader)
+			# Find the value
+			string(REPLACE "${Name}=" "" Value ${NameAndValue})
+			string(REPLACE "CONFIG_WHEEL_LOADER_" "" wl_module ${Name})
+			string(TOLOWER ${wl_module} wl_module)
+
+			string(REPLACE "_" "/" wl_module_path ${wl_module})
+
+			# Pattern 1 XXX / XXX_XXX
+			string(REGEX REPLACE "(^[a-z]+)_([a-z0-9]+_[a-z0-9]+).*$" "\\1" wl_module_p1_folder ${wl_module})
+			string(REGEX REPLACE "(^[a-z]+)_([a-z0-9]+_[a-z0-9]+).*$" "\\2" wl_module_p1_subfolder ${wl_module})
+
+			# Pattern 2 XXX / XXX_XXX_XXX
+			string(REGEX REPLACE "(^[a-z]+)_([a-z0-9]+_[a-z0-9]+_[a-z0-9]+).*$" "\\1" wl_module_p2_folder ${wl_module})
+			string(REGEX REPLACE "(^[a-z]+)_([a-z0-9]+_[a-z0-9]+_[a-z0-9]+).*$" "\\2" wl_module_p2_subfolder ${wl_module})
+
+			# Trick circumvent PX4 src naming problem with underscores and slashes
+			if(EXISTS ${PX4_SOURCE_DIR}/src/wheel_loader/${wl_module})
+				list(APPEND config_module_list wheel_loader/${wl_module})
+			elseif(EXISTS ${PX4_SOURCE_DIR}/src/wheel_loader/${wl_module_path})
+				list(APPEND config_module_list wheel_loader/${wl_module_path})
+			elseif(EXISTS ${PX4_SOURCE_DIR}/src/wheel_loader/${wl_module_p1_folder}/${wl_module_p1_subfolder})
+				list(APPEND config_module_list wheel_loader/${wl_module_p1_folder}/${wl_module_p1_subfolder})
+			elseif(EXISTS ${PX4_SOURCE_DIR}/src/wheel_loader/${wl_module_p2_folder}/${wl_module_p2_subfolder})
+				list(APPEND config_module_list wheel_loader/${wl_module_p2_folder}/${wl_module_p2_subfolder})
+			else()
+				message(FATAL_ERROR "Couldn't find path for wheel_loader module ${wl_module}")
 			endif()
 		endif()
 

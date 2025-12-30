@@ -1,4 +1,4 @@
-menuconfig MODULES_STEERING_CONTROLLER
+menuconfig WHEEL_LOADER_STEERING_CONTROLLER
 	bool "steering_controller"
 	default n
 	---help---

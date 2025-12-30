@@ -1,4 +1,4 @@
-menuconfig MODULES_STRATEGY_EXECUTOR
+menuconfig WHEEL_LOADER_STRATEGY_EXECUTOR
 	bool "strategy_executor"
 	default n
 	---help---

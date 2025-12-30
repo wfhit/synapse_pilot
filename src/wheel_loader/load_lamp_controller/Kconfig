@@ -1,4 +1,4 @@
-menuconfig MODULES_LOAD_LAMP_CONTROLLER
+menuconfig WHEEL_LOADER_LOAD_LAMP_CONTROLLER
 	bool "load_lamp_controller"
 	default n
 	---help---

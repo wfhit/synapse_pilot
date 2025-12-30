@@ -202,6 +202,10 @@ menu "modules"
 source "src/modules/Kconfig"
 endmenu
 
+menu "wheel_loader"
+source "src/wheel_loader/Kconfig"
+endmenu
+
 menu "systemcmds"
 source "src/systemcmds/Kconfig"
 endmenu

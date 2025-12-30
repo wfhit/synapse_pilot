@@ -1,4 +1,4 @@
-menuconfig MODULES_BOOM_CONTROL
+menuconfig WHEEL_LOADER_BOOM_CONTROL
 	bool "boom control"
 	default n
 	---help---

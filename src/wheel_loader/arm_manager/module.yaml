@@ -30,7 +30,7 @@ parameters:
               unit: m/s
               decimal: 2
 
-          ARM_REQUIRE_HEALTH:
+          ARM_REQ_HEALTH:
               description:
                   short: Require health check before arming
                   long: Require health monitor to report system healthy
@@ -44,7 +44,7 @@ parameters:
               type: boolean
               default: 1
 
-          ARM_MANUAL_TIMEOUT:
+          ARM_MAN_TIMEOUT:
               description:
                   short: Manual control timeout
                   long: Maximum time without manual control before blocking arm (0=disabled)

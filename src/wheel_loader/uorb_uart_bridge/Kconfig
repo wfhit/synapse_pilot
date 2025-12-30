@@ -1,4 +1,4 @@
-menuconfig MODULES_UORB_UART_BRIDGE
+menuconfig WHEEL_LOADER_UORB_UART_BRIDGE
 	bool "uorb_uart_bridge"
 	default n
 	---help---
@@ -11,6 +11,6 @@ menuconfig MODULES_UORB_UART_BRIDGE
 menuconfig USER_UORB_UART_BRIDGE
 	bool "uorb_uart_bridge running as userspace module"
 	default n
-	depends on BOARD_PROTECTED && MODULES_UORB_UART_BRIDGE
+	depends on BOARD_PROTECTED && WHEEL_LOADER_UORB_UART_BRIDGE
 	---help---
 		Put uorb_uart_bridge in userspace memory

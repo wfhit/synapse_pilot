@@ -1,4 +1,4 @@
-menuconfig MODULES_UORB_UART_PROXY
+menuconfig WHEEL_LOADER_UORB_UART_PROXY
 	bool "uorb_uart_proxy"
 	default n
 	---help---
@@ -11,6 +11,6 @@ menuconfig MODULES_UORB_UART_PROXY
 menuconfig USER_UORB_UART_PROXY
 	bool "uorb_uart_proxy running as userspace module"
 	default n
-	depends on BOARD_PROTECTED && MODULES_UORB_UART_PROXY
+	depends on BOARD_PROTECTED && WHEEL_LOADER_UORB_UART_PROXY
 	---help---
 		Put uorb_uart_proxy in userspace memory

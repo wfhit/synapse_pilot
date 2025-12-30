@@ -1,4 +1,4 @@
-menuconfig MODULES_INTERACTOR_INTERFACE
+menuconfig WHEEL_LOADER_INTERACTOR_INTERFACE
 	bool "interactor_interface"
 	default n
 	---help---

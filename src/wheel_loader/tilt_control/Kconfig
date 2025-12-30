@@ -1,4 +1,4 @@
-menuconfig MODULES_TILT_CONTROL
+menuconfig WHEEL_LOADER_TILT_CONTROL
 	bool "tilt_control"
 	default n
 	---help---
@@ -8,7 +8,7 @@ menuconfig MODULES_TILT_CONTROL
 		including kinematic calculations, motion planning, boom compensation,
 		and state management with calibration.
 
-if MODULES_TILT_CONTROL
+if WHEEL_LOADER_TILT_CONTROL
 
 config TILT_CONTROL_BOOM_COMPENSATION
 	bool "Enable boom compensation"
@@ -31,4 +31,4 @@ config TILT_CONTROL_PERFORMANCE_MONITORING
 		Enable performance metrics collection for control system
 		analysis and tuning.
 
-endif # MODULES_TILT_CONTROL
+endif # WHEEL_LOADER_TILT_CONTROL
