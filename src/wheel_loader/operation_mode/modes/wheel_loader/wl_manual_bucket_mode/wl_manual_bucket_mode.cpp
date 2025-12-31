@@ -31,7 +31,7 @@
  *
  ****************************************************************************/
 
-#include "wheel_loader_manual_bucket_mode.hpp"
+#include "wl_manual_bucket_mode.hpp"
 #include <px4_platform_common/log.h>
 
 WheelLoaderManualBucketMode::WheelLoaderManualBucketMode(ModuleParams *parent) :
@@ -126,11 +126,11 @@ void WheelLoaderManualBucketMode::update(float dt)
 bool WheelLoaderManualBucketMode::is_valid() const
 {
 	bool position_valid = _vehicle_local_position.xy_valid && _vehicle_local_position.z_valid &&
-			      (hrt_elapsed_time(&_vehicle_local_position.timestamp) < 500_ms);
+			      (hrt_elapsed_time(&_vehicle_local_position.timestamp) < 500000);  // 500ms in microseconds
 
-	bool attitude_valid = (hrt_elapsed_time(&_vehicle_attitude.timestamp) < 500_ms);
+	bool attitude_valid = (hrt_elapsed_time(&_vehicle_attitude.timestamp) < 500000);  // 500ms in microseconds
 
-	bool rc_valid = (hrt_elapsed_time(&_manual_control_setpoint.timestamp) < 500_ms);
+	bool rc_valid = (hrt_elapsed_time(&_manual_control_setpoint.timestamp) < 500000);  // 500ms in microseconds
 
 	return position_valid && attitude_valid && rc_valid;
 }
@@ -240,7 +240,7 @@ bool WheelLoaderManualBucketMode::computeInverseKinematics()
 	}
 
 	// Boom angle from horizontal
-	float boom_angle = atan2f(dz, dx);
+	(void)atan2f(dz, dx);  // boom_angle unused - for future implementation
 
 	// Output boom position (could be extension or angle depending on actuator)
 	_target_boom_position = boom_extension;
@@ -253,8 +253,8 @@ bool WheelLoaderManualBucketMode::computeInverseKinematics()
 	float cos_h = cosf(_current_chassis_state.heading);
 	float sin_h = sinf(_current_chassis_state.heading);
 
-	float bucket_x_world = _current_chassis_state.x + bucket_x_body * cos_h;
-	float bucket_y_world = _current_chassis_state.y + bucket_x_body * sin_h;
+	(void)(bucket_x_body * cos_h);  // bucket_x_world unused - for future implementation
+	(void)(bucket_x_body * sin_h);  // bucket_y_world unused - for future implementation
 
 	// Chassis should move to place bucket at desired world position
 	// For now, keep chassis at current position and let bucket move in body frame

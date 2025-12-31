@@ -283,7 +283,7 @@ void DriverLampController::run()
 	perf_end(_loop_perf);
 
 	// Schedule next run
-	ScheduleDelayed(20_ms); // Run at 50Hz
+	ScheduleDelayed(20000); // Run at 50Hz
 }
 
 int DriverLampController::task_spawn(int argc, char *argv[])

@@ -263,32 +263,32 @@ bool HealthMonitor::check_wheel_loader_sensors()
 	// if (_wl_sensor_status_sub.copy(&sensor_status)) {
 	// 	const hrt_abstime now = hrt_absolute_time();
 	// 	const uint32_t timeout_ms = (now - sensor_status.timestamp) / 1000;
-
-		// if ((int32_t)timeout_ms > _param_sensor_timeout_ms.get()) {
-			_health_status.sensor_boom = false;
-			_health_status.sensor_tilt = false;
-			_health_status.sensor_articulation = false;
-			_health_status.sensor_limit_switches = false;
-			return false;
-		}
-
-		// Check individual sensors with quality thresholds
-		_health_status.sensor_boom = sensor_status.boom_valid &&
-					     (sensor_status.boom_quality > 50);
-
-		_health_status.sensor_tilt = sensor_status.tilt_valid &&
-					     (sensor_status.tilt_quality > 50);
-
-		_health_status.sensor_articulation = sensor_status.articulation_valid &&
-						     (sensor_status.articulation_quality > 50);
-
-		// All limit switches should be readable (at least one of each pair active is OK)
-		_health_status.sensor_limit_switches = true; // Assume OK if message received
-
-		return _health_status.sensor_boom &&
-		       _health_status.sensor_tilt &&
-		       _health_status.sensor_articulation;
-	}
+	//
+	// 	if ((int32_t)timeout_ms > _param_sensor_timeout_ms.get()) {
+	// 		_health_status.sensor_boom = false;
+	// 		_health_status.sensor_tilt = false;
+	// 		_health_status.sensor_articulation = false;
+	// 		_health_status.sensor_limit_switches = false;
+	// 		return false;
+	// 	}
+	//
+	// 	// Check individual sensors with quality thresholds
+	// 	_health_status.sensor_boom = sensor_status.boom_valid &&
+	// 				     (sensor_status.boom_quality > 50);
+	//
+	// 	_health_status.sensor_tilt = sensor_status.tilt_valid &&
+	// 				     (sensor_status.tilt_quality > 50);
+	//
+	// 	_health_status.sensor_articulation = sensor_status.articulation_valid &&
+	// 					     (sensor_status.articulation_quality > 50);
+	//
+	// 	// All limit switches should be readable (at least one of each pair active is OK)
+	// 	_health_status.sensor_limit_switches = true; // Assume OK if message received
+	//
+	// 	return _health_status.sensor_boom &&
+	// 	       _health_status.sensor_tilt &&
+	// 	       _health_status.sensor_articulation;
+	// }
 
 	// No data received
 	_health_status.sensor_boom = false;
@@ -300,8 +300,8 @@ bool HealthMonitor::check_wheel_loader_sensors()
 
 void HealthMonitor::check_actuator_health()
 {
-	wheel_loader_actuator_status_s actuator_status;
-	if (_wl_actuator_status_sub.copy(&actuator_status)) {
+	actuator_status_s actuator_status;
+	if (_actuator_status_sub.copy(&actuator_status)) {
 		// Chassis left
 		_health_status.actuator_chassis_left =
 			actuator_status.chassis_left_valid &&
@@ -438,10 +438,10 @@ bool HealthMonitor::check_slip()
 	// Slip detection: compare wheel odometry velocity with IMU-derived velocity
 	// This requires both actuator status (wheel speeds) and local position (IMU velocity)
 
-	wheel_loader_actuator_status_s actuator_status;
+	actuator_status_s actuator_status;
 	vehicle_local_position_s local_pos;
 
-	if (_wl_actuator_status_sub.copy(&actuator_status) &&
+	if (_actuator_status_sub.copy(&actuator_status) &&
 	    _vehicle_local_position_sub.copy(&local_pos)) {
 
 		// Calculate wheel-based velocity estimate
@@ -474,7 +474,7 @@ bool HealthMonitor::check_shock()
 	// Peak acceleration is tracked in check_imu_health()
 
 	// Check if peak acceleration exceeds threshold (in g's)
-	const float shock_threshold_ms2 = _param_shock_threshold.get() * CONSTANTS_ONE_G;
+	const float shock_threshold_ms2 = _param_shock_threshold.get() * 9.80665f; // Convert g's to m/s²
 
 	return _max_accel_since_last_report < shock_threshold_ms2;
 }
@@ -491,7 +491,7 @@ void HealthMonitor::check_communication_health()
 
 	const int mavlink_timeout_ms = _param_mavlink_timeout_ms.get();
 	if (mavlink_timeout_ms > 0) {
-		_health_status.mavlink_connected = (now - _mavlink_last_heartbeat) < (mavlink_timeout_ms * 1000);
+		_health_status.mavlink_connected = (now - _mavlink_last_heartbeat) < (uint64_t)(mavlink_timeout_ms * 1000);
 	} else {
 		_health_status.mavlink_connected = false;  // Disabled
 	}
@@ -507,7 +507,7 @@ void HealthMonitor::check_communication_health()
 
 	const int rc_timeout_ms = _param_rc_timeout_ms.get();
 	if (rc_timeout_ms > 0) {
-		_health_status.rc_connected = (now - _rc_last_update) < (rc_timeout_ms * 1000);
+		_health_status.rc_connected = (now - _rc_last_update) < (uint64_t)(rc_timeout_ms * 1000);
 	} else {
 		_health_status.rc_connected = false;  // Disabled
 	}
@@ -521,7 +521,7 @@ void HealthMonitor::update_fault_tracking()
 	// Update sensor faults
 	if (!_health_status.sensors_healthy) {
 		if (_last_sensor_fault_time == 0 ||
-		    (now - _last_sensor_fault_time) > 1_s) {
+		    (now - _last_sensor_fault_time) > 1000000) {  // 1 second in microseconds
 			_health_status.sensor_fault_count++;
 		}
 		_last_sensor_fault_time = now;
@@ -530,7 +530,7 @@ void HealthMonitor::update_fault_tracking()
 	// Update actuator faults
 	if (!_health_status.actuators_healthy) {
 		if (_last_actuator_fault_time == 0 ||
-		    (now - _last_actuator_fault_time) > 1_s) {
+		    (now - _last_actuator_fault_time) > 1000000) {  // 1 second in microseconds
 			_health_status.actuator_fault_count++;
 		}
 		_last_actuator_fault_time = now;
@@ -539,7 +539,7 @@ void HealthMonitor::update_fault_tracking()
 	// Update power faults
 	if (!_health_status.power_healthy) {
 		if (_last_power_fault_time == 0 ||
-		    (now - _last_power_fault_time) > 1_s) {
+		    (now - _last_power_fault_time) > 1000000) {  // 1 second in microseconds
 			_health_status.power_fault_count++;
 		}
 		_last_power_fault_time = now;
@@ -548,7 +548,7 @@ void HealthMonitor::update_fault_tracking()
 	// Update stability faults
 	if (!_health_status.vehicle_stable) {
 		if (_last_stability_fault_time == 0 ||
-		    (now - _last_stability_fault_time) > 1_s) {
+		    (now - _last_stability_fault_time) > 1000000) {  // 1 second in microseconds
 			_health_status.stability_fault_count++;
 		}
 		_last_stability_fault_time = now;
@@ -584,11 +584,11 @@ void HealthMonitor::log_health_status()
 	    _health_status.actuator_fault_count > 0 ||
 	    _health_status.power_fault_count > 0 ||
 	    _health_status.stability_fault_count > 0) {
-		PX4_INFO("Fault counts - Sensor: %u, Actuator: %u, Power: %u, Stability: %u",
-			_health_status.sensor_fault_count,
-			_health_status.actuator_fault_count,
-			_health_status.power_fault_count,
-			_health_status.stability_fault_count);
+		PX4_INFO("Fault counts - Sensor: %lu, Actuator: %lu, Power: %lu, Stability: %lu",
+			(unsigned long)_health_status.sensor_fault_count,
+			(unsigned long)_health_status.actuator_fault_count,
+			(unsigned long)_health_status.power_fault_count,
+			(unsigned long)_health_status.stability_fault_count);
 	}
 
 	// Log critical issues

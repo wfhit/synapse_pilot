@@ -405,7 +405,7 @@ private:
 	 */
 	void warn_throttled(hrt_abstime now, const char *fmt, ...)
 	{
-		if (now - _last_warn_time > 1_s) {
+		if (now - _last_warn_time > 1000000) {  // 1 second in microseconds
 			va_list args;
 			va_start(args, fmt);
 			px4_vlog(PX4_LOG_LEVEL_WARN, "HoldPosition", __LINE__, fmt, args);

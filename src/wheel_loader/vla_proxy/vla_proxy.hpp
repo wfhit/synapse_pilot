@@ -55,9 +55,9 @@
 #include <uORB/topics/vehicle_angular_velocity.h>
 #include <uORB/topics/boom_status.h>
 #include <uORB/topics/bucket_status.h>
-#include <uORB/topics/chassis_status.h>
-#include <uORB/topics/vla_trajectory_setpoint.h>
-#include <uORB/topics/mode_status.h>
+// #include <uORB/topics/chassis_status.h>  // Message not yet defined
+// #include <uORB/topics/vla_trajectory_setpoint.h>  // Message not yet defined
+// #include <uORB/topics/mode_status.h>  // Message not yet defined
 
 #include <termios.h>
 #include <fcntl.h>
@@ -165,14 +165,14 @@ private:
 
 	// uORB topics
 	uORB::Subscription _vehicle_status_sub{ORB_ID(vehicle_status)};
-	uORB::Subscription _mode_status_sub{ORB_ID(mode_status)};
+	// uORB::Subscription _mode_status_sub{ORB_ID(mode_status)};
 	uORB::Subscription _vehicle_local_position_sub{ORB_ID(vehicle_local_position)};
 	uORB::Subscription _vehicle_attitude_sub{ORB_ID(vehicle_attitude)};
 	uORB::Subscription _vehicle_angular_velocity_sub{ORB_ID(vehicle_angular_velocity)};
 	uORB::Subscription _boom_status_sub{ORB_ID(boom_status)};
 	uORB::Subscription _bucket_status_sub{ORB_ID(bucket_status)};
 	uORB::Subscription _chassis_status_sub{ORB_ID(chassis_status)};
-	uORB::Publication<vla_trajectory_setpoint_s> _vla_trajectory_pub{ORB_ID(vla_trajectory_setpoint)};
+	// uORB::Publication<vla_trajectory_setpoint_s> _vla_trajectory_pub{ORB_ID(vla_trajectory_setpoint)};
 
 	// Performance counters
 	perf_counter_t _loop_perf;
@@ -194,7 +194,7 @@ private:
 	size_t _waypoint_buffer_count{0};
 
 	// Timing constants
-	static constexpr unsigned SCHEDULE_INTERVAL = 20_ms;  // 50Hz update rate
+	static constexpr unsigned SCHEDULE_INTERVAL = 20000;  // 50Hz update rate
 	static constexpr uint32_t PACKET_TIMEOUT_MS = 10;
 	static constexpr uint32_t STATUS_SEND_INTERVAL_MS = 50;  // Send status at 20Hz
 	static constexpr uint32_t CONNECTION_CHECK_INTERVAL_MS = 1000;  // Check connection every 1s

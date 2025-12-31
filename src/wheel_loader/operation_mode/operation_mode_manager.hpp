@@ -58,7 +58,7 @@
 #include "modes/wheel_loader/wl_manual_direct_mode/wl_manual_direct_mode.hpp"
 #include "modes/wheel_loader/wl_hold_mode/wl_hold_mode.hpp"
 #include "modes/wheel_loader/wl_loiter_mode/wl_loiter_mode.hpp"
-#include "modes/wheel_loader/wheel_loader_safety_stop_mode/wheel_loader_safety_stop_mode.hpp"
+#include "modes/wheel_loader/wl_safety_stop_mode/wl_safety_stop_mode.hpp"
 
 class OperationModeManager : public ModuleBase<OperationModeManager>, public ModuleParams,
 	public px4::ScheduledWorkItem
@@ -121,6 +121,9 @@ private:
 	WheelLoaderTrajFollowerMode _wheel_loader_traj_follower_mode{this};
 	WheelLoaderManualBucketMode _wheel_loader_manual_bucket_mode{this};
 	WheelLoaderManualDirectMode _wheel_loader_manual_direct_mode{this};
+	WheelLoaderHoldMode _wheel_loader_hold_mode{this};
+	WheelLoaderLoiterMode _wheel_loader_loiter_mode{this};
+	WheelLoaderSafetyStopMode _wheel_loader_safety_stop_mode{this};
 
 	// Current active mode pointer
 	OperationModeBase *_current_mode{nullptr};

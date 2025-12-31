@@ -31,7 +31,7 @@
  *
  ****************************************************************************/
 
-#include "wheel_loader_loiter_mode.hpp"
+#include "wl_loiter_mode.hpp"
 #include <px4_platform_common/log.h>
 
 WheelLoaderLoiterMode::WheelLoaderLoiterMode(ModuleParams *parent) :

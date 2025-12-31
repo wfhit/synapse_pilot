@@ -365,7 +365,7 @@ void OperatorInterface::send_mode_command(uint8_t mode, uint8_t source)
 	operation_mode_cmd_s cmd{};
 	cmd.timestamp = hrt_absolute_time();
 	cmd.target_mode = mode;
-	cmd.source = source;
+	cmd.mode_source = source;
 	_operation_mode_cmd_pub.publish(cmd);
 
 	PX4_INFO("Mode %d command from %s", mode, source == operation_mode_cmd_s::SOURCE_RC ? "RC" : "MAVLink");
@@ -382,7 +382,7 @@ void OperatorInterface::send_safety_ack_command()
 {
 	safety_ack_cmd_s cmd{};
 	cmd.timestamp = hrt_absolute_time();
-	cmd.acknowledge_all = true;
+	cmd.acknowledge_type = safety_ack_cmd_s::ACK_ALL;
 	_safety_ack_cmd_pub.publish(cmd);
 
 	PX4_INFO("Safety acknowledge command");
@@ -392,8 +392,8 @@ void OperatorInterface::send_emergency_stop(bool stop)
 {
 	safety_input_s input{};
 	input.timestamp = hrt_absolute_time();
-	input.emergency_stop_button = stop;
-	input.deadman_switch = _command_status.deadman_active;
+	input.emergency_stop_pressed = stop;
+	input.deadman_active = _command_status.deadman_active;
 	_safety_input_pub.publish(input);
 
 	PX4_WARN("Emergency stop: %s", stop ? "ACTIVE" : "cleared");
@@ -403,8 +403,8 @@ void OperatorInterface::update_deadman_status(bool active)
 {
 	safety_input_s input{};
 	input.timestamp = hrt_absolute_time();
-	input.emergency_stop_button = _command_status.emergency_stop_active;
-	input.deadman_switch = active;
+	input.emergency_stop_pressed = _command_status.emergency_stop_active;
+	input.deadman_active = active;
 	_safety_input_pub.publish(input);
 }
 
@@ -427,36 +427,37 @@ uint8_t OperatorInterface::map_rc_mode(uint8_t rc_value)
 {
 	// Map RC switch position (0-7) to operation mode
 	switch (rc_value) {
-	case 0: return operation_mode_cmd_s::MODE_MANUAL;
-	case 1: return operation_mode_cmd_s::MODE_SEMI_AUTO;
-	case 2: return operation_mode_cmd_s::MODE_AUTO;
-	case 3: return operation_mode_cmd_s::MODE_IDLE;
-	case 4: return operation_mode_cmd_s::MODE_SAFETY_STOP;
-	case 5: return operation_mode_cmd_s::MODE_EMERGENCY;
-	case 6: return operation_mode_cmd_s::MODE_CALIBRATION;
-	case 7: return operation_mode_cmd_s::MODE_DIAGNOSTICS;
-	default: return operation_mode_cmd_s::MODE_IDLE;
+	case 0: return operation_mode_cmd_s::MODE_WL_MANUAL_DIRECT;
+	case 1: return operation_mode_cmd_s::MODE_WL_MANUAL_BUCKET;
+	case 2: return operation_mode_cmd_s::MODE_WL_TRAJ_FOLLOWER;
+	case 3: return operation_mode_cmd_s::MODE_WL_HOLD;
+	case 4: return operation_mode_cmd_s::MODE_WL_SAFETY_STOP;
+	case 5: return operation_mode_cmd_s::MODE_WL_LOITER;
+	default: return operation_mode_cmd_s::MODE_WL_HOLD;
 	}
 }
 
 uint8_t OperatorInterface::map_rc_task(uint8_t rc_value)
 {
 	// Map RC trigger position (1-7) to task ID
-	switch (rc_value) {
-	case 1: return task_executor_cmd_s::TASK_LOAD_MATERIAL;
-	case 2: return task_executor_cmd_s::TASK_DUMP_MATERIAL;
-	case 3: return task_executor_cmd_s::TASK_TRAVEL_TO_POINT;
-	case 4: return task_executor_cmd_s::TASK_EMERGENCY_STOP;
-	case 5: return task_executor_cmd_s::TASK_STEERING_CALIBRATION;
-	case 6: return task_executor_cmd_s::TASK_ENCODER_CALIBRATION;
-	case 7: return task_executor_cmd_s::TASK_ACTUATOR_CALIBRATION;
-	default: return 0;
-	}
+	// TODO: Define task_executor_cmd message
+	(void)rc_value;  // Unused until task message is defined
+	return 0;
+	// switch (rc_value) {
+	// case 1: return task_executor_cmd_s::TASK_LOAD_MATERIAL;
+	// case 2: return task_executor_cmd_s::TASK_DUMP_MATERIAL;
+	// case 3: return task_executor_cmd_s::TASK_TRAVEL_TO_POINT;
+	// case 4: return task_executor_cmd_s::TASK_EMERGENCY_STOP;
+	// case 5: return task_executor_cmd_s::TASK_STEERING_CALIBRATION;
+	// case 6: return task_executor_cmd_s::TASK_ENCODER_CALIBRATION;
+	// case 7: return task_executor_cmd_s::TASK_ACTUATOR_CALIBRATION;
+	// default: return 0;
+	// }
 }
 
 int OperatorInterface::task_spawn(int argc, char *argv[])
 {
-	CommandModule *instance = new CommandModule();
+	OperatorInterface *instance = new OperatorInterface();
 
 	if (instance) {
 		_object.store(instance);

@@ -55,7 +55,7 @@
 
 #pragma once
 
-#include "../../operation_mode_base.hpp"
+#include "../../../operation_mode_base.hpp"
 
 #include <uORB/Publication.hpp>
 #include <uORB/topics/chassis_setpoint.h>
