@@ -2,11 +2,11 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "jlink (wheel_loader_holybro-v6xrt-wl)",
+            "name": "jlink (px4_fmu-v6x)",
             "gdbPath": "/usr/bin/gdb-multiarch",
-            "device": "MIMXRT1176DVMAA",
+            "device": "STM32H753II",
             "svdFile": "",
-            "rtos": "/home/frank/synapse_pilot_ws/SynapsePilot/platforms/nuttx/NuttX/nuttx/tools/jlink-nuttx.so",
+            "rtos": "/home/runner/work/SynapsePilot/SynapsePilot/platforms/nuttx/NuttX/nuttx/tools/jlink-nuttx.so",
             "executable": "${command:cmake.launchTargetPath}",
             "request": "launch",
             "type": "cortex-debug",
@@ -24,9 +24,9 @@
             ]
         },
         {
-            "name": "stlink (wheel_loader_holybro-v6xrt-wl)",
+            "name": "stlink (px4_fmu-v6x)",
             "gdbPath": "/usr/bin/gdb-multiarch",
-            "device": "MIMXRT1176DVMAA",
+            "device": "STM32H753II",
             "svdFile": "",
             "executable": "${command:cmake.launchTargetPath}",
             "request": "launch",
@@ -43,9 +43,9 @@
             ]
         },
         {
-            "name": "blackmagic (wheel_loader_holybro-v6xrt-wl)",
+            "name": "blackmagic (px4_fmu-v6x)",
             "gdbPath": "/usr/bin/gdb-multiarch",
-            "device": "MIMXRT1176DVMAA",
+            "device": "STM32H753II",
             "svdFile": "",
             "executable": "${command:cmake.launchTargetPath}",
             "request": "launch",
