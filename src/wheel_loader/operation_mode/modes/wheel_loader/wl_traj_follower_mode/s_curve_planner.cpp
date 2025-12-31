@@ -224,7 +224,7 @@ void SCurvePlanner::evaluateSevenSegment(float t, TrajectoryPoint &point)
 
 	float j_max = _limits.max_jerk;
 	(void)_limits.max_acceleration; // unused - for future implementation
-	float v_max = _limits.max_velocity;
+	(void)_limits.max_velocity; // unused - for future implementation
 
 	float time_acc = 0.f;
 	float pos = _start_position;

@@ -65,7 +65,7 @@ bool SteeringController::init()
 	PX4_INFO("Steering Controller initialized");
 	PX4_INFO("Max angle: ±%.1f°, ST3125 Servo ID: %d",
 		 (double)math::degrees(_max_steering_angle.get()),
-		 (int)_st3125_servo_id.get());
+		 (int)_st31251000000ervo_id.get());
 
 	return true;
 }
@@ -152,7 +152,7 @@ void SteeringController::send_servo_command(float position_rad)
 
 	robotic_servo_setpoint_s cmd{};
 	cmd.timestamp = hrt_absolute_time();
-	cmd.id = _st3125_servo_id.get();
+	cmd.id = _st31251000000ervo_id.get();
 	cmd.command_type = 0; // position control
 	cmd.goal_position = position_rad;
 	cmd.goal_velocity = 0.0f; // Let ST3125 handle velocity
@@ -167,7 +167,7 @@ void SteeringController::process_servo_feedback()
 	robotic_servo_status_s feedback;
 
 	if (_servo_feedback_sub.update(&feedback)) {
-		if (feedback.id == _st3125_servo_id.get()) {
+		if (feedback.id == _st31251000000ervo_id.get()) {
 			_last_feedback_time = hrt_absolute_time();
 
 			// Update servo state

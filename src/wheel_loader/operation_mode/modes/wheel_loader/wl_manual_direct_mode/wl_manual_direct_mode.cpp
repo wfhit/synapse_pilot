@@ -31,7 +31,7 @@
  *
  ****************************************************************************/
 
-#include "wheel_loader_manual_direct_mode.hpp"
+#include "wl_manual_direct_mode.hpp"
 #include <px4_platform_common/log.h>
 
 WheelLoaderManualDirectMode::WheelLoaderManualDirectMode(ModuleParams *parent) :
@@ -120,11 +120,11 @@ void WheelLoaderManualDirectMode::update(float dt)
 bool WheelLoaderManualDirectMode::is_valid() const
 {
 	bool position_valid = _vehicle_local_position.xy_valid && _vehicle_local_position.z_valid &&
-			      (hrt_elapsed_time(&_vehicle_local_position.timestamp) < 500_ms);
+			      (hrt_elapsed_time(&_vehicle_local_position.timestamp) < 500000);  // 500ms in microseconds
 
-	bool attitude_valid = (hrt_elapsed_time(&_vehicle_attitude.timestamp) < 500_ms);
+	bool attitude_valid = (hrt_elapsed_time(&_vehicle_attitude.timestamp) < 500000);  // 500ms in microseconds
 
-	bool rc_valid = (hrt_elapsed_time(&_manual_control_setpoint.timestamp) < 500_ms);
+	bool rc_valid = (hrt_elapsed_time(&_manual_control_setpoint.timestamp) < 500000);  // 500ms in microseconds
 
 	return position_valid && attitude_valid && rc_valid;
 }

@@ -82,12 +82,12 @@ public:
 	int print_status() override;
 
 private:
-	static constexpr uint32_t SCHEDULE_INTERVAL{10_ms};	// 100Hz control loop
+	static constexpr uint32_t SCHEDULE_INTERVAL{10000};	// 100Hz control loop
 	static constexpr float CONTROL_DT{0.01f};		// 100Hz = 0.01s
 	static constexpr float MAX_PWM_VALUE{1.0f};
 	static constexpr float MIN_PWM_VALUE{-1.0f};
-	static constexpr uint64_t SETPOINT_TIMEOUT_US{500_ms};
-	static constexpr uint64_t ENCODER_TIMEOUT_US{100_ms};
+	static constexpr uint64_t SETPOINT_TIMEOUT_US{500000};
+	static constexpr uint64_t ENCODER_TIMEOUT_US{100000};
 	static constexpr float DEFAULT_FILTER_FREQ{10.0f};	// Hz
 
 	void Run() override;

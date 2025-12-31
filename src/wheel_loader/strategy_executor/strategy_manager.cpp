@@ -42,11 +42,11 @@ StrategyExecutor::StrategyExecutor() :
 	ScheduledWorkItem(MODULE_NAME, px4::wq_configurations::lp_default)
 {
 	// Initialize health monitoring hysteresis
-	_battery_low_hysteresis.set_hysteresis_time_from(false, 2000_ms);  // 2s to trigger
-	_battery_low_hysteresis.set_hysteresis_time_from(true, 5000_ms);   // 5s to clear
+	_battery_low_hysteresis.set_hysteresis_time_from(false, 2000000);  // 2s to trigger
+	_battery_low_hysteresis.set_hysteresis_time_from(true, 5000000);   // 5s to clear
 
-	_system_critical_hysteresis.set_hysteresis_time_from(false, 500_ms);  // 500ms to trigger
-	_system_critical_hysteresis.set_hysteresis_time_from(true, 2000_ms);  // 2s to clear
+	_system_critical_hysteresis.set_hysteresis_time_from(false, 500000);  // 500ms to trigger
+	_system_critical_hysteresis.set_hysteresis_time_from(true, 2000000);  // 2s to clear
 }
 
 StrategyExecutor::~StrategyExecutor()
@@ -145,7 +145,7 @@ void StrategyExecutor::Run()
 	perf_end(_cycle_perf);
 
 	// Schedule next run
-	ScheduleDelayed(10_ms);
+	ScheduleDelayed(10000);
 }
 
 void StrategyExecutor::process_commands()

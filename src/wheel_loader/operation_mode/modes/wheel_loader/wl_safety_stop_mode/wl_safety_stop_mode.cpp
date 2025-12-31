@@ -31,7 +31,7 @@
  *
  ****************************************************************************/
 
-#include "wheel_loader_safety_stop_mode.hpp"
+#include "wl_safety_stop_mode.hpp"
 #include <px4_platform_common/log.h>
 
 WheelLoaderSafetyStopMode::WheelLoaderSafetyStopMode(ModuleParams *parent) :

@@ -457,7 +457,7 @@ uint8_t OperatorInterface::map_rc_task(uint8_t rc_value)
 
 int OperatorInterface::task_spawn(int argc, char *argv[])
 {
-	CommandModule *instance = new CommandModule();
+	OperatorInterface *instance = new OperatorInterface();
 
 	if (instance) {
 		_object.store(instance);

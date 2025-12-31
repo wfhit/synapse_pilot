@@ -304,7 +304,7 @@ protected:
 	{
 		operation_mode_cmd_s cmd{};
 		cmd.timestamp = hrt_absolute_time();
-		cmd.mode = mode;
+		cmd.target_mode = mode;
 		cmd.priority = priority;
 		_mode_cmd_pub.publish(cmd);
 	}

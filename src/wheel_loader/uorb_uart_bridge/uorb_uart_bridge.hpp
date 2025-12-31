@@ -202,7 +202,7 @@ private:
 	} _stats;
 
 	// Timing constants
-	static constexpr unsigned SCHEDULE_INTERVAL = 10_ms;  // 10ms for responsiveness
+	static constexpr unsigned SCHEDULE_INTERVAL = 10000;  // 10ms for responsiveness
 	static constexpr uint32_t HEARTBEAT_INTERVAL_MS = 1000;
 	static constexpr uint32_t CONNECTION_TIMEOUT_MS = 3000;
 	static constexpr uint32_t STATISTICS_INTERVAL_MS = 10000;

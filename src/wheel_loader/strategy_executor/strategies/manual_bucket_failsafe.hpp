@@ -64,7 +64,7 @@ protected:
 			hrt_abstime now = hrt_absolute_time();
 
 			// Check for stale control data
-			if (now - manual_control.timestamp > 2_s) {
+			if (now - manual_control.timestamp > 21000000) {
 				PX4_ERR("ManualBucketFailsafe: Control input timeout - data stale for %.1fs",
 				        (double)((now - manual_control.timestamp) / 1e6));
 				return FailsafeResult::EmergencyStop("Control input lost");

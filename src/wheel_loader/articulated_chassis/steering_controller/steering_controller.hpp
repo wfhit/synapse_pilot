@@ -129,7 +129,7 @@ private:
 	// Parameters
 	DEFINE_PARAMETERS(
 		(ParamFloat<px4::params::STEER_MAX_ANG>) _max_steering_angle,
-		(ParamInt<px4::params::STEER_ST3125_ID>) _st3125_servo_id,
+		(ParamInt<px4::params::STEER_ST3125_ID>) _st31251000000ervo_id,
 		(ParamFloat<px4::params::STEER_ST3125_CR>) _st3125_current_limit,
 		(ParamInt<px4::params::STEER_LT_LF_ID>) _limit_left_instance,
 		(ParamInt<px4::params::STEER_LT_RT_ID>) _limit_right_instance,

@@ -204,7 +204,7 @@ void VLAProxy::Run()
 
 	// Send robot status at configured rate
 	hrt_abstime now = hrt_absolute_time();
-	uint32_t status_interval_us = (1000_ms / _param_status_rate.get()) * 1000;
+	uint32_t status_interval_us = (1000000 / _param_status_rate.get()) * 1000;
 
 	if (now - _last_status_sent > status_interval_us) {
 		if (send_robot_status()) {

@@ -31,7 +31,7 @@
  *
  ****************************************************************************/
 
-#include "wheel_loader_hold_mode.hpp"
+#include "wl_hold_mode.hpp"
 #include <px4_platform_common/log.h>
 
 WheelLoaderHoldMode::WheelLoaderHoldMode(ModuleParams *parent) :
@@ -57,9 +57,9 @@ bool WheelLoaderHoldMode::activate()
 
 	// Verify position data is valid and recent
 	bool position_valid = _vehicle_local_position.xy_valid && _vehicle_local_position.z_valid &&
-			      (hrt_elapsed_time(&_vehicle_local_position.timestamp) < 500_ms);
+			      (hrt_elapsed_time(&_vehicle_local_position.timestamp) < 500000);
 
-	bool attitude_valid = (hrt_elapsed_time(&_vehicle_attitude.timestamp) < 500_ms);
+	bool attitude_valid = (hrt_elapsed_time(&_vehicle_attitude.timestamp) < 500000);
 
 	if (!position_valid || !attitude_valid) {
 		PX4_ERR("Hold mode activation failed: Sensor data invalid or stale");
@@ -118,9 +118,9 @@ void WheelLoaderHoldMode::update(float dt)
 bool WheelLoaderHoldMode::is_valid() const
 {
 	bool position_valid = _vehicle_local_position.xy_valid && _vehicle_local_position.z_valid &&
-			      (hrt_elapsed_time(&_vehicle_local_position.timestamp) < 500_ms);
+			      (hrt_elapsed_time(&_vehicle_local_position.timestamp) < 500000);
 
-	bool attitude_valid = (hrt_elapsed_time(&_vehicle_attitude.timestamp) < 500_ms);
+	bool attitude_valid = (hrt_elapsed_time(&_vehicle_attitude.timestamp) < 500000);
 
 	return position_valid && attitude_valid && _hold_state.valid;
 }

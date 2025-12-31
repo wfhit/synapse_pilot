@@ -247,7 +247,7 @@ private:
 	systemlib::Hysteresis _safety_button_hysteresis{false};
 	hrt_abstime _last_health_check{0};
 	bool _safety_button_triggered{false};
-	static constexpr hrt_abstime HEALTH_CHECK_INTERVAL = 100_ms;
+	static constexpr hrt_abstime HEALTH_CHECK_INTERVAL = 100000;
 
 	// ========== Statistics ==========
 	StrategyStats _strategy_stats[MAX_STRATEGIES]{};
@@ -256,7 +256,7 @@ private:
 	// ========== Status Publication ==========
 	strategy_status_s _status{};
 	hrt_abstime _last_status_publish{0};
-	static constexpr hrt_abstime STATUS_PUBLISH_INTERVAL = 100_ms;
+	static constexpr hrt_abstime STATUS_PUBLISH_INTERVAL = 100000;
 
 	// ========== Performance Monitoring ==========
 	perf_counter_t _cycle_perf{perf_alloc(PC_ELAPSED, MODULE_NAME": cycle")};
