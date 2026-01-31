@@ -1,0 +1,87 @@
+name: Unit Tests
+
+on:
+  push:
+    branches:
+      - 'main'
+    paths-ignore:
+      - 'docs/**'
+  pull_request:
+    branches:
+      - '**'
+    paths-ignore:
+      - 'docs/**'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        check: [
+          "tests",
+          "tests_coverage",
+        ]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Running [${{ matrix.check }}]
+        uses: addnab/docker-run-action@v3
+        with:
+          image: px4io/px4-dev:v1.16.0-rc1-258-g0369abd556
+          options: -v ${{ github.workspace }}:/workspace
+          run: |
+            cd /workspace
+            git config --global --add safe.directory /workspace
+            make ${{ matrix.check }}
+
+      - name: Upload Coverage to Codecov
+        if: contains(matrix.check, 'coverage')
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          flags: unittests
+          file: coverage/lcov.info
+
+  module-documentation:
+    name: Module Documentation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate Module Documentation
+        uses: addnab/docker-run-action@v3
+        with:
+          image: px4io/px4-dev:v1.16.0-rc1-258-g0369abd556
+          options: -v ${{ github.workspace }}:/workspace
+          run: |
+            cd /workspace
+            git config --global --add safe.directory /workspace
+            make module_documentation
+
+  stack-check:
+    name: Stack Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build and Check Stack Usage
+        uses: addnab/docker-run-action@v3
+        with:
+          image: px4io/px4-dev-nuttx-focal:2022-08-12
+          options: -v ${{ github.workspace }}:/workspace
+          run: |
+            cd /workspace
+            git config --global --add safe.directory /workspace
+            make px4_fmu-v2_default stack_check

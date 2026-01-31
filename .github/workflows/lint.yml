@@ -1,0 +1,83 @@
+name: Lint Checks
+
+on:
+  push:
+    branches:
+      - 'main'
+    paths-ignore:
+      - 'docs/**'
+  pull_request:
+    branches:
+      - '**'
+    paths-ignore:
+      - 'docs/**'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  format-checks:
+    name: Format & Style Checks
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        check: [
+          "check_format",
+          "check_newlines",
+          "shellcheck_all",
+          "validate_module_configs",
+        ]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Running [${{ matrix.check }}]
+        uses: addnab/docker-run-action@v3
+        with:
+          image: px4io/px4-dev:v1.16.0-rc1-258-g0369abd556
+          options: -v ${{ github.workspace }}:/workspace
+          run: |
+            cd /workspace
+            git config --global --add safe.directory /workspace
+            make ${{ matrix.check }}
+
+  clang-tidy:
+    name: Clang Tidy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Running clang-tidy
+        uses: addnab/docker-run-action@v3
+        with:
+          image: px4io/px4-dev-clang:2021-09-08
+          options: -v ${{ github.workspace }}:/workspace
+          run: |
+            cd /workspace
+            git config --global --add safe.directory /workspace
+            make clang-tidy
+
+  python-checks:
+    name: Python CI Checks
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Python3
+        run: sudo apt-get install python3 python3-setuptools python3-pip -y
+
+      - name: Install tools
+        run: python3 -m pip install mypy types-requests flake8 --break-system-packages
+
+      - name: Check MAVSDK test scripts with mypy
+        run: $HOME/.local/bin/mypy --strict test/mavsdk_tests/*.py
+
+      - name: Check MAVSDK test scripts with flake8
+        run: $HOME/.local/bin/flake8 test/mavsdk_tests/*.py

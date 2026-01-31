@@ -1,0 +1,163 @@
+name: Functional Tests
+
+on:
+  push:
+    branches:
+      - 'main'
+    paths-ignore:
+      - 'docs/**'
+  pull_request:
+    branches:
+      - '**'
+    paths-ignore:
+      - 'docs/**'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  mavros-mission-tests:
+    name: MAVROS Mission Tests (${{ matrix.config.vehicle }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - {vehicle: "iris", mission: "MC_mission_box"}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build and Run MAVROS Tests
+        uses: addnab/docker-run-action@v3
+        with:
+          image: px4io/px4-dev-ros-melodic:2021-09-08
+          options: -v ${{ github.workspace }}:/workspace
+          run: |
+            cd /workspace
+            git config --global --add safe.directory /workspace
+            make px4_sitl_default
+            make px4_sitl_default sitl_gazebo-classic
+            ./test/rostest_px4_run.sh mavros_posix_test_mission.test mission:=${{matrix.config.mission}} vehicle:=${{matrix.config.vehicle}}
+
+  failsafe-simulator:
+    name: Failsafe Simulator Build
+    runs-on: ubuntu-latest
+    container:
+      image: px4io/px4-dev:v1.16.0-rc1-258-g0369abd556
+      options: --privileged --ulimit core=-1 --security-opt seccomp=unconfined
+    steps:
+      - name: Install Node v20.18.0
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.18.0
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Git ownership workaround
+        run: git config --system --add safe.directory '*'
+
+      - name: Install emscripten
+        run: |
+          git clone https://github.com/emscripten-core/emsdk.git _emscripten_sdk
+          cd _emscripten_sdk
+          git checkout 4.0.15
+          ./emsdk install latest
+          ./emsdk activate latest
+
+      - name: Build Failsafe Web
+        run: |
+          . ./_emscripten_sdk/emsdk_env.sh
+          make failsafe_web
+
+  ros-integration-tests:
+    name: ROS Integration Tests
+    runs-on: ubuntu-latest
+    container:
+      image: px4io/px4-dev-ros2-galactic:2021-09-08
+      options: --privileged --ulimit core=-1 --security-opt seccomp=unconfined
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Git Ownership Workaround
+        run: git config --system --add safe.directory '*'
+
+      - name: Update ROS Keys
+        run: |
+          sudo rm -f /etc/apt/sources.list.d/ros2.list && \
+          sudo curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o /usr/share/keyrings/ros-archive-keyring.gpg && \
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo $UBUNTU_CODENAME) main" | sudo tee /etc/apt/sources.list.d/ros2.list > /dev/null
+
+      - name: Install gazebo
+        run: |
+          apt update && apt install -y gazebo11 libgazebo11-dev gstreamer1.0-plugins-bad gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-ugly libgstreamer-plugins-base1.0-dev
+
+      - name: Setup ccache
+        run: |
+          mkdir -p ~/.ccache
+          echo "base_dir = ${GITHUB_WORKSPACE}" > ~/.ccache/ccache.conf
+          echo "compression = true" >> ~/.ccache/ccache.conf
+          echo "compression_level = 6" >> ~/.ccache/ccache.conf
+          echo "max_size = 300M" >> ~/.ccache/ccache.conf
+          echo "hash_dir = false" >> ~/.ccache/ccache.conf
+          ccache -s
+          ccache -z
+
+      - name: Build micro-xrce-dds-agent
+        run: |
+          cd /opt
+          git clone --recursive https://github.com/eProsima/Micro-XRCE-DDS-Agent.git
+          cd Micro-XRCE-DDS-Agent
+          git checkout v2.2.1
+          sed -i 's/_fastdds_tag 2.8.x/_fastdds_tag 2.8.2/g' CMakeLists.txt
+          mkdir build
+          cd build
+          cmake ..
+          make -j2
+
+      - name: Build ROS2 interface library
+        shell: bash
+        run: |
+          PX4_DIR="$(pwd)"
+          . /opt/ros/galactic/setup.bash
+          mkdir -p /opt/px4_ws/src
+          cd /opt/px4_ws/src
+          git clone --recursive https://github.com/Auterion/px4-ros2-interface-lib.git
+          cd ..
+          "${PX4_DIR}/Tools/copy_to_ros_ws.sh" "$(pwd)"
+          rm -rf src/translation_node src/px4_msgs_old
+          colcon build --symlink-install
+
+      - name: Build PX4 SITL
+        run: |
+          make px4_sitl_default
+          make px4_sitl_default sitl_gazebo-classic
+
+      - name: Core dump settings
+        run: |
+          ulimit -c unlimited
+          echo "`pwd`/%e.core" > /proc/sys/kernel/core_pattern
+
+      - name: Run ROS tests
+        shell: bash
+        run: |
+          . /opt/px4_ws/install/setup.bash
+          /opt/Micro-XRCE-DDS-Agent/build/MicroXRCEAgent udp4 localhost -p 8888 -v 0 &
+          test/ros_test_runner.py --verbose --model iris --upload --force-color
+        timeout-minutes: 45
+
+      - name: Upload failed logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ros-integration-failed-logs
+          path: |
+            logs/**/**/**/*.log
+            logs/**/**/**/*.ulg
+            build/px4_sitl_default/tmp_ros_tests/rootfs/log/**/*.ulg
