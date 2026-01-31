@@ -25,14 +25,19 @@ permissions:
   actions: read
 
 jobs:
-  analyze:
+  analyze-cpp:
     name: Analyze C/C++
     runs-on: ubuntu-latest
+    container:
+      image: px4io/px4-dev-nuttx-focal:2022-08-12
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Git ownership workaround
+        run: git config --system --add safe.directory '*'
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
@@ -41,22 +46,15 @@ jobs:
           # Use queries for security and quality
           queries: security-and-quality
 
-      - name: Build with Docker
-        uses: addnab/docker-run-action@v3
-        with:
-          image: px4io/px4-dev-nuttx-focal:2022-08-12
-          options: -v ${{ github.workspace }}:/workspace
-          run: |
-            cd /workspace
-            git config --global --add safe.directory /workspace
-            make px4_sitl_default
+      - name: Build PX4 SITL
+        run: make px4_sitl_default
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
         with:
           category: "/language:cpp"
 
-  python-analysis:
+  analyze-python:
     name: Analyze Python
     runs-on: ubuntu-latest
     steps:

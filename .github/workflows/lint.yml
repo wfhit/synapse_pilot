@@ -20,6 +20,8 @@ jobs:
   format-checks:
     name: Format & Style Checks
     runs-on: ubuntu-latest
+    container:
+      image: px4io/px4-dev:v1.16.0-rc1-258-g0369abd556
     strategy:
       fail-fast: false
       matrix:
@@ -34,33 +36,27 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Git ownership workaround
+        run: git config --system --add safe.directory '*'
+
       - name: Running [${{ matrix.check }}]
-        uses: addnab/docker-run-action@v3
-        with:
-          image: px4io/px4-dev:v1.16.0-rc1-258-g0369abd556
-          options: -v ${{ github.workspace }}:/workspace
-          run: |
-            cd /workspace
-            git config --global --add safe.directory /workspace
-            make ${{ matrix.check }}
+        run: make ${{ matrix.check }}
 
   clang-tidy:
     name: Clang Tidy
     runs-on: ubuntu-latest
+    container:
+      image: px4io/px4-dev-clang:2021-09-08
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
+      - name: Git ownership workaround
+        run: git config --system --add safe.directory '*'
+
       - name: Running clang-tidy
-        uses: addnab/docker-run-action@v3
-        with:
-          image: px4io/px4-dev-clang:2021-09-08
-          options: -v ${{ github.workspace }}:/workspace
-          run: |
-            cd /workspace
-            git config --global --add safe.directory /workspace
-            make clang-tidy
+        run: make clang-tidy
 
   python-checks:
     name: Python CI Checks

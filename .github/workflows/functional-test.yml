@@ -20,6 +20,8 @@ jobs:
   mavros-mission-tests:
     name: MAVROS Mission Tests (${{ matrix.config.vehicle }})
     runs-on: ubuntu-latest
+    container:
+      image: px4io/px4-dev-ros-melodic:2021-09-08
     strategy:
       fail-fast: false
       matrix:
@@ -30,17 +32,14 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Git ownership workaround
+        run: git config --system --add safe.directory '*'
+
       - name: Build and Run MAVROS Tests
-        uses: addnab/docker-run-action@v3
-        with:
-          image: px4io/px4-dev-ros-melodic:2021-09-08
-          options: -v ${{ github.workspace }}:/workspace
-          run: |
-            cd /workspace
-            git config --global --add safe.directory /workspace
-            make px4_sitl_default
-            make px4_sitl_default sitl_gazebo-classic
-            ./test/rostest_px4_run.sh mavros_posix_test_mission.test mission:=${{matrix.config.mission}} vehicle:=${{matrix.config.vehicle}}
+        run: |
+          make px4_sitl_default
+          make px4_sitl_default sitl_gazebo-classic
+          ./test/rostest_px4_run.sh mavros_posix_test_mission.test mission:=${{matrix.config.mission}} vehicle:=${{matrix.config.vehicle}}
 
   failsafe-simulator:
     name: Failsafe Simulator Build
