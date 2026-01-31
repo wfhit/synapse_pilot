@@ -57,11 +57,16 @@ jobs:
   analyze-python:
     name: Analyze Python
     runs-on: frank_private_runner
+    container:
+      image: px4io/px4-dev:v1.16.0-rc1-258-g0369abd556
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Git ownership workaround
+        run: git config --system --add safe.directory '*'
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3

@@ -29,12 +29,17 @@ jobs:
   group_targets:
     name: Scan for Board Targets
     runs-on: frank_private_runner
+    container:
+      image: px4io/px4-dev:v1.16.0-rc1-258-g0369abd556
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
       timestamp: ${{ steps.set-timestamp.outputs.timestamp }}
       branchname: ${{ steps.set-branch.outputs.branchname }}
     steps:
       - uses: actions/checkout@v4
+
+      - name: Git ownership workaround
+        run: git config --system --add safe.directory '*'
 
       - name: Cache Python pip
         uses: actions/cache@v4
