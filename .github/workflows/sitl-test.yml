@@ -20,8 +20,10 @@ jobs:
   sitl-tests:
     name: SITL ${{ matrix.config.model }}
     # NOTE: This workflow can run on either GitHub-hosted runners or self-hosted infrastructure.
-    # - To use GitHub-hosted runners: uncomment the "runs-on: ubuntu-latest" line and comment the "runs-on: [runs-on,..." line
-    # - To use self-hosted runners via RunsOn: uncomment the "runs-on: [runs-on,..." line and comment the "runs-on: ubuntu-latest" line
+    # - To use GitHub-hosted runners: uncomment the "runs-on: ubuntu-latest" line and comment out the "runs-on: [runs-on,..." line
+    # - To use self-hosted runners via RunsOn: uncomment the "runs-on: [runs-on,..." line and comment out the "runs-on: ubuntu-latest" line
+    # RunsOn configuration format: [runs-on, runner=<type>, image=<os>, "run-id=...", spot=<bool>]
+    # See https://runs-on.com for more details on RunsOn service configuration
     runs-on: [runs-on,runner=4cpu-linux-x64,image=ubuntu22-full-x64,"run-id=${{ github.run_id }}",spot=false]
     # runs-on: ubuntu-latest
     container:
