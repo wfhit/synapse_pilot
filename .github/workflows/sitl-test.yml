@@ -19,7 +19,11 @@ concurrency:
 jobs:
   sitl-tests:
     name: SITL ${{ matrix.config.model }}
-    runs-on: ubuntu-latest
+    # NOTE: This workflow can run on either GitHub-hosted runners or self-hosted infrastructure.
+    # - To use GitHub-hosted runners: uncomment the "runs-on: ubuntu-latest" line and comment the "runs-on: [runs-on,..." line
+    # - To use self-hosted runners via RunsOn: uncomment the "runs-on: [runs-on,..." line and comment the "runs-on: ubuntu-latest" line
+    runs-on: [runs-on,runner=4cpu-linux-x64,image=ubuntu22-full-x64,"run-id=${{ github.run_id }}",spot=false]
+    # runs-on: ubuntu-latest
     container:
       image: px4io/px4-dev-simulation-focal:2021-09-08
       options: --privileged --ulimit core=-1 --security-opt seccomp=unconfined
