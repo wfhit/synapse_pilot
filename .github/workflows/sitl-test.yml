@@ -19,7 +19,7 @@ concurrency:
 jobs:
   sitl-tests:
     name: SITL ${{ matrix.config.model }}
-    runs-on: ubuntu-latest
+    runs-on: frank_private_runner
     container:
       image: px4io/px4-dev-simulation-focal:2021-09-08
       options: --privileged --ulimit core=-1 --security-opt seccomp=unconfined
