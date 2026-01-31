@@ -20,6 +20,8 @@ jobs:
   unit-tests:
     name: Unit Tests
     runs-on: ubuntu-latest
+    container:
+      image: px4io/px4-dev:v1.16.0-rc1-258-g0369abd556
     strategy:
       fail-fast: false
       matrix:
@@ -32,15 +34,11 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Git ownership workaround
+        run: git config --system --add safe.directory '*'
+
       - name: Running [${{ matrix.check }}]
-        uses: addnab/docker-run-action@v3
-        with:
-          image: px4io/px4-dev:v1.16.0-rc1-258-g0369abd556
-          options: -v ${{ github.workspace }}:/workspace
-          run: |
-            cd /workspace
-            git config --global --add safe.directory /workspace
-            make ${{ matrix.check }}
+        run: make ${{ matrix.check }}
 
       - name: Upload Coverage to Codecov
         if: contains(matrix.check, 'coverage')
@@ -53,35 +51,31 @@ jobs:
   module-documentation:
     name: Module Documentation
     runs-on: ubuntu-latest
+    container:
+      image: px4io/px4-dev:v1.16.0-rc1-258-g0369abd556
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
+      - name: Git ownership workaround
+        run: git config --system --add safe.directory '*'
+
       - name: Validate Module Documentation
-        uses: addnab/docker-run-action@v3
-        with:
-          image: px4io/px4-dev:v1.16.0-rc1-258-g0369abd556
-          options: -v ${{ github.workspace }}:/workspace
-          run: |
-            cd /workspace
-            git config --global --add safe.directory /workspace
-            make module_documentation
+        run: make module_documentation
 
   stack-check:
     name: Stack Check
     runs-on: ubuntu-latest
+    container:
+      image: px4io/px4-dev-nuttx-focal:2022-08-12
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
+      - name: Git ownership workaround
+        run: git config --system --add safe.directory '*'
+
       - name: Build and Check Stack Usage
-        uses: addnab/docker-run-action@v3
-        with:
-          image: px4io/px4-dev-nuttx-focal:2022-08-12
-          options: -v ${{ github.workspace }}:/workspace
-          run: |
-            cd /workspace
-            git config --global --add safe.directory /workspace
-            make px4_fmu-v2_default stack_check
+        run: make px4_fmu-v2_default stack_check
