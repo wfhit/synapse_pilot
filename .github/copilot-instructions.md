@@ -4,6 +4,13 @@
 
 SynapsePilot is a PX4 v1.17.0-alpha1 fork focused on **multi-vehicle-type support** and **articulated chassis control**, specifically for wheel loader autonomous vehicles. This is a real-time embedded autopilot system combining NuttX RTOS with distributed board architecture.
 
+## Git Workflow
+
+**The `main` branch is protected.** Do not commit directly to `main`. Always:
+1. Create a new feature branch first: `git checkout -b feature/your-feature-name`
+2. Make your changes and commit to the feature branch
+3. Push the feature branch and create a pull request to merge into `main`
+
 ## Build System
 
 **All builds must use Docker environment** - do not build directly on host.
