@@ -19,7 +19,7 @@ concurrency:
 jobs:
   mavros-mission-tests:
     name: MAVROS Mission Tests (${{ matrix.config.vehicle }})
-    runs-on: ubuntu-latest
+    runs-on: frank_private_runner
     container:
       image: px4io/px4-dev-ros-melodic:2021-09-08
     strategy:
@@ -43,7 +43,7 @@ jobs:
 
   failsafe-simulator:
     name: Failsafe Simulator Build
-    runs-on: ubuntu-latest
+    runs-on: frank_private_runner
     container:
       image: px4io/px4-dev:v1.16.0-rc1-258-g0369abd556
       options: --privileged --ulimit core=-1 --security-opt seccomp=unconfined
@@ -75,7 +75,7 @@ jobs:
 
   ros-integration-tests:
     name: ROS Integration Tests
-    runs-on: ubuntu-latest
+    runs-on: frank_private_runner
     container:
       image: px4io/px4-dev-ros2-galactic:2021-09-08
       options: --privileged --ulimit core=-1 --security-opt seccomp=unconfined

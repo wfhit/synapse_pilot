@@ -19,7 +19,7 @@ concurrency:
 jobs:
   format-checks:
     name: Format & Style Checks
-    runs-on: ubuntu-latest
+    runs-on: frank_private_runner
     container:
       image: px4io/px4-dev:v1.16.0-rc1-258-g0369abd556
     strategy:
@@ -44,7 +44,7 @@ jobs:
 
   clang-tidy:
     name: Clang Tidy
-    runs-on: ubuntu-latest
+    runs-on: frank_private_runner
     container:
       image: px4io/px4-dev-clang:2021-09-08
     steps:
@@ -60,20 +60,22 @@ jobs:
 
   python-checks:
     name: Python CI Checks
-    runs-on: ubuntu-24.04
+    runs-on: frank_private_runner
+    container:
+      image: px4io/px4-dev:v1.16.0-rc1-258-g0369abd556
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Install Python3
-        run: sudo apt-get install python3 python3-setuptools python3-pip -y
+      - name: Git ownership workaround
+        run: git config --system --add safe.directory '*'
 
       - name: Install tools
-        run: python3 -m pip install mypy types-requests flake8 --break-system-packages
+        run: pip3 install mypy types-requests flake8
 
       - name: Check MAVSDK test scripts with mypy
-        run: $HOME/.local/bin/mypy --strict test/mavsdk_tests/*.py
+        run: mypy --strict test/mavsdk_tests/*.py
 
       - name: Check MAVSDK test scripts with flake8
-        run: $HOME/.local/bin/flake8 test/mavsdk_tests/*.py
+        run: flake8 test/mavsdk_tests/*.py

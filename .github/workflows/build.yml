@@ -28,13 +28,18 @@ permissions:
 jobs:
   group_targets:
     name: Scan for Board Targets
-    runs-on: ubuntu-latest
+    runs-on: frank_private_runner
+    container:
+      image: px4io/px4-dev:v1.16.0-rc1-258-g0369abd556
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
       timestamp: ${{ steps.set-timestamp.outputs.timestamp }}
       branchname: ${{ steps.set-branch.outputs.branchname }}
     steps:
       - uses: actions/checkout@v4
+
+      - name: Git ownership workaround
+        run: git config --system --add safe.directory '*'
 
       - name: Cache Python pip
         uses: actions/cache@v4
@@ -70,7 +75,7 @@ jobs:
 
   build:
     name: Build [${{ matrix.group }}]
-    runs-on: ubuntu-latest
+    runs-on: frank_private_runner
     needs: group_targets
     strategy:
       matrix: ${{ fromJson(needs.group_targets.outputs.matrix) }}
@@ -131,7 +136,7 @@ jobs:
   # Quick builds for wheel loader targets
   wheel-loader-builds:
     name: Wheel Loader Builds
-    runs-on: ubuntu-latest
+    runs-on: frank_private_runner
     container:
       image: px4io/px4-dev-nuttx-focal:2022-08-12
     strategy:
