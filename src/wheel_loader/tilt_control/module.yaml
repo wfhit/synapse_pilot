@@ -491,6 +491,18 @@ parameters:
             default: 5.0
             unit: mm
 
+        BCT_CAL_TO:
+            description:
+                short: Calibration timeout (seconds)
+                long: |
+                    Maximum time allowed for calibration sequence to complete.
+                    Calibration involves finding load and dump limits with settling time.
+            type: int32
+            min: 10
+            max: 300
+            default: 120
+            unit: s
+
     - group: Hardware Configuration
       definitions:
 

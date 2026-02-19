@@ -1,9 +1,4 @@
 module_name: Operator Interface
-serial_config:
-    - command: operator_interface start
-      port_config_param:
-          name: None
-          group: Operator Interface
 
 parameters:
     - group: Operator Interface

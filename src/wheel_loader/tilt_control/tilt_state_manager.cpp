@@ -490,7 +490,7 @@ bool TiltStateManager::check_calibration_timeout() const
 	}
 
 	// Check if calibration has been running too long
-	hrt_abstime calibration_timeout = 30 * 1000000;  // 30 seconds timeout
+	hrt_abstime calibration_timeout = static_cast<hrt_abstime>(_param_calibration_timeout.get()) * 1000000ULL;
 	return (_calibration_start_time != 0) &&
 		   (hrt_elapsed_time(&_calibration_start_time) > calibration_timeout);
 }

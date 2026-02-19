@@ -491,6 +491,12 @@ $ wheel_controller tune_d 0.05
 	return 0;
 }
 
+void DrivetrainController::set_speed_setpoint(float speed_rad_s)
+{
+	_state.setpoint_rad_s = math::constrain(speed_rad_s, -_param_max_speed.get(), _param_max_speed.get());
+	_state.last_setpoint_us = hrt_absolute_time();
+}
+
 int DrivetrainController::custom_command(int argc, char *argv[])
 {
 	if (argc < 1) {
@@ -507,54 +513,127 @@ int DrivetrainController::custom_command(int argc, char *argv[])
 		}
 
 		float speed = static_cast<float>(atof(argv[1]));
-		// Note: Maximum speed validation would require instance access
-		PX4_INFO("Setting target speed to %.2f rad/s", (double)speed);
-		// TODO: Implement instance-based speed setting
+		DrivetrainController *instance = get_instance();
+
+		if (instance == nullptr) {
+			PX4_ERR("drivetrain_controller is not running");
+			return -1;
+		}
+
+		instance->set_speed_setpoint(speed);
+		PX4_INFO("Set target speed to %.2f rad/s", (double)speed);
 		return 0;
 	}
 
 	// Emergency stop commands
 	if (strcmp(command, "emergency_stop") == 0) {
-		PX4_WARN("Emergency stop command received (requires instance access)");
-		// TODO: Implement instance-based emergency stop
+		DrivetrainController *instance = get_instance();
+
+		if (instance == nullptr) {
+			PX4_ERR("drivetrain_controller is not running");
+			return -1;
+		}
+
+		instance->_state.emergency_stop = true;
+		PX4_WARN("Emergency stop activated");
 		return 0;
 	}
 
 	if (strcmp(command, "reset_emergency") == 0) {
-		PX4_INFO("Reset emergency command received (requires instance access)");
-		// TODO: Implement instance-based emergency reset
+		DrivetrainController *instance = get_instance();
+
+		if (instance == nullptr) {
+			PX4_ERR("drivetrain_controller is not running");
+			return -1;
+		}
+
+		instance->_state.emergency_stop = false;
+		PX4_INFO("Emergency stop cleared");
 		return 0;
 	}
 
 	// Motor enable/disable commands
 	if (strcmp(command, "enable") == 0) {
-		PX4_INFO("Enable motor command received (requires instance access)");
-		// TODO: Implement instance-based motor enable
+		DrivetrainController *instance = get_instance();
+
+		if (instance == nullptr) {
+			PX4_ERR("drivetrain_controller is not running");
+			return -1;
+		}
+
+		instance->_state.motor_enabled = true;
+		PX4_INFO("Motor enabled");
 		return 0;
 	}
 
 	if (strcmp(command, "disable") == 0) {
-		PX4_INFO("Disable motor command received (requires instance access)");
-		// TODO: Implement instance-based motor disable
+		DrivetrainController *instance = get_instance();
+
+		if (instance == nullptr) {
+			PX4_ERR("drivetrain_controller is not running");
+			return -1;
+		}
+
+		instance->_state.motor_enabled = false;
+		PX4_INFO("Motor disabled");
 		return 0;
 	}
 
 	// PID tuning commands
 	if (strcmp(command, "tune_p") == 0) {
-		PX4_INFO("PID tuning command received (requires instance access)");
-		// TODO: Implement instance-based PID tuning
+		if (argc < 2) {
+			PX4_ERR("tune_p requires a value");
+			return -1;
+		}
+
+		DrivetrainController *instance = get_instance();
+
+		if (instance == nullptr) {
+			PX4_ERR("drivetrain_controller is not running");
+			return -1;
+		}
+
+		float p = static_cast<float>(atof(argv[1]));
+		instance->_speed_controller.setGains(p, instance->_param_speed_i.get(), instance->_param_speed_d.get());
+		PX4_INFO("Set P gain to %.3f", (double)p);
 		return 0;
 	}
 
 	if (strcmp(command, "tune_i") == 0) {
-		PX4_INFO("PID tuning command received (requires instance access)");
-		// TODO: Implement instance-based PID tuning
+		if (argc < 2) {
+			PX4_ERR("tune_i requires a value");
+			return -1;
+		}
+
+		DrivetrainController *instance = get_instance();
+
+		if (instance == nullptr) {
+			PX4_ERR("drivetrain_controller is not running");
+			return -1;
+		}
+
+		float i = static_cast<float>(atof(argv[1]));
+		instance->_speed_controller.setGains(instance->_param_speed_p.get(), i, instance->_param_speed_d.get());
+		PX4_INFO("Set I gain to %.3f", (double)i);
 		return 0;
 	}
 
 	if (strcmp(command, "tune_d") == 0) {
-		PX4_INFO("PID tuning command received (requires instance access)");
-		// TODO: Implement instance-based PID tuning
+		if (argc < 2) {
+			PX4_ERR("tune_d requires a value");
+			return -1;
+		}
+
+		DrivetrainController *instance = get_instance();
+
+		if (instance == nullptr) {
+			PX4_ERR("drivetrain_controller is not running");
+			return -1;
+		}
+
+		float d = static_cast<float>(atof(argv[1]));
+		instance->_speed_controller.setGains(instance->_param_speed_p.get(), instance->_param_speed_i.get(), d);
+		PX4_INFO("Set D gain to %.3f", (double)d);
 		return 0;
 	}
 

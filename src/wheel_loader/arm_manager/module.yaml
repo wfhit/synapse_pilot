@@ -1,9 +1,4 @@
 module_name: Arm Manager
-serial_config:
-    - command: arm_manager start
-      port_config_param:
-          name: None
-          group: Arm Manager
 
 parameters:
     - group: Arm Manager

@@ -287,7 +287,7 @@ bool TiltHardwareInterface::select_limit_sensor_instances(int& load_instance, in
 	}
 
 	if (load_found && dump_found) {
-		int n_limits = orb_group_count(ORB_ID(limit_sensor));
+		int n_limits = orb_group_count(ORB_ID(sensor_limit_switch));
 		if (n_limits > 2) {
 			PX4_INFO("Selected limit sensors: load=%d, dump=%d", load_instance, dump_instance);
 		}

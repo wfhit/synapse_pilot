@@ -39,18 +39,6 @@ TractionController::TractionController() :
     ModuleParams(nullptr),
     ScheduledWorkItem(MODULE_NAME, px4::wq_configurations::rate_ctrl)
 {
-    // Initialize PID controllers for slip control
-    _slip_controller_front.setGains(1.0f, 0.2f, 0.1f);
-    _slip_controller_front.setOutputLimit(1.0f);
-    _slip_controller_front.setIntegralLimit(1.0f);
-
-    _slip_controller_rear.setGains(1.0f, 0.2f, 0.1f);
-    _slip_controller_rear.setOutputLimit(1.0f);
-    _slip_controller_rear.setIntegralLimit(1.0f);
-
-    _yaw_rate_controller.setGains(1.2f, 0.1f, 0.2f);
-    _yaw_rate_controller.setOutputLimit(1.0f);
-    _yaw_rate_controller.setIntegralLimit(1.0f);
 }
 
 TractionController::~TractionController()
@@ -62,6 +50,19 @@ TractionController::~TractionController()
 
 bool TractionController::init()
 {
+    // Apply PID gains from parameters
+    _slip_controller_front.setGains(_param_slip_p.get(), _param_slip_i.get(), _param_slip_d.get());
+    _slip_controller_front.setOutputLimit(1.0f);
+    _slip_controller_front.setIntegralLimit(1.0f);
+
+    _slip_controller_rear.setGains(_param_slip_p.get(), _param_slip_i.get(), _param_slip_d.get());
+    _slip_controller_rear.setOutputLimit(1.0f);
+    _slip_controller_rear.setIntegralLimit(1.0f);
+
+    _yaw_rate_controller.setGains(_param_yaw_p.get(), _param_yaw_i.get(), _param_yaw_d.get());
+    _yaw_rate_controller.setOutputLimit(1.0f);
+    _yaw_rate_controller.setIntegralLimit(1.0f);
+
     ScheduleOnInterval(1000000 / UPDATE_RATE_HZ); // 50Hz
     return true;
 }
@@ -91,13 +92,6 @@ void TractionController::Run()
         perf_end(_loop_perf);
         return;
     }
-
-    // Get desired motion from manual control or autonomous planner
-    // For now, use default values or implement alternative input method
-    // TODO: Replace with appropriate input source (manual_control_setpoint, trajectory_setpoint, etc.)
-    _desired_velocity = 0.0f;  // Default to stationary
-    _desired_yaw_rate = 0.0f;  // Default to no turning
-    _desired_force = 0.0f;     // Default to no force
 
     // Core traction control pipeline
     estimate_drivetrain_slip();
@@ -452,12 +446,11 @@ void TractionController::compute_steering_compensation()
                                         _param_max_articulation.get());
 
     // Rate limiting for smooth operation
-    static float last_cmd = 0.0f;
-    float rate = (_articulation_cmd - last_cmd) / dt;
+    float rate = (_articulation_cmd - _last_articulation_cmd) / dt;
     if (fabsf(rate) > ARTICULATION_RATE_LIMIT) {
-        _articulation_cmd = last_cmd + ARTICULATION_RATE_LIMIT * dt * (rate > 0 ? 1.0f : -1.0f);
+        _articulation_cmd = _last_articulation_cmd + ARTICULATION_RATE_LIMIT * dt * (rate > 0 ? 1.0f : -1.0f);
     }
-    last_cmd = _articulation_cmd;
+    _last_articulation_cmd = _articulation_cmd;
 }
 
 float TractionController::calculate_kinematic_steering_rate(float desired_yaw_rate)

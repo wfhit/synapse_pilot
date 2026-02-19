@@ -282,6 +282,7 @@ private:
 		(ParamFloat<px4::params::BCT_CAL_FAST_SPD>) _param_calibration_fast_speed,
 		(ParamFloat<px4::params::BCT_CAL_SLOW_SPD>) _param_calibration_slow_speed,
 		(ParamInt<px4::params::BCT_CAL_REQUIRED>) _param_calibration_required,
-		(ParamFloat<px4::params::BCT_CAL_MARGIN>) _param_calibration_margin
+		(ParamFloat<px4::params::BCT_CAL_MARGIN>) _param_calibration_margin,
+		(ParamInt<px4::params::BCT_CAL_TO>) _param_calibration_timeout
 	)
 };

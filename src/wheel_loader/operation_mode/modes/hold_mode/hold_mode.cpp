@@ -140,11 +140,32 @@ bool HoldMode::captureCurrentState()
 	matrix::Eulerf euler(q);
 	_hold_state.chassis_heading = euler.psi();
 
-	// TODO: Get actual boom, tilt, and articulation positions from sensors
-	// For now, use default safe values
-	_hold_state.boom_position = 1.5f;       // Mid-range boom position
-	_hold_state.tilt_angle = 0.0f;          // Level tilt
-	_hold_state.articulation_angle = 0.0f;  // Straight articulation
+	// Get boom position from boom_status topic
+	boom_status_s boom_status;
+	if (_boom_status_sub.copy(&boom_status) && boom_status.position_valid) {
+		_hold_state.boom_position = boom_status.angle;
+	} else {
+		PX4_WARN("Hold mode: boom_status unavailable, using fallback");
+		_hold_state.boom_position = 1.5f;
+	}
+
+	// Get tilt angle from bucket_status topic
+	bucket_status_s bucket_status;
+	if (_bucket_status_sub.copy(&bucket_status)) {
+		_hold_state.tilt_angle = bucket_status.bucket_angle;
+	} else {
+		PX4_WARN("Hold mode: bucket_status unavailable, using fallback");
+		_hold_state.tilt_angle = 0.0f;
+	}
+
+	// Get articulation angle from steering_status topic
+	steering_status_s steering_status;
+	if (_steering_status_sub.copy(&steering_status) && steering_status.position_valid) {
+		_hold_state.articulation_angle = steering_status.actual_angle_rad;
+	} else {
+		PX4_WARN("Hold mode: steering_status unavailable, using fallback");
+		_hold_state.articulation_angle = 0.0f;
+	}
 
 	_hold_state.valid = true;
 
@@ -171,10 +192,23 @@ void HoldMode::updateCurrentState()
 	matrix::Eulerf euler(q);
 	_current_state.chassis_heading = euler.psi();
 
-	// TODO: Get actual boom, tilt, and articulation positions from sensors
-	_current_state.boom_position = _hold_state.boom_position;
-	_current_state.tilt_angle = _hold_state.tilt_angle;
-	_current_state.articulation_angle = _hold_state.articulation_angle;
+	// Get boom position from boom_status topic
+	boom_status_s boom_status;
+	if (_boom_status_sub.copy(&boom_status) && boom_status.position_valid) {
+		_current_state.boom_position = boom_status.angle;
+	}
+
+	// Get tilt angle from bucket_status topic
+	bucket_status_s bucket_status;
+	if (_bucket_status_sub.copy(&bucket_status)) {
+		_current_state.tilt_angle = bucket_status.bucket_angle;
+	}
+
+	// Get articulation angle from steering_status topic
+	steering_status_s steering_status;
+	if (_steering_status_sub.copy(&steering_status) && steering_status.position_valid) {
+		_current_state.articulation_angle = steering_status.actual_angle_rad;
+	}
 
 	_current_state.valid = true;
 }
@@ -270,24 +304,15 @@ void HoldMode::computeAndPublishSetpoints()
 
 void HoldMode::loadParameters()
 {
-	// TODO: Load from YAML or PX4 parameters
-	// Using defaults for now
+	_control_params.chassis_position_gain = _param_chassis_position_gain.get();
+	_control_params.chassis_heading_gain = _param_chassis_heading_gain.get();
+	_control_params.articulation_gain = _param_articulation_gain.get();
+	_control_params.boom_position_gain = _param_boom_position_gain.get();
+	_control_params.tilt_angle_gain = _param_tilt_angle_gain.get();
 
-	_control_params.chassis_position_gain = 1.0f;
-	_control_params.chassis_heading_gain = 1.0f;
-	_control_params.articulation_gain = 1.0f;
-	_control_params.boom_position_gain = 2.0f;
-	_control_params.tilt_angle_gain = 2.0f;
-
-	_control_params.max_chassis_velocity = 0.3f;
-	_control_params.max_chassis_yaw_rate = 0.3f;
-	_control_params.max_articulation_rate = 0.2f;
-	_control_params.max_boom_velocity = 0.3f;
-	_control_params.max_tilt_rate = 0.3f;
-
-	_control_params.chassis_position_tol = 0.02f;
-	_control_params.chassis_heading_tol = 0.05f;
-	_control_params.articulation_tol = 0.05f;
-	_control_params.boom_position_tol = 0.02f;
-	_control_params.tilt_angle_tol = 0.05f;
+	_control_params.max_chassis_velocity = _param_max_chassis_velocity.get();
+	_control_params.max_chassis_yaw_rate = _param_max_chassis_yaw_rate.get();
+	_control_params.max_articulation_rate = _param_max_articulation_rate.get();
+	_control_params.max_boom_velocity = _param_max_boom_velocity.get();
+	_control_params.max_tilt_rate = _param_max_tilt_rate.get();
 }

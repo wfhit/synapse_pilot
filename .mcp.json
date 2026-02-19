@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "px4": {
+      "command": "/home/frank/miniconda3/envs/px4-mcp/bin/python3",
+      "args": ["Tools/mcp/px4_mcp_server.py"]
+    }
+  }
+}

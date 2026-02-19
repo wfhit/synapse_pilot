@@ -60,6 +60,7 @@
 #include <uORB/topics/drivetrain_status.h>
 #include <uORB/topics/steering_status.h>
 #include <uORB/topics/traction_status.h>
+#include <uORB/topics/battery_status.h>
 #include <uORB/topics/vla_trajectory.h>
 
 #include <termios.h>
@@ -176,6 +177,7 @@ private:
 	uORB::Subscription _bucket_status_sub{ORB_ID(bucket_status)};
 	uORB::Subscription _steering_status_sub{ORB_ID(steering_status)};
 	uORB::Subscription _traction_status_sub{ORB_ID(traction_status)};
+	uORB::Subscription _battery_status_sub{ORB_ID(battery_status)};
 	uORB::SubscriptionMultiArray<drivetrain_status_s, 2> _drivetrain_status_subs{ORB_ID::drivetrain_status};  // Front and rear
 	
 	uORB::Publication<vla_trajectory_s> _vla_trajectory_pub{ORB_ID(vla_trajectory)};

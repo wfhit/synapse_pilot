@@ -204,7 +204,7 @@ void VLAProxy::Run()
 
 	// Send robot status at configured rate
 	hrt_abstime now = hrt_absolute_time();
-	uint32_t status_interval_us = (1000000 / _param_status_rate.get()) * 1000;
+	uint32_t status_interval_us = static_cast<uint32_t>(1000000.f / math::max(_param_status_rate.get(), 1.0f));
 
 	if (now - _last_status_sent > status_interval_us) {
 		if (send_robot_status()) {
@@ -512,8 +512,13 @@ void VLAProxy::collect_robot_status(WheelloaderStatus &status)
 	// Chassis angular velocity is the yaw rate (already fetched earlier in angular_velocity[2])
 	status.chassis_angular_velocity = status.angular_velocity[2];
 
-	// TODO: Get battery voltage from battery_status topic
-	status.battery_voltage = 12.0f;  // Placeholder
+	// Get battery voltage from battery_status topic
+	battery_status_s battery;
+	if (_battery_status_sub.copy(&battery)) {
+		status.battery_voltage = battery.voltage_v;
+	} else {
+		status.battery_voltage = 0.0f;
+	}
 }
 
 bool VLAProxy::send_robot_status()

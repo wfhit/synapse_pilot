@@ -166,6 +166,9 @@ private:
     float _rear_force_cmd{0.0f};       // Rear drivetrain force command (N)
     float _articulation_cmd{0.0f};     // Articulation angle command (rad)
 
+    // Rate limiting state
+    float _last_articulation_cmd{0.0f}; // Previous articulation command for rate limiting
+
     // Control parameters
     struct ControlParams {
         float target_slip_ratio{0.08f};     // Target slip for maximum traction
@@ -211,6 +214,9 @@ private:
         (ParamFloat<px4::params::TC_SLIP_P>) _param_slip_p,
         (ParamFloat<px4::params::TC_SLIP_I>) _param_slip_i,
         (ParamFloat<px4::params::TC_SLIP_D>) _param_slip_d,
+        (ParamFloat<px4::params::TC_YAW_P>) _param_yaw_p,
+        (ParamFloat<px4::params::TC_YAW_I>) _param_yaw_i,
+        (ParamFloat<px4::params::TC_YAW_D>) _param_yaw_d,
         (ParamFloat<px4::params::TC_TARGET_SLIP>) _param_target_slip,
         (ParamFloat<px4::params::TC_MAX_SLIP>) _param_max_slip,
         (ParamFloat<px4::params::TC_FORCE_DIST>) _param_force_distribution,

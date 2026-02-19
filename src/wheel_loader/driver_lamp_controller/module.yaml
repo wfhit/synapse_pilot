@@ -1,8 +1,5 @@
 module_name: Driver Lamp Controller
-serial_config:
-    - command: driver_lamp_controller start
-      port_config_param:
-        name: # No serial port needed
+
 parameters:
     - group: Driver Lamp Controller
       definitions:

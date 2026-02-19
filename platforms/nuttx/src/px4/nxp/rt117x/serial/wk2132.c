@@ -557,10 +557,16 @@ errout:
 static void wk2132_poll_worker(FAR void *arg)
 {
   int i;
+  int device_count;
   bool should_continue;
 
+  /* Snapshot device count under lock to avoid racing with setup */
+  nxsem_wait(&g_wk2132_poll_sem);
+  device_count = g_wk2132_device_count;
+  nxsem_post(&g_wk2132_poll_sem);
+
   /* Poll all registered devices */
-  for (i = 0; i < g_wk2132_device_count; i++)
+  for (i = 0; i < device_count; i++)
     {
       FAR struct uart_dev_s *dev = g_wk2132_devices[i];
       if (dev != NULL)
@@ -621,10 +627,14 @@ static int wk2132_setup(FAR struct uart_dev_s *dev)
 
   /* Step 1: Sub UART clock enable (DFRobot: subSerialGlobalRegEnable(subUartChannel, clock)) */
   syslog(LOG_DEBUG, "WK2132: Sub UART clock enable for port %d\n", priv->port);
+
+  /* Acquire global semaphore to protect GENA read-modify-write */
+  nxsem_wait(&g_wk2132_poll_sem);
   ret = wk2132_i2c_read_global(priv, WK2132_GENA, &gena);
   if (ret < 0)
     {
       syslog(LOG_ERR, "WK2132: Failed to read GENA register for port %d\n", priv->port);
+      nxsem_post(&g_wk2132_poll_sem);
       goto errout;
     }
 
@@ -634,6 +644,7 @@ static int wk2132_setup(FAR struct uart_dev_s *dev)
   uint8_t gena_bit = 1 << (priv->port - 1);
   gena |= gena_bit;
   ret = wk2132_i2c_write_global(priv, WK2132_GENA, gena);
+  nxsem_post(&g_wk2132_poll_sem);
   if (ret < 0)
     {
       syslog(LOG_ERR, "WK2132: Failed to write GENA register for port %d\n", priv->port);
@@ -647,16 +658,21 @@ static int wk2132_setup(FAR struct uart_dev_s *dev)
 
   /* Step 2: Software reset sub UART (DFRobot: subSerialGlobalRegEnable(subUartChannel, rst)) */
   syslog(LOG_DEBUG, "WK2132: Software reset sub UART for port %d\n", priv->port);
+
+  /* Acquire global semaphore to protect GRST read-modify-write */
+  nxsem_wait(&g_wk2132_poll_sem);
   ret = wk2132_i2c_read_global(priv, WK2132_GRST, &grst);
   if (ret < 0)
     {
       syslog(LOG_ERR, "WK2132: Failed to read GRST register for port %d\n", priv->port);
+      nxsem_post(&g_wk2132_poll_sem);
       goto errout;
     }
 
   uint8_t grst_bit = 1 << (priv->port - 1);
   grst |= grst_bit;
   ret = wk2132_i2c_write_global(priv, WK2132_GRST, grst);
+  nxsem_post(&g_wk2132_poll_sem);
   if (ret < 0)
     {
       syslog(LOG_ERR, "WK2132: Failed to write GRST register for port %d\n", priv->port);
@@ -879,13 +895,15 @@ static void wk2132_shutdown(FAR struct uart_dev_s *dev)
   /* Disable all interrupts */
   wk2132_i2c_write_reg(priv, WK2132_SIER, 0x00);
 
-  /* Disable the UART port in global register */
+  /* Disable the UART port in global register (protected by global sem) */
+  nxsem_wait(&g_wk2132_poll_sem);
   if (wk2132_i2c_read_global(priv, WK2132_GENA, &gena) >= 0)
     {
       uint8_t gena_bit = 1 << (priv->port - 1);
       gena &= ~gena_bit;
       wk2132_i2c_write_global(priv, WK2132_GENA, gena);
     }
+  nxsem_post(&g_wk2132_poll_sem);
 
   /* Check if any devices are still enabled */
   nxsem_wait(&g_wk2132_poll_sem);

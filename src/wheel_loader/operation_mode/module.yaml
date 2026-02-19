@@ -48,3 +48,110 @@ parameters:
               min: 0.1
               max: 2.0
               decimal: 2
+
+    - group: Hold Mode
+      definitions:
+          HM_CHAS_POS_G:
+              description:
+                  short: Chassis position hold gain
+                  long: Proportional gain for chassis position control in hold mode
+              type: float
+              default: 1.0
+              min: 0.1
+              max: 5.0
+              decimal: 2
+
+          HM_CHAS_HDG_G:
+              description:
+                  short: Chassis heading hold gain
+                  long: Proportional gain for chassis heading control in hold mode
+              type: float
+              default: 1.0
+              min: 0.1
+              max: 5.0
+              decimal: 2
+
+          HM_ART_GAIN:
+              description:
+                  short: Articulation hold gain
+                  long: Proportional gain for articulation angle control in hold mode
+              type: float
+              default: 1.0
+              min: 0.1
+              max: 5.0
+              decimal: 2
+
+          HM_BOOM_POS_G:
+              description:
+                  short: Boom position hold gain
+                  long: Proportional gain for boom position control in hold mode
+              type: float
+              default: 2.0
+              min: 0.1
+              max: 10.0
+              decimal: 2
+
+          HM_TILT_ANG_G:
+              description:
+                  short: Tilt angle hold gain
+                  long: Proportional gain for tilt angle control in hold mode
+              type: float
+              default: 2.0
+              min: 0.1
+              max: 10.0
+              decimal: 2
+
+          HM_MAX_CHAS_V:
+              description:
+                  short: Max chassis velocity in hold mode
+                  long: Maximum chassis velocity for position hold control
+              type: float
+              default: 0.3
+              min: 0.05
+              max: 1.0
+              decimal: 2
+              unit: m/s
+
+          HM_MAX_CHAS_R:
+              description:
+                  short: Max chassis yaw rate in hold mode
+                  long: Maximum chassis yaw rate for heading hold control
+              type: float
+              default: 0.3
+              min: 0.05
+              max: 1.0
+              decimal: 2
+              unit: rad/s
+
+          HM_MAX_ART_R:
+              description:
+                  short: Max articulation rate in hold mode
+                  long: Maximum articulation rate for articulation hold control
+              type: float
+              default: 0.2
+              min: 0.05
+              max: 0.5
+              decimal: 2
+              unit: rad/s
+
+          HM_MAX_BOOM_V:
+              description:
+                  short: Max boom velocity in hold mode
+                  long: Maximum boom velocity for position hold control
+              type: float
+              default: 0.3
+              min: 0.05
+              max: 1.0
+              decimal: 2
+              unit: rad/s
+
+          HM_MAX_TILT_R:
+              description:
+                  short: Max tilt rate in hold mode
+                  long: Maximum tilt rate for angle hold control
+              type: float
+              default: 0.3
+              min: 0.05
+              max: 1.0
+              decimal: 2
+              unit: rad/s
