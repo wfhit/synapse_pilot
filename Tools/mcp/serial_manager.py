@@ -28,24 +28,38 @@ def detect_ports() -> list[dict]:
 def resolve_port(port: str | None) -> str:
     """Resolve a port path, auto-detecting if None.
 
-    Matches the existing HIL pattern: grep('USB UART') and require
-    exactly one match for auto-detection.
+    Searches for PX4 boards by matching known USB identifiers:
+    - CDC/ACM devices (ttyACM*) which PX4 boards typically enumerate as
+    - USB UART adapters used with some boards
 
     Raises ValueError if auto-detection finds zero or multiple ports.
     """
     if port is not None:
         return port
 
-    ports = list(serial.tools.list_ports.grep("USB UART"))
+    # Look for PX4/CUAV/flight controller CDC ACM devices first
+    px4_patterns = ["PX4", "CUAV", "FMU", "Matek", "NXT"]
+    ports = []
+    for p in serial.tools.list_ports.comports():
+        desc = (p.description or "") + " " + (p.manufacturer or "")
+        if any(pat.lower() in desc.lower() for pat in px4_patterns):
+            ports.append(p)
+        elif p.device.startswith("/dev/ttyACM"):
+            # ttyACM devices are CDC/ACM — likely a PX4 board
+            ports.append(p)
+
+    # Fall back to USB UART if no ACM devices found
+    if not ports:
+        ports = list(serial.tools.list_ports.grep("USB UART"))
 
     if len(ports) == 0:
         raise ValueError(
-            "No USB serial ports detected. Check USB connection."
+            "No PX4 serial ports detected. Check USB connection."
         )
     if len(ports) > 1:
-        devices = [p.device for p in ports]
+        devices = [f"{p.device} ({p.description})" for p in ports]
         raise ValueError(
-            f"Multiple USB serial ports found: {devices}. "
+            f"Multiple serial ports found: {devices}. "
             "Specify a port explicitly."
         )
 

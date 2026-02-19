@@ -5,3 +5,21 @@
 
 # Start status lamp controller
 nav_lamp_controller start
+
+# Start health monitor
+health_monitor start
+
+# Start operation mode manager
+operation_mode start
+
+# Start arm manager
+arm_manager start
+
+# Start operator interface
+operator_interface start
+
+# Start uORB UART bridge
+uorb_uart_bridge start
+
+# Start strategy executor
+strategy_executor start

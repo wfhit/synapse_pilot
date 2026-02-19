@@ -4,19 +4,19 @@
             "name": "PX4",
             "includePath": [
                 "${workspaceFolder}/**",
-                "/src/firmware/boards/hkust/nxt-dual/src",
-                "/src/firmware/platforms/nuttx/src/px4/stm/stm32h7/include",
-                "/src/firmware/platforms/nuttx/NuttX/nuttx/include/"
+                "/home/frank/big_disk/synapse_pilot_ws/synapse_pilot/boards/wheel_loader/cuav-x7plus-wl/src",
+                "/home/frank/big_disk/synapse_pilot_ws/synapse_pilot/platforms/nuttx/src/px4/stm/stm32h7/include",
+                "/home/frank/big_disk/synapse_pilot_ws/synapse_pilot/platforms/nuttx/NuttX/nuttx/include/"
             ],
             "defines": [],
             "macFrameworkPath": [],
             "configurationProvider": "ms-vscode.cmake-tools",
             "cppStandard": "c++14",
             "cStandard": "c11",
-            "dotConfig": "/src/firmware/build/hkust_nxt-dual_default/NuttX/nuttx/.config",
+            "dotConfig": "/home/frank/big_disk/synapse_pilot_ws/synapse_pilot/build/wheel_loader_cuav-x7plus-wl_default/NuttX/nuttx/.config",
             "forcedInclude": [
-                 "/src/firmware/build/hkust_nxt-dual_default/px4_boardconfig.h",
-                 "/src/firmware/platforms/common/include/px4_platform_common/defines.h"
+                 "/home/frank/big_disk/synapse_pilot_ws/synapse_pilot/build/wheel_loader_cuav-x7plus-wl_default/px4_boardconfig.h",
+                 "/home/frank/big_disk/synapse_pilot_ws/synapse_pilot/platforms/common/include/px4_platform_common/defines.h"
                  ]
         }
     ],
