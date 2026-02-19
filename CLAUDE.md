@@ -146,6 +146,8 @@ Detailed serial port conventions are in `.github/copilot-instructions.md`.
 
 The `main` branch is protected. Always create a feature branch and open a PR.
 
+**Before editing any code**, always check the current git branch (`git branch --show-current`). If on `main`, create a new feature branch first — never commit directly to `main`.
+
 ## CI
 
 Workflows in `.github/workflows/` run on `frank_private_runner`:
