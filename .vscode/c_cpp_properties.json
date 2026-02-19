@@ -4,7 +4,7 @@
             "name": "PX4",
             "includePath": [
                 "${workspaceFolder}/**",
-                "/home/frank/big_disk/synapse_pilot_ws/synapse_pilot/boards/wheel_loader/nxt-dual-wl-front/src",
+                "/home/frank/big_disk/synapse_pilot_ws/synapse_pilot/boards/wheel_loader/nxt-dual-wl-rear/src",
                 "/home/frank/big_disk/synapse_pilot_ws/synapse_pilot/platforms/nuttx/src/px4/stm/stm32h7/include",
                 "/home/frank/big_disk/synapse_pilot_ws/synapse_pilot/platforms/nuttx/NuttX/nuttx/include/"
             ],
@@ -13,9 +13,9 @@
             "configurationProvider": "ms-vscode.cmake-tools",
             "cppStandard": "c++14",
             "cStandard": "c11",
-            "dotConfig": "/home/frank/big_disk/synapse_pilot_ws/synapse_pilot/build/wheel_loader_nxt-dual-wl-front_default/NuttX/nuttx/.config",
+            "dotConfig": "/home/frank/big_disk/synapse_pilot_ws/synapse_pilot/build/wheel_loader_nxt-dual-wl-rear_default/NuttX/nuttx/.config",
             "forcedInclude": [
-                 "/home/frank/big_disk/synapse_pilot_ws/synapse_pilot/build/wheel_loader_nxt-dual-wl-front_default/px4_boardconfig.h",
+                 "/home/frank/big_disk/synapse_pilot_ws/synapse_pilot/build/wheel_loader_nxt-dual-wl-rear_default/px4_boardconfig.h",
                  "/home/frank/big_disk/synapse_pilot_ws/synapse_pilot/platforms/common/include/px4_platform_common/defines.h"
                  ]
         }
