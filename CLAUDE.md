@@ -157,11 +157,47 @@ Workflows in `.github/workflows/` run on `frank_private_runner`:
 - **sitl-test.yml**: SITL builds for iris, tailsitter, standard_vtol
 - **functional-test.yml**: MAVROS mission tests, failsafe sim, ROS integration
 
+## NXT-Dual Board Details
+
+The NXT-Dual boards (front and rear) use STM32H743VI (Cortex-M7), board ID 1013.
+
+### Serial Port Mapping (SERIAL_DISABLE_REORDERING=y)
+
+With `CONFIG_STM32H7_SERIAL_DISABLE_REORDERING=y`, NuttX assigns `/dev/ttyS*` based on peripheral enable order, NOT renumbered:
+
+| Device | Peripheral | Usage |
+|--------|-----------|-------|
+| /dev/ttyS0 | USART1 | uORB UART Proxy (inter-board comms) |
+| /dev/ttyS1 | USART3 | Available |
+| /dev/ttyS2 | UART4 | Available |
+| /dev/ttyS3 | UART8 | NuttX console |
+
+The mapping is confirmed in `boards/wheel_loader/nxt-dual-wl-front/src/board_config.h` (`PROXY_CLIENT_UART_PORT "/dev/ttyS0"`).
+
+### Work Queue Stack Limits
+
+The `hp_default` work queue has `SCHED_HPWORKSTACKSIZE=1280` in defconfig (2776 bytes actual at runtime). Modules running on this work queue (including `uorb_uart_proxy`) must keep stack usage minimal:
+- Use class member variables for buffers, not stack-allocated arrays
+- Avoid large local arrays (e.g., `TopicInfo *topics[256]` = 2048 bytes — this caused a stack overflow crash)
+- Verified safe: 980/2776 bytes with all proxy buffers as class members
+
+### Bringup Status (Feb 2026)
+
+All modules compile and run on nxt-dual-wl-front. The following are auto-started at boot via `rc.board_extras`:
+- `quadrature_encoder`, `hbridge`, `limit_sensor`
+
+The following are compiled in but NOT auto-started (still commented out in `rc.board_extras`):
+- `tilt_control` — needs physical tilt hardware connected
+- `wheel_controller` — needs front wheel drive hardware
+- `uorb_uart_proxy` — verified working via manual `uorb_uart_proxy start` on NSH; auto-start deferred until main board bridge is ready
+
 ## Common Pitfalls
 
 - After pull: `git submodule update --init --recursive`
 - uORB topic not found at build time: `make clean` (headers are generated)
 - Module not building: verify it's enabled in the target's `.px4board`
-- Frame size limit: NuttX enforces `-Wframe-larger-than=2048` — avoid large stack locals
+- Frame size limit: NuttX enforces `-Wframe-larger-than=2048` — avoid large stack locals. For work queue items, keep stack well under the work queue's `SCHED_HPWORKSTACKSIZE`. Move buffers to class members.
 - Serial config: `serial_config` in `module.yaml` must have a valid `name` field or the build's `generate_config.py` will fail
 - NSH not responding on USB: check `SYS_USB_AUTO` — if set to 2, use MAVLink shell; if set to 1, send `\r\r\r`
+- UART parameter min values: if a UART device param needs to allow `/dev/ttyS0` (index 0), ensure `module.yaml` sets `min: 0` and `default: 0`, not `min: 1`
+- Docker build file ownership: Docker builds create root-owned files. Use `docker run ... chown -R $(id -u):$(id -g) build/` to fix permissions before host-side operations
