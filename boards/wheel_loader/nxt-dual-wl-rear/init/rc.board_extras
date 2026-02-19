@@ -4,6 +4,8 @@
 # Rear wheel and boom control board
 #------------------------------------------------------------------------------
 
+# --- Wheel loader modules commented out for incremental bringup ---
+
 # Start boom control module
 if param compare BOOM_CTRL_EN 1
 then
@@ -28,9 +30,12 @@ echo "Starting driver lamp controller"
 driver_lamp_controller start
 
 
-# Initialize rear wheel motor control
-echo "Initializing rear wheel motor control"
+## Initialize rear wheel motor control
+#echo "Initializing rear wheel motor control"
 
 # Start quadrature encoder for rear wheel motor
 echo "Starting quadrature encoder for rear wheel"
 quadrature_encoder start
+
+# CDC ACM for NSH console access
+echo "CDC ACM enabled for NSH console access"
