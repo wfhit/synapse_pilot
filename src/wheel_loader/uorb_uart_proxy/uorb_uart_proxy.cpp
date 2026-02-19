@@ -114,6 +114,7 @@ NodeId UorbUartProxy::detect_board_type()
 
 	if (node_param == static_cast<int>(NodeId::NXT_FRONT)) {
 		return NodeId::NXT_FRONT;
+
 	} else if (node_param == static_cast<int>(NodeId::NXT_REAR)) {
 		return NodeId::NXT_REAR;
 	}
@@ -157,6 +158,7 @@ bool UorbUartProxy::configure_uart()
 
 	// Get baudrate parameter (default to 115200)
 	int32_t baudrate = _param_baudrate.get();
+
 	if (baudrate <= 0) {
 		baudrate = 115200;  // Default baudrate
 	}
@@ -164,16 +166,26 @@ bool UorbUartProxy::configure_uart()
 	PX4_INFO("Configuring baudrate: %ld", (long)baudrate);
 
 	speed_t speed;
+
 	switch (baudrate) {
 	case 9600:    speed = B9600; break;
+
 	case 19200:   speed = B19200; break;
+
 	case 38400:   speed = B38400; break;
+
 	case 57600:   speed = B57600; break;
+
 	case 115200:  speed = B115200; break;
+
 	case 230400:  speed = B230400; break;
+
 	case 460800:  speed = B460800; break;
+
 	case 921600:  speed = B921600; break;
+
 	case 1000000: speed = B1000000; break;
+
 	default:
 		PX4_WARN("Unsupported baudrate: %ld, using 115200", (long)baudrate);
 		speed = B115200;
@@ -253,7 +265,7 @@ void UorbUartProxy::check_connection()
 	const hrt_abstime now = hrt_absolute_time();
 
 	if (_last_message_time > 0 &&
-		(now - _last_message_time) > (CONNECTION_TIMEOUT_MS * 1000)) {
+	    (now - _last_message_time) > (CONNECTION_TIMEOUT_MS * 1000)) {
 
 		PX4_WARN("Connection timeout, attempting reconnect");
 		_is_connected = false;
@@ -290,12 +302,12 @@ void UorbUartProxy::send_heartbeat()
 
 		uint8_t buffer[512];
 		size_t frame_size = _frame_builder.build_heartbeat_frame(
-			buffer,
-			sizeof(buffer),
-			_node_id,
-			payload,
-			_tx_sequence++
-		);
+					    buffer,
+					    sizeof(buffer),
+					    _node_id,
+					    payload,
+					    _tx_sequence++
+				    );
 
 		if (frame_size > 0) {
 			send_frame(buffer, frame_size);
@@ -376,12 +388,12 @@ void UorbUartProxy::process_outgoing_messages()
 				uint8_t buffer[512];
 
 				size_t frame_size = _frame_builder.build_data_frame(
-					buffer, sizeof(buffer),
-					topic_info->topic_id, 0,
-					_node_id, NodeId::X7_MAIN,
-					data, topic_info->meta->o_size,
-					Priority::NORMAL, Reliability::BEST_EFFORT,
-					_tx_sequence++);
+							    buffer, sizeof(buffer),
+							    topic_info->topic_id, 0,
+							    _node_id, NodeId::X7_MAIN,
+							    data, topic_info->meta->o_size,
+							    Priority::NORMAL, Reliability::BEST_EFFORT,
+							    _tx_sequence++);
 
 				if (frame_size > 0) {
 					send_frame(buffer, frame_size);
@@ -415,17 +427,17 @@ bool UorbUartProxy::is_topic_relevant_for_node(uint16_t topic_id, NodeId node_id
 
 	// Topics that NXT nodes send to X7+ (outgoing from NXT perspective)
 	if (strcmp(topic_name, "boom_status") == 0 ||
-		strcmp(topic_name, "bucket_status") == 0 ||
-		strcmp(topic_name, "steering_status") == 0 ||
-		strcmp(topic_name, "sensor_limit_switch") == 0 ||
-		strcmp(topic_name, "sensor_quad_encoder") == 0 ||
-		strcmp(topic_name, "hbridge_status") == 0) {
+	    strcmp(topic_name, "bucket_status") == 0 ||
+	    strcmp(topic_name, "steering_status") == 0 ||
+	    strcmp(topic_name, "sensor_limit_switch") == 0 ||
+	    strcmp(topic_name, "sensor_quad_encoder") == 0 ||
+	    strcmp(topic_name, "hbridge_status") == 0) {
 		return true;
 	}
 
 	// Topics that X7+ sends to NXT nodes (incoming from NXT perspective)
 	if (strcmp(topic_name, "boom_control_setpoint") == 0 ||
-		strcmp(topic_name, "tilt_control_setpoint") == 0) {
+	    strcmp(topic_name, "tilt_control_setpoint") == 0) {
 		return true;
 	}
 
@@ -463,7 +475,7 @@ bool UorbUartProxy::receive_frames()
 		perf_count(_bytes_rx_perf);
 
 		// Parse received data for complete frames
-		for (ssize_t i = 0; i < bytes_read; ) {
+		for (ssize_t i = 0; i < bytes_read;) {
 			const ProtocolFrame *frame = _frame_parser.parse_frame(&buffer[i], bytes_read - i);
 
 			if (frame != nullptr) {
@@ -473,6 +485,7 @@ bool UorbUartProxy::receive_frames()
 				// Calculate frame size including header and footer
 				size_t frame_size = sizeof(ProtocolFrame) + frame->payload_length + sizeof(uint32_t);
 				i += frame_size;
+
 			} else {
 				i++; // Skip this byte and continue parsing
 			}
@@ -492,20 +505,20 @@ void UorbUartProxy::handle_received_frame(const ProtocolFrame *frame)
 
 	switch (static_cast<uint8_t>(frame->message_type)) {
 	case static_cast<uint8_t>(MessageType::DATA): {
-		// Publish received command data to local uORB
-		publish_to_local_topic(frame->topic_id, frame->instance, frame->payload, frame->payload_length);
-		break;
-	}
+			// Publish received command data to local uORB
+			publish_to_local_topic(frame->topic_id, frame->instance, frame->payload, frame->payload_length);
+			break;
+		}
 
 	case static_cast<uint8_t>(MessageType::HEARTBEAT): {
-		// Connection is alive, no action needed
-		break;
-	}
+			// Connection is alive, no action needed
+			break;
+		}
 
 	case static_cast<uint8_t>(MessageType::ACK): {
-		// Handle acknowledgment if needed
-		break;
-	}
+			// Handle acknowledgment if needed
+			break;
+		}
 
 	default:
 		PX4_WARN("Unknown message type: %d", static_cast<int>(frame->message_type));
@@ -545,10 +558,12 @@ bool UorbUartProxy::publish_to_local_topic(uint16_t topic_id, uint8_t instance, 
 			new_handler->last_updated = hrt_absolute_time();
 			new_handler->is_outgoing = false;
 			_topic_handler_count++;
+
 		} else {
 			PX4_WARN("Maximum topic handlers reached (%zu)", MAX_TOPIC_HANDLERS);
 			return false;
 		}
+
 	} else {
 		// Update existing publication
 		if (handler->publication != nullptr) {

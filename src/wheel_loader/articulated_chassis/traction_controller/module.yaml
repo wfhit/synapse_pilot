@@ -42,6 +42,36 @@ parameters:
         max: 0.5
         decimal: 3
 
+      TC_YAW_P:
+        description:
+          short: Yaw rate controller P gain
+          long: Proportional gain for yaw rate control PID controller
+        type: float
+        default: 1.2
+        min: 0.0
+        max: 5.0
+        decimal: 3
+
+      TC_YAW_I:
+        description:
+          short: Yaw rate controller I gain
+          long: Integral gain for yaw rate control PID controller
+        type: float
+        default: 0.1
+        min: 0.0
+        max: 1.0
+        decimal: 3
+
+      TC_YAW_D:
+        description:
+          short: Yaw rate controller D gain
+          long: Derivative gain for yaw rate control PID controller
+        type: float
+        default: 0.2
+        min: 0.0
+        max: 0.5
+        decimal: 3
+
       TC_TARGET_SLIP:
         description:
           short: Target slip ratio for maximum traction

@@ -72,6 +72,7 @@ void LoadLampController::update_load()
 
 	// Check for load lamp commands from the main board (X7+)
 	load_lamp_command_s cmd;
+
 	if (_load_lamp_command_sub.update(&cmd)) {
 		// Update current load value and blink interval from command
 		_current_load = cmd.load_value;
@@ -82,6 +83,7 @@ void LoadLampController::update_load()
 			_lamps_on = false;
 			set_lamps(false);
 		}
+
 		// Note: Blinking is handled in the main run loop
 	}
 
@@ -283,23 +285,28 @@ int LoadLampController::custom_command(int argc, char *argv[])
 
 			// Calculate blink rate based on load thresholds (same logic as update_blink_rate)
 			uint32_t blink_interval;
-			const char* rate_description;
+			const char *rate_description;
 
 			if (test_load < 0.1f) {
 				blink_interval = 2000000; // 0.5 Hz
 				rate_description = "Very slow blink (0.5 Hz)";
+
 			} else if (test_load < 0.2f) {
 				blink_interval = 1000000; // 1 Hz
 				rate_description = "Slow blink (1 Hz)";
+
 			} else if (test_load < instance->_param_threshold_low.get()) {
 				blink_interval = 500000; // 2 Hz
 				rate_description = "Medium-slow blink (2 Hz)";
+
 			} else if (test_load < instance->_param_threshold_med.get()) {
 				blink_interval = 200000; // 5 Hz
 				rate_description = "Medium blink (5 Hz)";
+
 			} else if (test_load < instance->_param_threshold_high.get()) {
 				blink_interval = 100000; // 10 Hz
 				rate_description = "Fast blink (10 Hz)";
+
 			} else {
 				blink_interval = 50000; // 20 Hz
 				rate_description = "Very fast blink (20 Hz)";

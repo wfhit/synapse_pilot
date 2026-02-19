@@ -1,9 +1,4 @@
 module_name: Strategy Executor
-serial_config:
-    - command: strategy_executor start
-      port_config_param:
-          name: None
-          group: Strategy Executor
 
 parameters:
     - group: Strategy Executor

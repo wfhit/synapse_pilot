@@ -35,6 +35,7 @@
 
 #include <px4_platform_common/module.h>
 #include <px4_platform_common/module_params.h>
+#include <px4_platform_common/tasks.h>
 #include <uORB/Subscription.hpp>
 #include <uORB/topics/vehicle_control_mode.h>
 #include <uORB/topics/vehicle_status.h>
@@ -95,7 +96,6 @@ private:
 
 	// Test mode variables
 	bool _test_mode_active{false};
-	LampMode _test_mode{LampMode::OFF};
 
 	// Constants for timing
 	static constexpr uint32_t HAZARD_SHORT_ON_US = 100000;   // 100ms on
@@ -112,8 +112,7 @@ private:
 	uint32_t get_turn_signal_interval_us() const;
 
 	// Test mode methods
-	void test_mode(LampMode mode);
-	void test_mode_disable();
+	int test_mode(int argc, char *argv[]);
 
 	// Parameters
 	DEFINE_PARAMETERS(

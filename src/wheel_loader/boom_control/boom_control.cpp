@@ -189,13 +189,16 @@ void BoomControl::process_commands()
 
 		// Compute velocity limit from bucket height velocity (optional)
 		float max_velocity = 1.0f; // Default safe velocity
+
 		if (std::isfinite(control_setpoint.bucket_height_velocity) &&
 		    control_setpoint.bucket_height_velocity > 0.0f) {
 			// Convert height velocity to angular velocity estimate
 			// angular_velocity ≈ height_velocity / (boom_length * cos(boom_angle))
 			float boom_length = _param_boom_length.get();
+
 			if (boom_length > 0.1f) {
 				float cos_angle = cosf(_target_boom_angle);
+
 				if (fabsf(cos_angle) > 0.1f) {
 					max_velocity = fabsf(control_setpoint.bucket_height_velocity / (boom_length * cos_angle));
 					max_velocity = math::constrain(max_velocity, 0.1f, 2.0f);
@@ -547,7 +550,7 @@ Check status:
 $ boom_control status
 )DESCR_STR");
 
-	PRINT_MODULE_USAGE_NAME("boom_control", "actuator");
+	PRINT_MODULE_USAGE_NAME("boom_control", "controller");
 	PRINT_MODULE_USAGE_COMMAND("start");
 	PRINT_MODULE_USAGE_COMMAND("stop");
 	PRINT_MODULE_USAGE_COMMAND("calibrate");

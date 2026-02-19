@@ -175,6 +175,7 @@ bool UorbUartBridge::open_connection(RemoteNodeConnection &conn)
 
 	// Get baudrate parameter (default to 115200)
 	int32_t baudrate = _param_baudrate.get();
+
 	if (baudrate <= 0) {
 		baudrate = 115200;  // Default baudrate
 	}
@@ -182,16 +183,26 @@ bool UorbUartBridge::open_connection(RemoteNodeConnection &conn)
 	PX4_INFO("Configuring baudrate: %ld", (long)baudrate);
 
 	speed_t speed;
+
 	switch (baudrate) {
 	case 9600:    speed = B9600; break;
+
 	case 19200:   speed = B19200; break;
+
 	case 38400:   speed = B38400; break;
+
 	case 57600:   speed = B57600; break;
+
 	case 115200:  speed = B115200; break;
+
 	case 230400:  speed = B230400; break;
+
 	case 460800:  speed = B460800; break;
+
 	case 921600:  speed = B921600; break;
+
 	case 1000000: speed = B1000000; break;
+
 	default:
 		PX4_WARN("Unsupported baudrate: %ld, using 115200", (long)baudrate);
 		speed = B115200;
@@ -291,7 +302,7 @@ void UorbUartBridge::check_connections()
 
 		// Check for connection timeout
 		if (conn.last_heartbeat > 0 &&
-			(now - conn.last_heartbeat) > (CONNECTION_TIMEOUT_MS * 1000)) {
+		    (now - conn.last_heartbeat) > (CONNECTION_TIMEOUT_MS * 1000)) {
 
 			PX4_WARN("Connection timeout for node %d", static_cast<int>(conn.node_id));
 			close_connection(conn);
@@ -301,6 +312,7 @@ void UorbUartBridge::check_connections()
 
 	// Update overall connection status
 	_all_connections_ready = true;
+
 	for (const auto &conn : _connections) {
 		if (!conn.is_connected) {
 			_all_connections_ready = false;
@@ -333,12 +345,12 @@ void UorbUartBridge::send_heartbeat()
 
 			uint8_t buffer[512];
 			size_t frame_size = _frame_builder.build_heartbeat_frame(
-				buffer,
-				sizeof(buffer),
-				NodeId::X7_MAIN,
-				payload,
-				conn.tx_sequence++
-			);
+						    buffer,
+						    sizeof(buffer),
+						    NodeId::X7_MAIN,
+						    payload,
+						    conn.tx_sequence++
+					    );
 
 			if (frame_size > 0) {
 				send_frame(conn, buffer, frame_size);
@@ -413,12 +425,12 @@ void UorbUartBridge::process_outgoing_messages()
 					uint8_t buffer[512];
 
 					size_t frame_size = _frame_builder.build_data_frame(
-						buffer, sizeof(buffer),
-						topic_info->topic_id, 0,
-						NodeId::X7_MAIN, conn.node_id,
-						data, topic_info->meta->o_size,
-						Priority::NORMAL, Reliability::BEST_EFFORT,
-						conn.tx_sequence++);
+								    buffer, sizeof(buffer),
+								    topic_info->topic_id, 0,
+								    NodeId::X7_MAIN, conn.node_id,
+								    data, topic_info->meta->o_size,
+								    Priority::NORMAL, Reliability::BEST_EFFORT,
+								    conn.tx_sequence++);
 
 					if (frame_size > 0) {
 						send_frame(conn, buffer, frame_size);
@@ -474,7 +486,7 @@ bool UorbUartBridge::receive_frames(RemoteNodeConnection &conn)
 		perf_count(_bytes_rx_perf);
 
 		// Parse received data for complete frames
-		for (ssize_t i = 0; i < bytes_read; ) {
+		for (ssize_t i = 0; i < bytes_read;) {
 			const ProtocolFrame *frame = _frame_parser.parse_frame(&buffer[i], bytes_read - i);
 
 			if (frame != nullptr) {
@@ -484,6 +496,7 @@ bool UorbUartBridge::receive_frames(RemoteNodeConnection &conn)
 				// Calculate frame size including header and footer
 				size_t frame_size = sizeof(ProtocolFrame) + frame->payload_length + sizeof(uint32_t);
 				i += frame_size;
+
 			} else {
 				i++; // Skip this byte and continue parsing
 			}
@@ -506,20 +519,20 @@ void UorbUartBridge::handle_received_frame(RemoteNodeConnection &conn, const Pro
 
 	switch (static_cast<uint8_t>(frame->message_type)) {
 	case static_cast<uint8_t>(MessageType::DATA): {
-		// Publish received topic data to local uORB
-		publish_to_local_topic(frame->topic_id, frame->instance, frame->payload, frame->payload_length);
-		break;
-	}
+			// Publish received topic data to local uORB
+			publish_to_local_topic(frame->topic_id, frame->instance, frame->payload, frame->payload_length);
+			break;
+		}
 
 	case static_cast<uint8_t>(MessageType::HEARTBEAT): {
-		// Connection is alive, no action needed
-		break;
-	}
+			// Connection is alive, no action needed
+			break;
+		}
 
 	case static_cast<uint8_t>(MessageType::ACK): {
-		// Handle acknowledgment if needed
-		break;
-	}
+			// Handle acknowledgment if needed
+			break;
+		}
 
 	default:
 		PX4_WARN("Unknown message type: %d", static_cast<int>(frame->message_type));
@@ -559,10 +572,12 @@ bool UorbUartBridge::publish_to_local_topic(uint16_t topic_id, uint8_t instance,
 			new_handler->publish_count = 1;
 			new_handler->is_outgoing = false;
 			_topic_handler_count++;
+
 		} else {
 			PX4_WARN("Maximum topic handlers reached (%zu)", MAX_TOPIC_HANDLERS);
 			return false;
 		}
+
 	} else {
 		// Update existing publication
 		if (handler->publication != nullptr) {
@@ -618,10 +633,10 @@ void UorbUartBridge::print_connection_status(const RemoteNodeConnection &conn) c
 	const char *node_name = (conn.node_id == NodeId::NXT_FRONT) ? "FRONT" : "REAR";
 
 	PX4_INFO("Node %s: %s, TX: %lu/%lu, RX: %lu/%lu",
-		node_name,
-		conn.is_connected ? "CONNECTED" : "DISCONNECTED",
-		(unsigned long)conn.tx_packets, (unsigned long)conn.tx_errors,
-		(unsigned long)conn.rx_packets, (unsigned long)conn.rx_errors);
+		 node_name,
+		 conn.is_connected ? "CONNECTED" : "DISCONNECTED",
+		 (unsigned long)conn.tx_packets, (unsigned long)conn.tx_errors,
+		 (unsigned long)conn.rx_packets, (unsigned long)conn.rx_errors);
 }
 
 int UorbUartBridge::print_status()

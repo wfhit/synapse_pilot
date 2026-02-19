@@ -99,7 +99,8 @@ struct StrategyStats {
 	hrt_abstime last_activation{0};
 	hrt_abstime last_completion{0};
 
-	void reset() {
+	void reset()
+	{
 		activation_count = 0;
 		success_count = 0;
 		failure_count = 0;
@@ -228,7 +229,7 @@ private:
 
 	// ========== Strategy Registry ==========
 	static constexpr size_t MAX_STRATEGIES = 16;
-	StrategyBase *_strategies[MAX_STRATEGIES]{};
+	StrategyBase *_strategies[MAX_STRATEGIES] {};
 	size_t _num_strategies{0};
 
 	// ========== Active Strategy State ==========
@@ -250,7 +251,7 @@ private:
 	static constexpr hrt_abstime HEALTH_CHECK_INTERVAL = 100000;
 
 	// ========== Statistics ==========
-	StrategyStats _strategy_stats[MAX_STRATEGIES]{};
+	StrategyStats _strategy_stats[MAX_STRATEGIES] {};
 	uint32_t _total_strategy_switches{0};
 
 	// ========== Status Publication ==========

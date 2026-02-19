@@ -200,8 +200,8 @@ void ManualBucketMode::applyBucketLimits()
 
 	// Clamp tilt angle
 	_target_bucket_pose.tilt = math::constrain(_target_bucket_pose.tilt,
-			_vehicle_params.tilt_min,
-			_vehicle_params.tilt_max);
+				   _vehicle_params.tilt_min,
+				   _vehicle_params.tilt_max);
 }
 
 bool ManualBucketMode::computeInverseKinematics()

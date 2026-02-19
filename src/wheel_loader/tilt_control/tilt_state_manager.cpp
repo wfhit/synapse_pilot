@@ -41,23 +41,26 @@ TiltStateManager::TiltStateManager(ModuleParams *parent) :
 }
 
 void TiltStateManager::update(bool sensors_valid, bool hardware_healthy, bool command_timeout,
-				float position, bool at_load_limit, bool at_dump_limit)
+			      float position, bool at_load_limit, bool at_dump_limit)
 {
 	// Update error flags based on inputs
 	if (!sensors_valid) {
 		set_error_flag(ERROR_SENSOR_TIMEOUT, "Sensor timeout");
+
 	} else {
 		clear_error_flag(ERROR_SENSOR_TIMEOUT);
 	}
 
 	if (!hardware_healthy) {
 		set_error_flag(ERROR_HARDWARE_FAULT, "Hardware fault");
+
 	} else {
 		clear_error_flag(ERROR_HARDWARE_FAULT);
 	}
 
 	if (command_timeout) {
 		set_error_flag(ERROR_COMMAND_TIMEOUT, "Command timeout");
+
 	} else {
 		clear_error_flag(ERROR_COMMAND_TIMEOUT);
 	}
@@ -70,52 +73,60 @@ void TiltStateManager::update(bool sensors_valid, bool hardware_healthy, bool co
 
 	// Update main state machine
 	switch (_current_state) {
-		case OperationalState::UNINITIALIZED:
-			// Check if we need calibration
-			if (is_calibration_required()) {
-				request_state_transition(OperationalState::CALIBRATING, "Auto-calibration required");
-			} else {
-				request_state_transition(OperationalState::READY, "System initialized");
-			}
-			break;
+	case OperationalState::UNINITIALIZED:
 
-		case OperationalState::CALIBRATING:
-			update_calibration_state_machine(position, at_load_limit, at_dump_limit);
+		// Check if we need calibration
+		if (is_calibration_required()) {
+			request_state_transition(OperationalState::CALIBRATING, "Auto-calibration required");
 
-			// Check for calibration timeout
-			if (check_calibration_timeout()) {
-				set_error_flag(ERROR_CALIBRATION_FAILED, "Calibration timeout");
-				request_state_transition(OperationalState::FAULT, "Calibration failed");
-			}
-			break;
+		} else {
+			request_state_transition(OperationalState::READY, "System initialized");
+		}
 
-		case OperationalState::READY:
-			// Can transition to ACTIVE when commands are received
-			// This would be triggered externally via request_state_transition()
-			break;
+		break;
 
-		case OperationalState::ACTIVE:
-			// Can transition back to READY when no active commands
-			// Check for faults that require stopping
-			if (_error_flags & (ERROR_HARDWARE_FAULT | ERROR_SENSOR_TIMEOUT)) {
-				request_state_transition(OperationalState::FAULT, "Hardware/sensor error");
-			}
-			break;
+	case OperationalState::CALIBRATING:
+		update_calibration_state_machine(position, at_load_limit, at_dump_limit);
 
-		case OperationalState::FAULT:
-			// Can recover to READY if errors are cleared
-			if (_error_flags == 0) {
-				request_state_transition(OperationalState::READY, "Errors cleared");
-			}
-			break;
+		// Check for calibration timeout
+		if (check_calibration_timeout()) {
+			set_error_flag(ERROR_CALIBRATION_FAILED, "Calibration timeout");
+			request_state_transition(OperationalState::FAULT, "Calibration failed");
+		}
 
-		case OperationalState::EMERGENCY_STOP:
-			// Can only exit via explicit clear_emergency_stop() call
-			break;
+		break;
+
+	case OperationalState::READY:
+		// Can transition to ACTIVE when commands are received
+		// This would be triggered externally via request_state_transition()
+		break;
+
+	case OperationalState::ACTIVE:
+
+		// Can transition back to READY when no active commands
+		// Check for faults that require stopping
+		if (_error_flags & (ERROR_HARDWARE_FAULT | ERROR_SENSOR_TIMEOUT)) {
+			request_state_transition(OperationalState::FAULT, "Hardware/sensor error");
+		}
+
+		break;
+
+	case OperationalState::FAULT:
+
+		// Can recover to READY if errors are cleared
+		if (_error_flags == 0) {
+			request_state_transition(OperationalState::READY, "Errors cleared");
+		}
+
+		break;
+
+	case OperationalState::EMERGENCY_STOP:
+		// Can only exit via explicit clear_emergency_stop() call
+		break;
 	}
 }
 
-bool TiltStateManager::request_state_transition(OperationalState new_state, const char* reason)
+bool TiltStateManager::request_state_transition(OperationalState new_state, const char *reason)
 {
 	if (!is_transition_valid(_current_state, new_state)) {
 		set_error_flag(ERROR_INVALID_TRANSITION, "Invalid state transition");
@@ -128,6 +139,7 @@ bool TiltStateManager::request_state_transition(OperationalState new_state, cons
 	if (reason) {
 		PX4_INFO("State transition: %s -> %s (%s)",
 			 get_state_name(_current_state), get_state_name(new_state), reason);
+
 	} else {
 		PX4_INFO("State transition: %s -> %s",
 			 get_state_name(_current_state), get_state_name(new_state));
@@ -165,53 +177,57 @@ bool TiltStateManager::start_calibration()
 void TiltStateManager::update_calibration_state_machine(float position, bool at_load_limit, bool at_dump_limit)
 {
 	switch (_calibration_phase) {
-		case CalibrationPhase::FINDING_LOAD_LIMIT:
-			if (at_load_limit) {
-				_load_position = position;
-				_calibration_phase = CalibrationPhase::SETTLING_AT_LOAD;
-				_phase_start_time = hrt_absolute_time();
-				PX4_INFO("Load limit reached at position %.1f mm", (double)position);
-			}
-			break;
+	case CalibrationPhase::FINDING_LOAD_LIMIT:
+		if (at_load_limit) {
+			_load_position = position;
+			_calibration_phase = CalibrationPhase::SETTLING_AT_LOAD;
+			_phase_start_time = hrt_absolute_time();
+			PX4_INFO("Load limit reached at position %.1f mm", (double)position);
+		}
 
-		case CalibrationPhase::SETTLING_AT_LOAD:
-			if (hrt_elapsed_time(&_phase_start_time) > SETTLING_TIME_US) {
-				_calibration_phase = CalibrationPhase::FINDING_DUMP_LIMIT;
-				_phase_start_time = hrt_absolute_time();
-				PX4_INFO("Moving to find dump limit");
-			}
-			break;
+		break;
 
-		case CalibrationPhase::FINDING_DUMP_LIMIT:
-			if (at_dump_limit) {
-				_dump_position = position;
-				_calibration_phase = CalibrationPhase::SETTLING_AT_DUMP;
-				_phase_start_time = hrt_absolute_time();
-				PX4_INFO("Dump limit reached at position %.1f mm", (double)position);
-			}
-			break;
+	case CalibrationPhase::SETTLING_AT_LOAD:
+		if (hrt_elapsed_time(&_phase_start_time) > SETTLING_TIME_US) {
+			_calibration_phase = CalibrationPhase::FINDING_DUMP_LIMIT;
+			_phase_start_time = hrt_absolute_time();
+			PX4_INFO("Moving to find dump limit");
+		}
 
-		case CalibrationPhase::SETTLING_AT_DUMP:
-			if (hrt_elapsed_time(&_phase_start_time) > SETTLING_TIME_US) {
-				_calibration_phase = CalibrationPhase::COMPUTING_PARAMETERS;
-				_phase_start_time = hrt_absolute_time();
-			}
-			break;
+		break;
 
-		case CalibrationPhase::COMPUTING_PARAMETERS:
-			finalize_calibration();
-			_calibration_phase = CalibrationPhase::COMPLETE;
-			break;
+	case CalibrationPhase::FINDING_DUMP_LIMIT:
+		if (at_dump_limit) {
+			_dump_position = position;
+			_calibration_phase = CalibrationPhase::SETTLING_AT_DUMP;
+			_phase_start_time = hrt_absolute_time();
+			PX4_INFO("Dump limit reached at position %.1f mm", (double)position);
+		}
 
-		case CalibrationPhase::COMPLETE:
-			_calibration_in_progress = false;
-			request_state_transition(OperationalState::READY, "Calibration completed");
-			break;
+		break;
 
-		case CalibrationPhase::IDLE:
-		default:
-			// Should not reach here during calibration
-			break;
+	case CalibrationPhase::SETTLING_AT_DUMP:
+		if (hrt_elapsed_time(&_phase_start_time) > SETTLING_TIME_US) {
+			_calibration_phase = CalibrationPhase::COMPUTING_PARAMETERS;
+			_phase_start_time = hrt_absolute_time();
+		}
+
+		break;
+
+	case CalibrationPhase::COMPUTING_PARAMETERS:
+		finalize_calibration();
+		_calibration_phase = CalibrationPhase::COMPLETE;
+		break;
+
+	case CalibrationPhase::COMPLETE:
+		_calibration_in_progress = false;
+		request_state_transition(OperationalState::READY, "Calibration completed");
+		break;
+
+	case CalibrationPhase::IDLE:
+	default:
+		// Should not reach here during calibration
+		break;
 	}
 }
 
@@ -242,7 +258,7 @@ void TiltStateManager::finalize_calibration()
 		 (double)_calibration_results.actuator_max_length);
 }
 
-bool TiltStateManager::get_calibration_command(float& position_target, float& velocity_target) const
+bool TiltStateManager::get_calibration_command(float &position_target, float &velocity_target) const
 {
 	if (_current_state != OperationalState::CALIBRATING) {
 		return false;
@@ -252,30 +268,30 @@ bool TiltStateManager::get_calibration_command(float& position_target, float& ve
 	float slow_speed = _param_calibration_slow_speed.get();
 
 	switch (_calibration_phase) {
-		case CalibrationPhase::FINDING_LOAD_LIMIT:
-			position_target = 0.0f;  // Move to minimum position
-			velocity_target = -fast_speed * 0.5f;  // Moderate downward speed
-			return true;
+	case CalibrationPhase::FINDING_LOAD_LIMIT:
+		position_target = 0.0f;  // Move to minimum position
+		velocity_target = -fast_speed * 0.5f;  // Moderate downward speed
+		return true;
 
-		case CalibrationPhase::SETTLING_AT_LOAD:
-			position_target = _load_position;
-			velocity_target = -slow_speed;  // Use slow speed for settling
-			return true;
+	case CalibrationPhase::SETTLING_AT_LOAD:
+		position_target = _load_position;
+		velocity_target = -slow_speed;  // Use slow speed for settling
+		return true;
 
-		case CalibrationPhase::FINDING_DUMP_LIMIT:
-			position_target = 1000.0f;  // Move to maximum position
-			velocity_target = fast_speed;
-			return true;
+	case CalibrationPhase::FINDING_DUMP_LIMIT:
+		position_target = 1000.0f;  // Move to maximum position
+		velocity_target = fast_speed;
+		return true;
 
-		case CalibrationPhase::SETTLING_AT_DUMP:
-			position_target = _dump_position;
-			velocity_target = slow_speed;  // Use slow speed for settling
-			return true;
+	case CalibrationPhase::SETTLING_AT_DUMP:
+		position_target = _dump_position;
+		velocity_target = slow_speed;  // Use slow speed for settling
+		return true;
 
-		default:
-			position_target = 0.0f;
-			velocity_target = 0.0f;
-			return true;
+	default:
+		position_target = 0.0f;
+		velocity_target = 0.0f;
+		return true;
 	}
 }
 
@@ -291,8 +307,10 @@ TiltStateManager::StateInfo TiltStateManager::get_state_info() const
 	// Set status message based on state
 	if (_emergency_stop_active) {
 		info.status_message = _emergency_stop_reason ? _emergency_stop_reason : "Emergency stop active";
+
 	} else if (_error_flags != 0) {
 		info.status_message = _last_error_message ? _last_error_message : "Error condition";
+
 	} else {
 		info.status_message = get_state_name(_current_state);
 	}
@@ -300,28 +318,35 @@ TiltStateManager::StateInfo TiltStateManager::get_state_info() const
 	// Calculate calibration progress
 	if (_current_state == OperationalState::CALIBRATING && _calibration_in_progress) {
 		switch (_calibration_phase) {
-			case CalibrationPhase::FINDING_LOAD_LIMIT:
-				info.calibration_progress = 0.2f;
-				break;
-			case CalibrationPhase::SETTLING_AT_LOAD:
-				info.calibration_progress = 0.4f;
-				break;
-			case CalibrationPhase::FINDING_DUMP_LIMIT:
-				info.calibration_progress = 0.6f;
-				break;
-			case CalibrationPhase::SETTLING_AT_DUMP:
-				info.calibration_progress = 0.8f;
-				break;
-			case CalibrationPhase::COMPUTING_PARAMETERS:
-				info.calibration_progress = 0.9f;
-				break;
-			case CalibrationPhase::COMPLETE:
-				info.calibration_progress = 1.0f;
-				break;
-			default:
-				info.calibration_progress = 0.0f;
-				break;
+		case CalibrationPhase::FINDING_LOAD_LIMIT:
+			info.calibration_progress = 0.2f;
+			break;
+
+		case CalibrationPhase::SETTLING_AT_LOAD:
+			info.calibration_progress = 0.4f;
+			break;
+
+		case CalibrationPhase::FINDING_DUMP_LIMIT:
+			info.calibration_progress = 0.6f;
+			break;
+
+		case CalibrationPhase::SETTLING_AT_DUMP:
+			info.calibration_progress = 0.8f;
+			break;
+
+		case CalibrationPhase::COMPUTING_PARAMETERS:
+			info.calibration_progress = 0.9f;
+			break;
+
+		case CalibrationPhase::COMPLETE:
+			info.calibration_progress = 1.0f;
+			break;
+
+		default:
+			info.calibration_progress = 0.0f;
+			break;
 		}
+
 	} else {
 		info.calibration_progress = 0.0f;
 	}
@@ -329,7 +354,7 @@ TiltStateManager::StateInfo TiltStateManager::get_state_info() const
 	return info;
 }
 
-void TiltStateManager::trigger_emergency_stop(const char* reason)
+void TiltStateManager::trigger_emergency_stop(const char *reason)
 {
 	_emergency_stop_active = true;
 	_emergency_stop_reason = reason;
@@ -391,6 +416,7 @@ void TiltStateManager::update_parameters()
 		PX4_INFO("Calibration requirement disabled - marking as calibrated");
 		_calibration_results.calibration_valid = true;
 		// Could transition to READY state if appropriate
+
 	} else if (new_calibration_required && !_calibration_results.calibration_valid) {
 		PX4_INFO("Calibration requirement enabled - calibration needed");
 		// System will need to be calibrated before operation
@@ -401,44 +427,57 @@ bool TiltStateManager::is_operational() const
 {
 	return (_current_state == OperationalState::READY ||
 		_current_state == OperationalState::ACTIVE) &&
-		!_emergency_stop_active;
+	       !_emergency_stop_active;
 }
 
 bool TiltStateManager::is_calibration_required() const
 {
 	return (_param_calibration_required.get() != 0) ||
-		!_calibration_results.calibration_valid;
+	       !_calibration_results.calibration_valid;
 }
 
-const char* TiltStateManager::get_state_name(OperationalState state)
+const char *TiltStateManager::get_state_name(OperationalState state)
 {
 	switch (state) {
-		case OperationalState::UNINITIALIZED: return "UNINITIALIZED";
-		case OperationalState::CALIBRATING:   return "CALIBRATING";
-		case OperationalState::READY:         return "READY";
-		case OperationalState::ACTIVE:        return "ACTIVE";
-		case OperationalState::FAULT:         return "FAULT";
-		case OperationalState::EMERGENCY_STOP: return "EMERGENCY_STOP";
-		default:                               return "UNKNOWN";
+	case OperationalState::UNINITIALIZED: return "UNINITIALIZED";
+
+	case OperationalState::CALIBRATING:   return "CALIBRATING";
+
+	case OperationalState::READY:         return "READY";
+
+	case OperationalState::ACTIVE:        return "ACTIVE";
+
+	case OperationalState::FAULT:         return "FAULT";
+
+	case OperationalState::EMERGENCY_STOP: return "EMERGENCY_STOP";
+
+	default:                               return "UNKNOWN";
 	}
 }
 
-const char* TiltStateManager::get_phase_name(CalibrationPhase phase)
+const char *TiltStateManager::get_phase_name(CalibrationPhase phase)
 {
 	switch (phase) {
-		case CalibrationPhase::IDLE:                 return "IDLE";
-		case CalibrationPhase::FINDING_LOAD_LIMIT:   return "FINDING_LOAD_LIMIT";
-		case CalibrationPhase::SETTLING_AT_LOAD:     return "SETTLING_AT_LOAD";
-		case CalibrationPhase::FINDING_DUMP_LIMIT:   return "FINDING_DUMP_LIMIT";
-		case CalibrationPhase::SETTLING_AT_DUMP:     return "SETTLING_AT_DUMP";
-		case CalibrationPhase::COMPUTING_PARAMETERS: return "COMPUTING_PARAMETERS";
-		case CalibrationPhase::COMPLETE:             return "COMPLETE";
-		default:                                     return "UNKNOWN";
+	case CalibrationPhase::IDLE:                 return "IDLE";
+
+	case CalibrationPhase::FINDING_LOAD_LIMIT:   return "FINDING_LOAD_LIMIT";
+
+	case CalibrationPhase::SETTLING_AT_LOAD:     return "SETTLING_AT_LOAD";
+
+	case CalibrationPhase::FINDING_DUMP_LIMIT:   return "FINDING_DUMP_LIMIT";
+
+	case CalibrationPhase::SETTLING_AT_DUMP:     return "SETTLING_AT_DUMP";
+
+	case CalibrationPhase::COMPUTING_PARAMETERS: return "COMPUTING_PARAMETERS";
+
+	case CalibrationPhase::COMPLETE:             return "COMPLETE";
+
+	default:                                     return "UNKNOWN";
 	}
 }
 
 // Helper functions for error management
-void TiltStateManager::set_error_flag(uint32_t error_flag, const char* message)
+void TiltStateManager::set_error_flag(uint32_t error_flag, const char *message)
 {
 	if ((_error_flags & error_flag) == 0) {
 		_error_flags |= error_flag;
@@ -456,30 +495,30 @@ bool TiltStateManager::is_transition_valid(OperationalState from, OperationalSta
 {
 	// Define valid state transitions
 	switch (from) {
-		case OperationalState::UNINITIALIZED:
-			return (to == OperationalState::CALIBRATING || to == OperationalState::READY);
+	case OperationalState::UNINITIALIZED:
+		return (to == OperationalState::CALIBRATING || to == OperationalState::READY);
 
-		case OperationalState::CALIBRATING:
-			return (to == OperationalState::READY || to == OperationalState::FAULT ||
-				to == OperationalState::EMERGENCY_STOP);
+	case OperationalState::CALIBRATING:
+		return (to == OperationalState::READY || to == OperationalState::FAULT ||
+			to == OperationalState::EMERGENCY_STOP);
 
-		case OperationalState::READY:
-			return (to == OperationalState::ACTIVE || to == OperationalState::CALIBRATING ||
-				to == OperationalState::FAULT || to == OperationalState::EMERGENCY_STOP);
+	case OperationalState::READY:
+		return (to == OperationalState::ACTIVE || to == OperationalState::CALIBRATING ||
+			to == OperationalState::FAULT || to == OperationalState::EMERGENCY_STOP);
 
-		case OperationalState::ACTIVE:
-			return (to == OperationalState::READY || to == OperationalState::FAULT ||
-				to == OperationalState::EMERGENCY_STOP);
+	case OperationalState::ACTIVE:
+		return (to == OperationalState::READY || to == OperationalState::FAULT ||
+			to == OperationalState::EMERGENCY_STOP);
 
-		case OperationalState::FAULT:
-			return (to == OperationalState::READY || to == OperationalState::CALIBRATING ||
-				to == OperationalState::EMERGENCY_STOP);
+	case OperationalState::FAULT:
+		return (to == OperationalState::READY || to == OperationalState::CALIBRATING ||
+			to == OperationalState::EMERGENCY_STOP);
 
-		case OperationalState::EMERGENCY_STOP:
-			return (to == OperationalState::FAULT);  // Only via clear_emergency_stop()
+	case OperationalState::EMERGENCY_STOP:
+		return (to == OperationalState::FAULT);  // Only via clear_emergency_stop()
 
-		default:
-			return false;
+	default:
+		return false;
 	}
 }
 
@@ -490,7 +529,7 @@ bool TiltStateManager::check_calibration_timeout() const
 	}
 
 	// Check if calibration has been running too long
-	hrt_abstime calibration_timeout = 30 * 1000000;  // 30 seconds timeout
+	hrt_abstime calibration_timeout = static_cast<hrt_abstime>(_param_calibration_timeout.get()) * 1000000ULL;
 	return (_calibration_start_time != 0) &&
-		   (hrt_elapsed_time(&_calibration_start_time) > calibration_timeout);
+	       (hrt_elapsed_time(&_calibration_start_time) > calibration_timeout);
 }

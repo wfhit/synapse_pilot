@@ -106,6 +106,7 @@ public:
 	{
 		// ========== 1. ARM STATUS ==========
 		actuator_armed_s armed;
+
 		if (!_armed_sub.copy(&armed) || !armed.armed) {
 			PX4_ERR("ManualBucket: Vehicle not armed");
 			return StrategyResult::Failure("Vehicle not armed");
@@ -113,23 +114,26 @@ public:
 
 		// ========== 2. BATTERY CHECK ==========
 		battery_status_s battery;
+
 		if (!_battery_sub.copy(&battery)) {
 			return StrategyResult::Failure("Battery status unavailable");
 		}
 
 		if (battery.remaining < BATTERY_MIN_START) {
 			PX4_ERR("ManualBucket: Battery too low (%.1f%% < %.1f%%)",
-			        (double)(battery.remaining * 100.0f), (double)(BATTERY_MIN_START * 100.0f));
+				(double)(battery.remaining * 100.0f), (double)(BATTERY_MIN_START * 100.0f));
 			return StrategyResult::Failure("Battery too low to start");
 		}
 
 		// ========== 3. MANUAL CONTROL AVAILABLE ==========
 		manual_control_setpoint_s manual_control;
+
 		if (!_manual_control_sub.copy(&manual_control)) {
 			return StrategyResult::Failure("Manual control unavailable");
 		}
 
 		hrt_abstime now = hrt_absolute_time();
+
 		if (now - manual_control.timestamp > CONTROL_INPUT_TIMEOUT) {
 			return StrategyResult::Failure("Manual control input stale");
 		}
@@ -175,7 +179,7 @@ public:
 				if (_mode_status_sub.copy(&mode_status)) {
 					if (mode_status.current_mode == operation_mode_cmd_s::MODE_WL_MANUAL_BUCKET) {
 						PX4_INFO("ManualBucket: Mode activated - manual control ready");
-					_current_step = STEP_MANUAL_CONTROL;
+						_current_step = STEP_MANUAL_CONTROL;
 						_control_start_time = get_step_elapsed();
 					}
 				}
@@ -187,6 +191,7 @@ public:
 			{
 				// Verify mode is still active
 				operation_mode_status_s mode_status;
+
 				if (_mode_status_sub.copy(&mode_status)) {
 					if (mode_status.current_mode != operation_mode_cmd_s::MODE_WL_MANUAL_BUCKET) {
 						return StrategyResult::Failure("Manual bucket mode lost");
@@ -197,14 +202,17 @@ public:
 
 				// --- Battery monitoring ---
 				battery_status_s battery;
+
 				if (_battery_sub.copy(&battery)) {
 					if (battery.remaining < BATTERY_CRITICAL) {
 						PX4_ERR("ManualBucket: CRITICAL - Battery %.1f%%", (double)(battery.remaining * 100.0f));
 						return StrategyResult::Failure("Battery critically low");
+
 					} else if (battery.remaining < BATTERY_DEGRADED) {
 						PX4_WARN("ManualBucket: Low battery %.1f%% - entering degraded mode",
-						         (double)(battery.remaining * 100.0f));
+							 (double)(battery.remaining * 100.0f));
 						degraded_condition = true;
+
 					} else if (battery.remaining < BATTERY_WARN) {
 						warn_throttled(now, "Battery low: %.1f%%", (double)(battery.remaining * 100.0f));
 					}
@@ -212,11 +220,12 @@ public:
 
 				// --- Manual control input monitoring ---
 				manual_control_setpoint_s manual_control;
+
 				if (_manual_control_sub.copy(&manual_control)) {
 					// Check if operator is providing input
 					bool has_input = (fabsf(manual_control.roll) > 0.01f ||
-					                  fabsf(manual_control.pitch) > 0.01f ||
-					                  fabsf(manual_control.throttle) > 0.01f);
+							  fabsf(manual_control.pitch) > 0.01f ||
+							  fabsf(manual_control.throttle) > 0.01f);
 
 					if (has_input) {
 						_last_input_time = now;
@@ -225,10 +234,11 @@ public:
 					// Check for input timeout (operator not providing commands)
 					if (now - _last_input_time > CONTROL_INPUT_TIMEOUT) {
 						PX4_WARN("ManualBucket: No operator input for %.1fs - completing strategy",
-						         (double)((now - _last_input_time) / 1e6));
-					_current_step = STEP_COMPLETE;
+							 (double)((now - _last_input_time) / 1e6));
+						_current_step = STEP_COMPLETE;
 						break;
 					}
+
 				} else {
 					return StrategyResult::Failure("Manual control input lost");
 				}
@@ -251,12 +261,13 @@ public:
 
 				// --- Switch monitoring (check for mode change request) ---
 				manual_control_switches_s switches;
+
 				if (_switches_sub.copy(&switches)) {
 					// Check if operator requested mode change via switch
 					// TODO: Define specific switch for exiting manual mode
 					if (switches.return_switch == manual_control_switches_s::SWITCH_POS_ON) {
 						PX4_INFO("ManualBucket: Return switch activated - exiting manual mode");
-					_current_step = STEP_COMPLETE;
+						_current_step = STEP_COMPLETE;
 						break;
 					}
 				}
@@ -266,6 +277,7 @@ public:
 					_is_degraded = true;
 					PX4_WARN("ManualBucket: Entering DEGRADED mode - reduced response");
 					// TODO: Command reduced hydraulic flow rate
+
 				} else if (!degraded_condition && _is_degraded) {
 					_is_degraded = false;
 					PX4_INFO("ManualBucket: Exiting DEGRADED mode - normal response");

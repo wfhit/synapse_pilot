@@ -42,7 +42,8 @@ TiltKinematicsTilt::TiltKinematicsTilt(ModuleParams *parent) :
 void TiltKinematicsTilt::update_configuration()
 {
 	// Stage 2 - Bucket Tilt Linkage (Boom-End Frame)
-	_config.bellcrank_joint_to_bucket_length = matrix::Vector2f(_param_bellcrank_joint_to_bucket_length_x.get(), _param_bellcrank_joint_to_bucket_length_y.get());
+	_config.bellcrank_joint_to_bucket_length = matrix::Vector2f(_param_bellcrank_joint_to_bucket_length_x.get(),
+			_param_bellcrank_joint_to_bucket_length_y.get());
 
 	// Link dimensions
 	_config.bellcrank_length = _param_bellcrank_length.get();
@@ -61,8 +62,8 @@ void TiltKinematicsTilt::update_configuration()
 }
 
 void TiltKinematicsTilt::set_triangle_angles(float bellcrank_internal_angle,
-                                               float bellcrank_boom_alignment_offset,
-                                               float coupler_to_pivot_angle)
+		float bellcrank_boom_alignment_offset,
+		float coupler_to_pivot_angle)
 {
 	_config.bellcrank_internal_angle = bellcrank_internal_angle;
 	_config.bellcrank_boom_alignment_offset = bellcrank_boom_alignment_offset;
@@ -70,16 +71,16 @@ void TiltKinematicsTilt::set_triangle_angles(float bellcrank_internal_angle,
 
 	// Log the angles for debugging
 	PX4_INFO("Tilt: Set bellcrank_internal_angle = %.3f rad (%.1f deg)",
-	         (double)_config.bellcrank_internal_angle,
-	         (double)(_config.bellcrank_internal_angle * 180.0f / PI));
+		 (double)_config.bellcrank_internal_angle,
+		 (double)(_config.bellcrank_internal_angle * 180.0f / PI));
 
 	PX4_INFO("Tilt: Set boom_alignment_offset = %.3f rad (%.1f deg)",
-	         (double)_config.bellcrank_boom_alignment_offset,
-	         (double)(_config.bellcrank_boom_alignment_offset * 180.0f / PI));
+		 (double)_config.bellcrank_boom_alignment_offset,
+		 (double)(_config.bellcrank_boom_alignment_offset * 180.0f / PI));
 
 	PX4_INFO("Tilt: Set coupler_to_pivot_angle = %.3f rad (%.1f deg)",
-	         (double)_config.coupler_to_pivot_angle,
-	         (double)(_config.coupler_to_pivot_angle * 180.0f / PI));
+		 (double)_config.coupler_to_pivot_angle,
+		 (double)(_config.coupler_to_pivot_angle * 180.0f / PI));
 }
 
 // =========================
@@ -112,6 +113,7 @@ float TiltKinematicsTilt::compute_inverse_kinematics(
 {
 	// Stage 2 Inverse: Find required bellcrank angle for desired tilt angle
 	float required_bellcrank_tilt = solve_inverse_trigonometric(bucket_angle, boom_angle);
+
 	if (!std::isfinite(required_bellcrank_tilt)) {
 		PX4_WARN("Tilt Stage 2 inverse failed for tilt angle");
 		return NAN;
@@ -138,7 +140,7 @@ float TiltKinematicsTilt::remove_stage_coupling(float bellcrank_angle_tilt) cons
 // TRIGONOMETRIC SOLUTION METHODS
 // =========================
 
-bool TiltKinematicsTilt::solve_trigonometric(float bellcrank_angle_tilt, float boom_angle, TiltState& state) const
+bool TiltKinematicsTilt::solve_trigonometric(float bellcrank_angle_tilt, float boom_angle, TiltState &state) const
 {
 	/**
 	 * Stage 2: Bucket Tilt Linkage (OABC) - Boom-End Frame
@@ -170,7 +172,7 @@ bool TiltKinematicsTilt::solve_trigonometric(float bellcrank_angle_tilt, float b
 			bellcrank_joint_to_bucket_length, bellcrank_length, bellcrank_joint_angle);
 
 	if (!std::isfinite(coupler_joint_to_pivot_distance) ||
-		coupler_joint_to_pivot_distance <= GEOMETRIC_TOLERANCE) {
+	    coupler_joint_to_pivot_distance <= GEOMETRIC_TOLERANCE) {
 		return false;  // Invalid triangle geometry
 	}
 
@@ -190,12 +192,14 @@ bool TiltKinematicsTilt::solve_trigonometric(float bellcrank_angle_tilt, float b
 	const float bucket_angle_boom_relative = bucket_to_coupler_angle - coupler_to_pivot_angle;
 
 	// Step 4: Apply boom angle, boom alignment offset, and calibration offset to get chassis-relative angle
-	state.bucket_angle = bucket_angle_boom_relative + boom_angle + _config.bucket_offset + _config.bellcrank_boom_alignment_offset;
+	state.bucket_angle = bucket_angle_boom_relative + boom_angle + _config.bucket_offset +
+			     _config.bellcrank_boom_alignment_offset;
 	state.bellcrank_angle = bellcrank_angle_tilt;
 
 	// Calculate supplementary state information for debugging and visualization
 	// Apply bellcrank internal angle compensation to coupler angle calculation
-	state.coupler_angle = atan2f(sinf(bucket_to_coupler_angle), cosf(bucket_to_coupler_angle)) + _config.bellcrank_internal_angle;
+	state.coupler_angle = atan2f(sinf(bucket_to_coupler_angle),
+				     cosf(bucket_to_coupler_angle)) + _config.bellcrank_internal_angle;
 	state.joint_B = matrix::Vector2f{
 		coupler_joint_to_pivot_distance * cosf(coupler_to_pivot_angle),
 		coupler_joint_to_pivot_distance * sinf(coupler_to_pivot_angle)
@@ -218,7 +222,8 @@ float TiltKinematicsTilt::solve_inverse_trigonometric(float bucket_angle, float 
 	 */
 
 	// Step 1: Convert chassis-relative angle to boom-relative angle
-	const float target_bucket_angle_boom_relative = bucket_angle - boom_angle - _config.bucket_offset - _config.bellcrank_boom_alignment_offset;
+	const float target_bucket_angle_boom_relative = bucket_angle - boom_angle - _config.bucket_offset -
+			_config.bellcrank_boom_alignment_offset;
 
 	// Extract linkage dimensions with descriptive names
 	const float bucket_arm_length = _config.bucket_arm_length;           // Distance O to A
@@ -252,6 +257,7 @@ float TiltKinematicsTilt::solve_inverse_trigonometric(float bucket_angle, float 
 	if (!std::isfinite(pivot_internal_angle)) {
 		return NAN;  // Invalid triangle configuration
 	}
+
 	const float attachment_direction_angle = atan2f(attachment_to_pivot_vector(1), attachment_to_pivot_vector(0));
 
 	// Step 5: Calculate bellcrank angle candidates and select the best one
@@ -259,7 +265,7 @@ float TiltKinematicsTilt::solve_inverse_trigonometric(float bucket_angle, float 
 	const float bellcrank_angle_candidate_2 = attachment_direction_angle - pivot_internal_angle;
 
 	return validate_and_select_best_candidate(bellcrank_angle_candidate_1, bellcrank_angle_candidate_2,
-	                                         bucket_angle, boom_angle);
+			bucket_angle, boom_angle);
 }
 
 // =========================
@@ -314,12 +320,14 @@ bool TiltKinematicsTilt::validate_configuration() const
 
 	for (float test_angle_drive : test_angles_drive) {
 		TiltState state = compute_forward_kinematics(test_angle_drive, 0.0f);
+
 		if (!state.is_valid) {
 			continue;  // Some angles may be out of range, that's OK
 		}
 
 		// Test inverse kinematics round-trip
 		float inverse_angle_tilt = compute_inverse_kinematics(state.bucket_angle, 0.0f);
+
 		if (!std::isfinite(inverse_angle_tilt)) {
 			PX4_ERR("Tilt inverse kinematics failed at test tilt angle");
 			return false;
@@ -327,6 +335,7 @@ bool TiltKinematicsTilt::validate_configuration() const
 
 		// Check round-trip accuracy
 		float angle_error = fabsf(inverse_angle_tilt - state.bellcrank_angle);
+
 		if (angle_error > 0.01f) {  // 0.01 rad tolerance
 			PX4_ERR("Tilt round-trip error too large - tolerance exceeded");
 			return false;
@@ -363,7 +372,7 @@ float TiltKinematicsTilt::law_of_cosines_side(float side_a, float side_b, float 
 	}
 
 	const float side_c_squared = side_a * side_a + side_b * side_b -
-	                             2.0f * side_a * side_b * cosf(angle_between);
+				     2.0f * side_a * side_b * cosf(angle_between);
 
 	if (side_c_squared <= 0.0f) {
 		return NAN;  // Invalid triangle geometry
@@ -373,7 +382,7 @@ float TiltKinematicsTilt::law_of_cosines_side(float side_a, float side_b, float 
 }
 
 float TiltKinematicsTilt::validate_and_select_best_candidate(float candidate_1, float candidate_2,
-                                                              float target_bucket_angle, float boom_angle) const
+		float target_bucket_angle, float boom_angle) const
 {
 	/**
 	 * Validate both bellcrank angle candidates using forward kinematics and select the best one
@@ -392,12 +401,15 @@ float TiltKinematicsTilt::validate_and_select_best_candidate(float candidate_1, 
 		const float angle_error_1 = fabsf(validation_state_1.bucket_angle - target_bucket_angle);
 		const float angle_error_2 = fabsf(validation_state_2.bucket_angle - target_bucket_angle);
 		return (angle_error_1 < angle_error_2) ? candidate_1 : candidate_2;
+
 	} else if (candidate_1_valid) {
 		// Only first candidate is valid
 		return candidate_1;
+
 	} else if (candidate_2_valid) {
 		// Only second candidate is valid
 		return candidate_2;
+
 	} else {
 		// No valid solution found
 		return NAN;

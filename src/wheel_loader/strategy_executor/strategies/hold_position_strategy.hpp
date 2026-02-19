@@ -118,6 +118,7 @@ public:
 	{
 		// ========== 1. ARM STATUS ==========
 		actuator_armed_s armed;
+
 		if (!_armed_sub.copy(&armed) || !armed.armed) {
 			PX4_ERR("HoldPosition: Vehicle not armed");
 			return StrategyResult::Failure("Vehicle not armed");
@@ -125,18 +126,20 @@ public:
 
 		// ========== 2. BATTERY CHECK ==========
 		battery_status_s battery;
+
 		if (!_battery_sub.copy(&battery)) {
 			return StrategyResult::Failure("Battery status unavailable");
 		}
 
 		if (battery.remaining < BATTERY_MIN_START) {
 			PX4_ERR("HoldPosition: Battery too low (%.1f%% < %.1f%%)",
-			        (double)(battery.remaining * 100.0f), (double)(BATTERY_MIN_START * 100.0f));
+				(double)(battery.remaining * 100.0f), (double)(BATTERY_MIN_START * 100.0f));
 			return StrategyResult::Failure("Battery too low to hold");
 		}
 
 		// ========== 3. LOCALIZATION HEALTH ==========
 		vehicle_local_position_s local_pos;
+
 		if (!_local_pos_sub.copy(&local_pos)) {
 			return StrategyResult::Failure("Localization unavailable");
 		}
@@ -146,18 +149,21 @@ public:
 		}
 
 		hrt_abstime now = hrt_absolute_time();
+
 		if (now - local_pos.timestamp > LOCALIZATION_TIMEOUT) {
 			return StrategyResult::Failure("Localization data stale");
 		}
 
 		// ========== 4. ATTITUDE CHECK ==========
 		vehicle_attitude_s attitude;
+
 		if (!_attitude_sub.copy(&attitude)) {
 			return StrategyResult::Failure("Attitude data unavailable");
 		}
 
 		// ========== 5. SENSOR HEALTH ==========
 		sensor_combined_s sensors;
+
 		if (!_sensor_sub.copy(&sensors)) {
 			return StrategyResult::Failure("Sensor data unavailable");
 		}
@@ -203,7 +209,7 @@ public:
 				if (_mode_status_sub.copy(&mode_status)) {
 					if (mode_status.current_mode == operation_mode_cmd_s::MODE_WL_HOLD) {
 						PX4_INFO("HoldPosition: Mode activated - capturing position");
-					_current_step = STEP_CAPTURE_POSITION;
+						_current_step = STEP_CAPTURE_POSITION;
 					}
 				}
 			}
@@ -213,6 +219,7 @@ public:
 			// ========== STEP: Capture current position to hold ==========
 			{
 				vehicle_local_position_s local_pos;
+
 				if (_local_pos_sub.copy(&local_pos)) {
 					if (local_pos.xy_valid && local_pos.z_valid) {
 						_hold_x = local_pos.x;
@@ -220,6 +227,7 @@ public:
 						_hold_z = local_pos.z;
 
 						vehicle_attitude_s attitude;
+
 						if (_attitude_sub.copy(&attitude)) {
 							matrix::Eulerf euler(matrix::Quatf(attitude.q));
 							_hold_yaw = euler.psi();
@@ -229,10 +237,10 @@ public:
 						_capture_time = now;
 
 						PX4_INFO("HoldPosition: Position captured - X:%.2f Y:%.2f Z:%.2f Yaw:%.1f°",
-						         (double)_hold_x, (double)_hold_y, (double)_hold_z,
-						         (double)math::degrees(_hold_yaw));
+							 (double)_hold_x, (double)_hold_y, (double)_hold_z,
+							 (double)math::degrees(_hold_yaw));
 
-					_current_step = STEP_HOLDING;
+						_current_step = STEP_HOLDING;
 					}
 				}
 
@@ -248,6 +256,7 @@ public:
 			{
 				// Verify mode is still active
 				operation_mode_status_s mode_status;
+
 				if (_mode_status_sub.copy(&mode_status)) {
 					if (mode_status.current_mode != operation_mode_cmd_s::MODE_WL_HOLD) {
 						return StrategyResult::Failure("Hold mode lost");
@@ -258,14 +267,17 @@ public:
 
 				// --- Battery monitoring ---
 				battery_status_s battery;
+
 				if (_battery_sub.copy(&battery)) {
 					if (battery.remaining < BATTERY_CRITICAL) {
 						PX4_ERR("HoldPosition: CRITICAL - Battery %.1f%%", (double)(battery.remaining * 100.0f));
 						return StrategyResult::Failure("Battery critically low");
+
 					} else if (battery.remaining < BATTERY_DEGRADED) {
 						warn_throttled(now, "Low battery %.1f%% - degraded mode",
-						               (double)(battery.remaining * 100.0f));
+							       (double)(battery.remaining * 100.0f));
 						degraded_condition = true;
+
 					} else if (battery.remaining < BATTERY_WARN) {
 						warn_throttled(now, "Battery low: %.1f%%", (double)(battery.remaining * 100.0f));
 					}
@@ -273,6 +285,7 @@ public:
 
 				// --- Position error monitoring ---
 				vehicle_local_position_s local_pos;
+
 				if (_local_pos_sub.copy(&local_pos)) {
 					// Check localization health
 					if (!local_pos.xy_valid || !local_pos.z_valid) {
@@ -295,9 +308,11 @@ public:
 					if (position_error > POSITION_ERROR_MAX) {
 						PX4_ERR("HoldPosition: CRITICAL - Position error %.2fm", (double)position_error);
 						return StrategyResult::Failure("Excessive position drift");
+
 					} else if (position_error > POSITION_ERROR_DEGRADED) {
 						warn_throttled(now, "Position error %.2fm - degraded mode", (double)position_error);
 						degraded_condition = true;
+
 					} else if (position_error > POSITION_ERROR_WARN) {
 						warn_throttled(now, "Position error: %.2fm", (double)position_error);
 					}
@@ -305,6 +320,7 @@ public:
 					// Check velocity (should be near zero)
 					if (local_pos.v_xy_valid) {
 						float velocity = sqrtf(local_pos.vx * local_pos.vx + local_pos.vy * local_pos.vy);
+
 						if (velocity > VELOCITY_HOLD_MAX) {
 							warn_throttled(now, "Velocity high while holding: %.2f m/s", (double)velocity);
 							degraded_condition = true;
@@ -314,6 +330,7 @@ public:
 
 				// --- Heading error monitoring ---
 				vehicle_attitude_s attitude;
+
 				if (_attitude_sub.copy(&attitude)) {
 					matrix::Eulerf euler(matrix::Quatf(attitude.q));
 					float current_yaw = euler.psi();
@@ -327,6 +344,7 @@ public:
 					if (yaw_error > HEADING_ERROR_MAX) {
 						warn_throttled(now, "Heading error: %.1f°", (double)yaw_error);
 						degraded_condition = true;
+
 					} else if (yaw_error > HEADING_ERROR_WARN) {
 						warn_throttled(now, "Heading drift: %.1f°", (double)yaw_error);
 					}
@@ -334,6 +352,7 @@ public:
 
 				// --- Sensor health ---
 				sensor_combined_s sensors;
+
 				if (_sensor_sub.copy(&sensors)) {
 					if (now - sensors.timestamp > SENSOR_TIMEOUT) {
 						PX4_ERR("HoldPosition: Sensor timeout");
@@ -346,6 +365,7 @@ public:
 					_is_degraded = true;
 					PX4_WARN("HoldPosition: Entering DEGRADED mode - reduced precision");
 					// TODO: Notify controller of degraded hold (looser position tolerance)
+
 				} else if (!degraded_condition && _is_degraded) {
 					_is_degraded = false;
 					PX4_INFO("HoldPosition: Exiting DEGRADED mode - normal precision");

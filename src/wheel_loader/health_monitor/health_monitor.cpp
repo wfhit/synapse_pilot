@@ -145,6 +145,7 @@ void HealthMonitor::check_sensor_health()
 bool HealthMonitor::check_gps_health()
 {
 	sensor_gps_s gps;
+
 	if (_sensor_gps_sub.copy(&gps)) {
 		const hrt_abstime now = hrt_absolute_time();
 		const uint32_t timeout_ms = (now - gps.timestamp) / 1000;
@@ -172,6 +173,7 @@ bool HealthMonitor::check_gps_health()
 bool HealthMonitor::check_imu_health()
 {
 	sensor_combined_s sensor;
+
 	if (_sensor_combined_sub.copy(&sensor)) {
 		const hrt_abstime now = hrt_absolute_time();
 		const uint32_t timeout_ms = (now - sensor.timestamp) / 1000;
@@ -189,10 +191,10 @@ bool HealthMonitor::check_imu_health()
 
 		// Track peak acceleration for shock detection
 		float accel_magnitude = sqrtf(
-			sensor.accelerometer_m_s2[0] * sensor.accelerometer_m_s2[0] +
-			sensor.accelerometer_m_s2[1] * sensor.accelerometer_m_s2[1] +
-			sensor.accelerometer_m_s2[2] * sensor.accelerometer_m_s2[2]
-		);
+						sensor.accelerometer_m_s2[0] * sensor.accelerometer_m_s2[0] +
+						sensor.accelerometer_m_s2[1] * sensor.accelerometer_m_s2[1] +
+						sensor.accelerometer_m_s2[2] * sensor.accelerometer_m_s2[2]
+					);
 
 		if (accel_magnitude > _max_accel_since_last_report) {
 			_max_accel_since_last_report = accel_magnitude;
@@ -214,6 +216,7 @@ bool HealthMonitor::check_imu_health()
 bool HealthMonitor::check_magnetometer_health()
 {
 	vehicle_magnetometer_s mag;
+
 	if (_vehicle_magnetometer_sub.copy(&mag)) {
 		const hrt_abstime now = hrt_absolute_time();
 		const uint32_t timeout_ms = (now - mag.timestamp) / 1000;
@@ -238,6 +241,7 @@ bool HealthMonitor::check_magnetometer_health()
 bool HealthMonitor::check_barometer_health()
 {
 	vehicle_air_data_s baro;
+
 	if (_vehicle_air_data_sub.copy(&baro)) {
 		const hrt_abstime now = hrt_absolute_time();
 		const uint32_t timeout_ms = (now - baro.timestamp) / 1000;
@@ -301,46 +305,48 @@ bool HealthMonitor::check_wheel_loader_sensors()
 void HealthMonitor::check_actuator_health()
 {
 	actuator_status_s actuator_status;
+
 	if (_actuator_status_sub.copy(&actuator_status)) {
 		// Chassis left
 		_health_status.actuator_chassis_left =
 			actuator_status.chassis_left_valid &&
 			check_actuator_tracking(actuator_status.chassis_left_error,
-					       _param_chassis_error_max.get()) &&
+						_param_chassis_error_max.get()) &&
 			check_actuator_timeout(actuator_status.chassis_left_timeout_ms,
-					      _param_actuator_timeout_ms.get());
+					       _param_actuator_timeout_ms.get());
 
 		// Chassis right
 		_health_status.actuator_chassis_right =
 			actuator_status.chassis_right_valid &&
 			check_actuator_tracking(actuator_status.chassis_right_error,
-					       _param_chassis_error_max.get()) &&
+						_param_chassis_error_max.get()) &&
 			check_actuator_timeout(actuator_status.chassis_right_timeout_ms,
-					      _param_actuator_timeout_ms.get());
+					       _param_actuator_timeout_ms.get());
 
 		// Boom
 		_health_status.actuator_boom =
 			actuator_status.boom_valid &&
 			check_actuator_tracking(actuator_status.boom_error,
-					       _param_boom_error_max.get()) &&
+						_param_boom_error_max.get()) &&
 			check_actuator_timeout(actuator_status.boom_timeout_ms,
-					      _param_actuator_timeout_ms.get());
+					       _param_actuator_timeout_ms.get());
 
 		// Tilt
 		_health_status.actuator_tilt =
 			actuator_status.tilt_valid &&
 			check_actuator_tracking(actuator_status.tilt_error,
-					       _param_tilt_error_max.get()) &&
+						_param_tilt_error_max.get()) &&
 			check_actuator_timeout(actuator_status.tilt_timeout_ms,
-					      _param_actuator_timeout_ms.get());
+					       _param_actuator_timeout_ms.get());
 
 		// Articulation
 		_health_status.actuator_articulation =
 			actuator_status.articulation_valid &&
 			check_actuator_tracking(actuator_status.articulation_error,
-					       _param_articulation_error_max.get()) &&
+						_param_articulation_error_max.get()) &&
 			check_actuator_timeout(actuator_status.articulation_timeout_ms,
-					      _param_actuator_timeout_ms.get());
+					       _param_actuator_timeout_ms.get());
+
 	} else {
 		// No actuator data - all unhealthy
 		_health_status.actuator_chassis_left = false;
@@ -364,6 +370,7 @@ bool HealthMonitor::check_actuator_timeout(uint32_t timeout_ms, uint32_t thresho
 void HealthMonitor::check_power_health()
 {
 	battery_status_s battery;
+
 	if (_battery_status_sub.copy(&battery)) {
 		// Check voltage
 		_health_status.battery_voltage_ok =
@@ -381,6 +388,7 @@ void HealthMonitor::check_power_health()
 		// Check temperature
 		_health_status.battery_temp_ok =
 			battery.temperature < _param_battery_temp_max.get();
+
 	} else {
 		// No battery data - assume unhealthy
 		_health_status.battery_voltage_ok = false;
@@ -403,6 +411,7 @@ void HealthMonitor::check_vehicle_stability()
 bool HealthMonitor::check_tilt_angle()
 {
 	vehicle_attitude_s attitude;
+
 	if (_vehicle_attitude_sub.copy(&attitude)) {
 		// Extract roll and pitch from quaternion
 		const float q0 = attitude.q[0];
@@ -412,7 +421,7 @@ bool HealthMonitor::check_tilt_angle()
 
 		// Calculate Euler angles
 		float roll = atan2f(2.0f * (q0 * q1 + q2 * q3),
-				   1.0f - 2.0f * (q1 * q1 + q2 * q2));
+				    1.0f - 2.0f * (q1 * q1 + q2 * q2));
 		float pitch = asinf(2.0f * (q0 * q2 - q3 * q1));
 
 		_health_status.vehicle_roll = roll;
@@ -446,14 +455,15 @@ bool HealthMonitor::check_slip()
 
 		// Calculate wheel-based velocity estimate
 		float wheel_velocity = (actuator_status.chassis_left_velocity_actual +
-				       actuator_status.chassis_right_velocity_actual) / 2.0f;
+					actuator_status.chassis_right_velocity_actual) / 2.0f;
 
 		// Get IMU-based velocity estimate (forward velocity)
 		float imu_velocity = sqrtf(local_pos.vx * local_pos.vx +
-					  local_pos.vy * local_pos.vy);
+					   local_pos.vy * local_pos.vy);
 
 		// Calculate slip ratio
 		float slip_ratio = 0.0f;
+
 		if (fabsf(wheel_velocity) > 0.1f) {
 			slip_ratio = fabsf(wheel_velocity - imu_velocity) / fabsf(wheel_velocity);
 		}
@@ -485,20 +495,25 @@ void HealthMonitor::check_communication_health()
 
 	// Check MAVLink connection (via vehicle_command as heartbeat proxy)
 	vehicle_command_s cmd;
+
 	if (_vehicle_command_sub.copy(&cmd)) {
 		_mavlink_last_heartbeat = now;
 	}
 
 	const int mavlink_timeout_ms = _param_mavlink_timeout_ms.get();
+
 	if (mavlink_timeout_ms > 0) {
 		_health_status.mavlink_connected = (now - _mavlink_last_heartbeat) < (uint64_t)(mavlink_timeout_ms * 1000);
+
 	} else {
 		_health_status.mavlink_connected = false;  // Disabled
 	}
+
 	_health_status.mavlink_last_heartbeat = _mavlink_last_heartbeat;
 
 	// Check RC connection
 	input_rc_s rc;
+
 	if (_input_rc_sub.copy(&rc)) {
 		if (rc.timestamp_last_signal > _rc_last_update) {
 			_rc_last_update = rc.timestamp_last_signal;
@@ -506,11 +521,14 @@ void HealthMonitor::check_communication_health()
 	}
 
 	const int rc_timeout_ms = _param_rc_timeout_ms.get();
+
 	if (rc_timeout_ms > 0) {
 		_health_status.rc_connected = (now - _rc_last_update) < (uint64_t)(rc_timeout_ms * 1000);
+
 	} else {
 		_health_status.rc_connected = false;  // Disabled
 	}
+
 	_health_status.rc_last_update = _rc_last_update;
 }
 
@@ -524,6 +542,7 @@ void HealthMonitor::update_fault_tracking()
 		    (now - _last_sensor_fault_time) > 1000000) {  // 1 second in microseconds
 			_health_status.sensor_fault_count++;
 		}
+
 		_last_sensor_fault_time = now;
 	}
 
@@ -533,6 +552,7 @@ void HealthMonitor::update_fault_tracking()
 		    (now - _last_actuator_fault_time) > 1000000) {  // 1 second in microseconds
 			_health_status.actuator_fault_count++;
 		}
+
 		_last_actuator_fault_time = now;
 	}
 
@@ -542,6 +562,7 @@ void HealthMonitor::update_fault_tracking()
 		    (now - _last_power_fault_time) > 1000000) {  // 1 second in microseconds
 			_health_status.power_fault_count++;
 		}
+
 		_last_power_fault_time = now;
 	}
 
@@ -551,6 +572,7 @@ void HealthMonitor::update_fault_tracking()
 		    (now - _last_stability_fault_time) > 1000000) {  // 1 second in microseconds
 			_health_status.stability_fault_count++;
 		}
+
 		_last_stability_fault_time = now;
 	}
 
@@ -573,11 +595,11 @@ void HealthMonitor::log_health_status()
 	// Log comprehensive health status at 1Hz
 	PX4_INFO("=== Health Monitor Status ===");
 	PX4_INFO("System: %s | Sensors: %s | Actuators: %s | Power: %s | Stable: %s",
-		_health_status.system_healthy ? "OK" : "FAIL",
-		_health_status.sensors_healthy ? "OK" : "FAIL",
-		_health_status.actuators_healthy ? "OK" : "FAIL",
-		_health_status.power_healthy ? "OK" : "FAIL",
-		_health_status.vehicle_stable ? "OK" : "FAIL");
+		 _health_status.system_healthy ? "OK" : "FAIL",
+		 _health_status.sensors_healthy ? "OK" : "FAIL",
+		 _health_status.actuators_healthy ? "OK" : "FAIL",
+		 _health_status.power_healthy ? "OK" : "FAIL",
+		 _health_status.vehicle_stable ? "OK" : "FAIL");
 
 	// Log fault counts if any exist
 	if (_health_status.sensor_fault_count > 0 ||
@@ -585,27 +607,27 @@ void HealthMonitor::log_health_status()
 	    _health_status.power_fault_count > 0 ||
 	    _health_status.stability_fault_count > 0) {
 		PX4_INFO("Fault counts - Sensor: %lu, Actuator: %lu, Power: %lu, Stability: %lu",
-			(unsigned long)_health_status.sensor_fault_count,
-			(unsigned long)_health_status.actuator_fault_count,
-			(unsigned long)_health_status.power_fault_count,
-			(unsigned long)_health_status.stability_fault_count);
+			 (unsigned long)_health_status.sensor_fault_count,
+			 (unsigned long)_health_status.actuator_fault_count,
+			 (unsigned long)_health_status.power_fault_count,
+			 (unsigned long)_health_status.stability_fault_count);
 	}
 
 	// Log critical issues
 	if (!_health_status.tilt_angle_safe) {
 		PX4_WARN("TILT ANGLE EXCEEDED: roll=%.2f pitch=%.2f",
-			(double)_health_status.vehicle_roll,
-			(double)_health_status.vehicle_pitch);
+			 (double)_health_status.vehicle_roll,
+			 (double)_health_status.vehicle_pitch);
 	}
 
 	if (!_health_status.slip_ok) {
 		PX4_WARN("EXCESSIVE SLIP DETECTED: %.1f%%",
-			(double)(_health_status.slip_ratio * 100.0f));
+			 (double)(_health_status.slip_ratio * 100.0f));
 	}
 
 	if (!_health_status.shock_ok) {
 		PX4_WARN("SHOCK DETECTED: %.2f m/s^2",
-			(double)_health_status.max_accel_magnitude);
+			 (double)_health_status.max_accel_magnitude);
 	}
 }
 

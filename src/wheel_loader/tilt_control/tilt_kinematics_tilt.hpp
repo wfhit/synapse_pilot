@@ -113,8 +113,8 @@ public:
 	 * @param coupler_to_pivot_angle Angle BCA in boom pivot triangle
 	 */
 	void set_triangle_angles(float bellcrank_internal_angle,
-	                         float bellcrank_boom_alignment_offset,
-	                         float coupler_to_pivot_angle);
+				 float bellcrank_boom_alignment_offset,
+				 float coupler_to_pivot_angle);
 
 	/**
 	 * @brief Forward kinematics: bellcrank angle -> tilt angle
@@ -148,7 +148,7 @@ public:
 	/**
 	 * @brief Get current configuration
 	 */
-	const TiltConfiguration& get_configuration() const { return _config; }
+	const TiltConfiguration &get_configuration() const { return _config; }
 
 	/**
 	 * @brief Apply mechanical coupling from Stage 1 to Stage 2
@@ -178,7 +178,7 @@ private:
 	 * @param state Output tilt state
 	 * @return True if valid solution found
 	 */
-	bool solve_trigonometric(float bellcrank_angle_tilt, float boom_angle, TiltState& state) const;
+	bool solve_trigonometric(float bellcrank_angle_tilt, float boom_angle, TiltState &state) const;
 
 	/**
 	 * @brief Inverse Stage 2: Required bellcrank angle for tilt angle
@@ -197,7 +197,7 @@ private:
 	 * @param state Tilt state to validate
 	 * @return True if state is mechanically valid and within limits
 	 */
-	bool check_mechanical_limits(const TiltState& state) const;
+	bool check_mechanical_limits(const TiltState &state) const;
 
 	/**
 	 * @brief Validate that triangle with given side lengths is possible
@@ -235,7 +235,7 @@ private:
 	 * @return Best valid candidate angle, or NaN if no valid solution
 	 */
 	float validate_and_select_best_candidate(float candidate_1, float candidate_2,
-	                                        float target_bucket_angle, float boom_angle) const;
+			float target_bucket_angle, float boom_angle) const;
 
 	// Tilt kinematic parameters (following 16-char limit)
 	DEFINE_PARAMETERS(

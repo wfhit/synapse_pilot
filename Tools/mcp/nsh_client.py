@@ -1,0 +1,253 @@
+"""NSH serial communication library.
+
+Adapted from Tools/HIL/{run_nsh_cmd.py, monitor_firmware_upload.py, run_tests.py}.
+Returns results and raises exceptions instead of calling sys.exit().
+"""
+
+import time
+from dataclasses import dataclass
+
+import serial
+
+
+BAUDRATE = 57600
+SERIAL_TIMEOUT = 1  # seconds
+INTER_BYTE_TIMEOUT = 1  # seconds
+
+
+class NshError(Exception):
+    """General NSH communication error."""
+
+
+class NshTimeoutError(NshError):
+    """Timeout waiting for NSH response."""
+
+
+@dataclass
+class NshResult:
+    output: str
+    return_code: int
+
+
+def _open_serial(port: str) -> serial.Serial:
+    return serial.Serial(
+        port=port,
+        baudrate=BAUDRATE,
+        bytesize=serial.EIGHTBITS,
+        parity=serial.PARITY_NONE,
+        stopbits=serial.STOPBITS_ONE,
+        timeout=SERIAL_TIMEOUT,
+        xonxoff=False,
+        rtscts=False,
+        dsrdtr=False,
+        inter_byte_timeout=INTER_BYTE_TIMEOUT,
+    )
+
+
+def _wait_for_prompt(ser: serial.Serial, timeout: float = 30) -> str:
+    """Send newlines until we see 'nsh>'. Returns output collected while waiting."""
+    output_lines = []
+    timeout_start = time.monotonic()
+
+    ser.write(b"\n\n\n")
+
+    while True:
+        line = ser.readline().decode("ascii", errors="ignore")
+
+        if len(line) > 0:
+            output_lines.append(line)
+            if "nsh>" in line:
+                return "".join(output_lines)
+        else:
+            if time.monotonic() > timeout_start + timeout:
+                raise NshTimeoutError(
+                    "Timeout waiting for NSH prompt. "
+                    "Board may be in bootloader mode."
+                )
+            ser.write(b"\n")
+
+
+def run_nsh_command(
+    port: str,
+    command: str,
+    timeout: float = 600,
+    ignore_errors: bool = False,
+) -> NshResult:
+    """Run an NSH command and return the result.
+
+    Based on Tools/HIL/run_nsh_cmd.py:42 do_nsh_cmd().
+    """
+    ser = _open_serial(port)
+    try:
+        _wait_for_prompt(ser)
+        ser.reset_input_buffer()
+
+        success_cmd = "cmd succeeded!"
+        serial_cmd = '{0}; echo "{1}"; echo "{2}";\n'.format(
+            command, success_cmd, success_cmd
+        )
+        ser.write(serial_cmd.encode("ascii"))
+
+        # Wait for command echo
+        output_lines = []
+        echo_timeout_start = time.monotonic()
+        echo_timeout = 5
+
+        while True:
+            line = ser.readline().decode("ascii", errors="ignore")
+
+            if len(line) > 0:
+                if command in line:
+                    break
+                elif (
+                    line.startswith(success_cmd)
+                    and len(line) <= len(success_cmd) + 2
+                ):
+                    # Missed the echo, but command ran and succeeded
+                    output_lines.append(line)
+                    return NshResult(
+                        output="".join(output_lines), return_code=0
+                    )
+                else:
+                    output_lines.append(line)
+            else:
+                if time.monotonic() > echo_timeout_start + echo_timeout:
+                    break
+
+        # Collect command output
+        timeout_start = time.monotonic()
+        return_code = 0
+
+        while True:
+            line = ser.readline().decode("ascii", errors="ignore")
+
+            if len(line) > 0:
+                if success_cmd in line:
+                    return NshResult(
+                        output="".join(output_lines),
+                        return_code=return_code,
+                    )
+                else:
+                    if "ERROR " in line and not ignore_errors:
+                        return_code = -1
+
+                    output_lines.append(line)
+
+                    if "nsh>" in line or "NuttShell (NSH)" in line:
+                        return NshResult(
+                            output="".join(output_lines), return_code=1
+                        )
+            else:
+                if time.monotonic() > timeout_start + timeout:
+                    return NshResult(
+                        output="".join(output_lines)
+                        + "\n[Timeout after {0}s]".format(int(timeout)),
+                        return_code=-1,
+                    )
+    finally:
+        ser.close()
+
+
+def monitor_boot(port: str, timeout: float = 180) -> NshResult:
+    """Monitor board boot and return the boot log.
+
+    Based on Tools/HIL/monitor_firmware_upload.py:42.
+    """
+    ser = _open_serial(port)
+    # Use longer read timeout for boot monitoring
+    ser.timeout = 3
+    try:
+        output_lines = []
+        timeout_start = time.monotonic()
+        timeout_newline = time.monotonic()
+
+        while True:
+            line = ser.readline().decode("ascii", errors="ignore")
+
+            if len(line) > 0:
+                output_lines.append(line)
+
+                if "NuttShell (NSH)" in line or "nsh>" in line:
+                    return NshResult(
+                        output="".join(output_lines), return_code=0
+                    )
+            else:
+                if time.monotonic() > timeout_start + timeout:
+                    return NshResult(
+                        output="".join(output_lines)
+                        + "\n[Timeout after {0}s]".format(int(timeout)),
+                        return_code=-1,
+                    )
+
+                # Send newline every 10 seconds to prod the board
+                if time.monotonic() - timeout_newline > 10:
+                    timeout_newline = time.monotonic()
+                    ser.write(b"\n")
+    finally:
+        ser.close()
+
+
+def run_hil_test(
+    port: str, test_name: str, timeout: float = 300
+) -> NshResult:
+    """Run a HIL test and return the result.
+
+    Based on Tools/HIL/run_tests.py:45 do_test().
+    """
+    ser = _open_serial(port)
+    # Use longer read timeout for test monitoring
+    ser.timeout = 3
+    try:
+        _wait_for_prompt(ser)
+        ser.reset_input_buffer()
+
+        cmd = "tests " + test_name
+        ser.write("{0}\n".format(cmd).encode("ascii"))
+
+        # Wait for command echo
+        output_lines = []
+        echo_timeout_start = time.monotonic()
+        echo_timeout = 2
+
+        while True:
+            line = ser.readline().decode("ascii", errors="ignore")
+
+            if len(line) > 0:
+                if cmd in line:
+                    break
+            else:
+                if time.monotonic() > echo_timeout_start + echo_timeout:
+                    break
+
+        # Collect test output, wait for PASSED or FAILED
+        timeout_start = time.monotonic()
+        timeout_newline = timeout_start
+
+        while True:
+            line = ser.readline().decode("ascii", errors="ignore")
+
+            if len(line) > 0:
+                output_lines.append(line)
+
+                if test_name + " PASSED" in line:
+                    return NshResult(
+                        output="".join(output_lines), return_code=0
+                    )
+                elif test_name + " FAILED" in line:
+                    return NshResult(
+                        output="".join(output_lines), return_code=1
+                    )
+            else:
+                if time.monotonic() > timeout_start + timeout:
+                    return NshResult(
+                        output="".join(output_lines)
+                        + "\n[Timeout after {0}s]".format(int(timeout)),
+                        return_code=-1,
+                    )
+
+                # Send newline every 30 seconds to keep connection alive
+                if time.monotonic() - timeout_newline > 30:
+                    ser.write(b"\n")
+                    timeout_newline = time.monotonic()
+    finally:
+        ser.close()

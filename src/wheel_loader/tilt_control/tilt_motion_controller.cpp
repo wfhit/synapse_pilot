@@ -52,7 +52,7 @@ TiltMotionController::TiltMotionController(ModuleParams *parent) :
 	_position_smoother.setMaxJerkZ(500.0f);
 }
 
-void TiltMotionController::initialize(const ControllerConfig& config)
+void TiltMotionController::initialize(const ControllerConfig &config)
 {
 	// Validate configuration parameters
 	if (config.max_velocity <= 0.0f || config.max_acceleration <= 0.0f || config.max_jerk <= 0.0f) {
@@ -97,7 +97,7 @@ void TiltMotionController::initialize(const ControllerConfig& config)
 		 (double)config.max_velocity, (double)config.max_acceleration);
 }
 
-void TiltMotionController::update_config(const ControllerConfig& config)
+void TiltMotionController::update_config(const ControllerConfig &config)
 {
 	if (!_initialized) {
 		initialize(config);
@@ -157,7 +157,7 @@ TiltMotionController::MotionSetpoint TiltMotionController::plan_trajectory(
 }
 
 TiltMotionController::ControlOutput TiltMotionController::compute_control(
-	const MotionSetpoint& setpoint,
+	const MotionSetpoint &setpoint,
 	float current_position,
 	float current_velocity,
 	float dt)
@@ -171,6 +171,7 @@ TiltMotionController::ControlOutput TiltMotionController::compute_control(
 
 	// Check safety constraints
 	bool safe = check_safety_constraints(current_position, current_velocity, setpoint);
+
 	if (!safe) {
 		output.safety_stop = true;
 		output.duty_cycle = 0.0f;
@@ -212,7 +213,7 @@ TiltMotionController::ControlOutput TiltMotionController::compute_control(
 }
 
 bool TiltMotionController::check_safety_constraints(float position, float velocity,
-						       const MotionSetpoint& setpoint)
+		const MotionSetpoint &setpoint)
 {
 	// Check position limits
 	if (position < _position_min_safe || position > _position_max_safe) {
@@ -221,6 +222,7 @@ bool TiltMotionController::check_safety_constraints(float position, float veloci
 				 (double)position, (double)_position_min_safe, (double)_position_max_safe);
 			_safety_stop_active = true;
 		}
+
 		return false;
 	}
 
@@ -231,6 +233,7 @@ bool TiltMotionController::check_safety_constraints(float position, float veloci
 				 (double)fabsf(velocity), (double)_config.max_velocity);
 			_safety_stop_active = true;
 		}
+
 		return false;
 	}
 
@@ -282,13 +285,14 @@ void TiltMotionController::update_parameters()
 	if (_initialized) {
 		update_config(new_config);
 		PX4_DEBUG("Motion controller parameters updated");
+
 	} else {
 		initialize(new_config);
 		PX4_DEBUG("Motion controller initialized from parameters");
 	}
 }
 
-float TiltMotionController::compute_feedforward(const MotionSetpoint& setpoint)
+float TiltMotionController::compute_feedforward(const MotionSetpoint &setpoint)
 {
 	// Simple velocity feedforward (can be enhanced with acceleration feedforward)
 	const float VELOCITY_FEEDFORWARD_GAIN = 0.001f;  // Tunable parameter
@@ -296,7 +300,7 @@ float TiltMotionController::compute_feedforward(const MotionSetpoint& setpoint)
 }
 
 void TiltMotionController::update_performance_metrics(float position_error, float velocity_error,
-							float control_output)
+		float control_output)
 {
 	_performance_metrics.position_error_sum_squared += position_error * position_error;
 	_performance_metrics.velocity_error_sum_squared += velocity_error * velocity_error;
@@ -312,8 +316,8 @@ void TiltMotionController::update_performance_metrics(float position_error, floa
 	}
 }
 
-void TiltMotionController::get_performance_metrics(float& position_rms_error, float& velocity_rms_error,
-						      float& control_effort) const
+void TiltMotionController::get_performance_metrics(float &position_rms_error, float &velocity_rms_error,
+		float &control_effort) const
 {
 	if (_performance_metrics.sample_count > 0) {
 		position_rms_error = sqrtf(_performance_metrics.position_error_sum_squared /
@@ -321,6 +325,7 @@ void TiltMotionController::get_performance_metrics(float& position_rms_error, fl
 		velocity_rms_error = sqrtf(_performance_metrics.velocity_error_sum_squared /
 					   _performance_metrics.sample_count);
 		control_effort = _performance_metrics.control_effort_sum / _performance_metrics.sample_count;
+
 	} else {
 		position_rms_error = 0.0f;
 		velocity_rms_error = 0.0f;

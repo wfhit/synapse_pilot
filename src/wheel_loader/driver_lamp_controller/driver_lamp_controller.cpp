@@ -34,11 +34,8 @@
 #include "driver_lamp_controller.h"
 
 DriverLampController::DriverLampController() :
-	ModuleParams(nullptr),
-	ScheduledWorkItem(MODULE_NAME, px4::wq_configurations::lp_default)
+	ModuleParams(nullptr)
 {
-	_loop_perf = perf_alloc(PC_ELAPSED, MODULE_NAME);
-	_mode_update_perf = perf_alloc(PC_ELAPSED, MODULE_NAME": mode_update");
 }
 
 DriverLampController::~DriverLampController()
@@ -96,9 +93,9 @@ void DriverLampController::update_lamp_mode()
 	perf_end(_mode_update_perf);
 }
 
-hrt_abstime DriverLampController::get_turn_signal_interval_us()
+uint32_t DriverLampController::get_turn_signal_interval_us() const
 {
-	float blink_rate_hz = _param_drv_lamp_blink.get();
+	float blink_rate_hz = _param_blink_rate.get();
 
 	if (blink_rate_hz <= 0.0f) {
 		blink_rate_hz = 1.5f; // Default to 1.5 Hz
@@ -106,7 +103,7 @@ hrt_abstime DriverLampController::get_turn_signal_interval_us()
 
 	// Convert Hz to period in microseconds (1 / Hz * 1,000,000)
 	// Divide by 2 because we want half-period (on or off duration)
-	return (hrt_abstime)(1000000.0f / blink_rate_hz / 2.0f);
+	return static_cast<uint32_t>(1000000.0f / blink_rate_hz / 2.0f);
 }
 
 void DriverLampController::process_lamp_state()
@@ -125,28 +122,28 @@ void DriverLampController::process_lamp_state()
 		break;
 
 	case LampMode::LEFT_TURN: {
-		hrt_abstime interval = get_turn_signal_interval_us();
+			hrt_abstime interval = get_turn_signal_interval_us();
 
-		if (now - _last_blink_time > interval) {
-			_left_lamp_on = !_left_lamp_on;
-			_last_blink_time = now;
+			if (now - _last_toggle > interval) {
+				_left_lamp_on = !_left_lamp_on;
+				_last_toggle = now;
+			}
+
+			_right_lamp_on = false;
+			break;
 		}
-
-		_right_lamp_on = false;
-		break;
-	}
 
 	case LampMode::RIGHT_TURN: {
-		hrt_abstime interval = get_turn_signal_interval_us();
+			hrt_abstime interval = get_turn_signal_interval_us();
 
-		if (now - _last_blink_time > interval) {
-			_right_lamp_on = !_right_lamp_on;
-			_last_blink_time = now;
+			if (now - _last_toggle > interval) {
+				_right_lamp_on = !_right_lamp_on;
+				_last_toggle = now;
+			}
+
+			_left_lamp_on = false;
+			break;
 		}
-
-		_left_lamp_on = false;
-		break;
-	}
 
 	case LampMode::HAZARD:
 		process_hazard_pattern();
@@ -159,7 +156,7 @@ void DriverLampController::process_lamp_state()
 void DriverLampController::process_hazard_pattern()
 {
 	const hrt_abstime now = hrt_absolute_time();
-	hrt_abstime elapsed = now - _hazard_pattern_start;
+	hrt_abstime elapsed = now - _hazard_timer;
 
 	switch (_hazard_state) {
 	case HazardState::FIRST_SHORT:
@@ -168,7 +165,7 @@ void DriverLampController::process_hazard_pattern()
 
 		if (elapsed >= HAZARD_SHORT_ON_US) {
 			_hazard_state = HazardState::FIRST_SHORT_OFF;
-			_hazard_pattern_start = now;
+			_hazard_timer = now;
 		}
 
 		break;
@@ -179,7 +176,7 @@ void DriverLampController::process_hazard_pattern()
 
 		if (elapsed >= HAZARD_SHORT_OFF_US) {
 			_hazard_state = HazardState::SECOND_SHORT;
-			_hazard_pattern_start = now;
+			_hazard_timer = now;
 		}
 
 		break;
@@ -190,7 +187,7 @@ void DriverLampController::process_hazard_pattern()
 
 		if (elapsed >= HAZARD_SHORT_ON_US) {
 			_hazard_state = HazardState::SECOND_SHORT_OFF;
-			_hazard_pattern_start = now;
+			_hazard_timer = now;
 		}
 
 		break;
@@ -201,7 +198,7 @@ void DriverLampController::process_hazard_pattern()
 
 		if (elapsed >= HAZARD_SHORT_OFF_US) {
 			_hazard_state = HazardState::LONG;
-			_hazard_pattern_start = now;
+			_hazard_timer = now;
 		}
 
 		break;
@@ -212,7 +209,7 @@ void DriverLampController::process_hazard_pattern()
 
 		if (elapsed >= HAZARD_LONG_ON_US) {
 			_hazard_state = HazardState::LONG_OFF;
-			_hazard_pattern_start = now;
+			_hazard_timer = now;
 		}
 
 		break;
@@ -223,7 +220,7 @@ void DriverLampController::process_hazard_pattern()
 
 		if (elapsed >= HAZARD_LONG_OFF_US) {
 			_hazard_state = HazardState::FIRST_SHORT;
-			_hazard_pattern_start = now;
+			_hazard_timer = now;
 		}
 
 		break;
@@ -240,50 +237,41 @@ void DriverLampController::set_lamps(bool left_on, bool right_on)
 
 void DriverLampController::run()
 {
-	if (should_exit()) {
-		// Turn off lamps before exit
-		set_lamps(false, false);
-		exit_and_cleanup();
-		return;
-	}
-
-	perf_begin(_loop_perf);
-
-	// Initialize GPIOs on first run
-	static bool initialized = false;
-
-	if (!initialized) {
 #ifdef BOARD_HAS_DRIVER_LAMP
-		// Initialize GPIO pins as outputs
-		px4_arch_configgpio(GPIO_DRIVER_LAMP_LEFT);
-		px4_arch_configgpio(GPIO_DRIVER_LAMP_RIGHT);
-		px4_arch_configgpio(GPIO_DRIVER_LAMP_GND);
+	// Initialize GPIO pins as outputs
+	px4_arch_configgpio(GPIO_DRIVER_LAMP_LEFT);
+	px4_arch_configgpio(GPIO_DRIVER_LAMP_RIGHT);
+	px4_arch_configgpio(GPIO_DRIVER_LAMP_GND);
 
-		// Set ground pin low
-		px4_arch_gpiowrite(GPIO_DRIVER_LAMP_GND, 0);
+	// Set ground pin low
+	px4_arch_gpiowrite(GPIO_DRIVER_LAMP_GND, 0);
 #endif
-		initialized = true;
+
+	while (!should_exit()) {
+		perf_begin(_loop_perf);
+
+		// Check for parameter updates
+		if (_parameter_update_sub.updated()) {
+			parameter_update_s param_update;
+			_parameter_update_sub.copy(&param_update);
+			parameters_update();
+		}
+
+		// Update lamp mode based on vehicle state (unless in test mode)
+		if (!_test_mode_active) {
+			update_lamp_mode();
+		}
+
+		// Process lamp state and update outputs
+		process_lamp_state();
+
+		perf_end(_loop_perf);
+
+		px4_usleep(20000); // 50Hz
 	}
 
-	// Check for parameter updates
-	if (_parameter_update_sub.updated()) {
-		parameter_update_s param_update;
-		_parameter_update_sub.copy(&param_update);
-		parameters_update();
-	}
-
-	// Update lamp mode based on vehicle state (unless in test mode)
-	if (!_test_mode) {
-		update_lamp_mode();
-	}
-
-	// Process lamp state and update outputs
-	process_lamp_state();
-
-	perf_end(_loop_perf);
-
-	// Schedule next run
-	ScheduleDelayed(20000); // Run at 50Hz
+	// Turn off lamps before exit
+	set_lamps(false, false);
 }
 
 int DriverLampController::task_spawn(int argc, char *argv[])
@@ -292,21 +280,37 @@ int DriverLampController::task_spawn(int argc, char *argv[])
 
 	if (instance) {
 		_object.store(instance);
-		_task_id = task_id_is_work_queue;
+		_task_id = px4_task_spawn_cmd("driver_lamp_controller",
+					      SCHED_DEFAULT,
+					      SCHED_PRIORITY_DEFAULT - 10,
+					      1200,
+					      (px4_main_t)&run_trampoline,
+					      (char *const *)argv);
 
-		if (instance->init()) {
-			return PX4_OK;
+		if (_task_id < 0) {
+			PX4_ERR("task start failed");
+			delete instance;
+			_object.store(nullptr);
+			_task_id = -1;
+			return PX4_ERROR;
 		}
 
-	} else {
-		PX4_ERR("alloc failed");
+		return PX4_OK;
 	}
 
-	delete instance;
-	_object.store(nullptr);
-	_task_id = -1;
-
+	PX4_ERR("alloc failed");
 	return PX4_ERROR;
+}
+
+int DriverLampController::run_trampoline(int argc, char *argv[])
+{
+	DriverLampController *instance = get_instance();
+
+	if (instance) {
+		instance->run();
+	}
+
+	return 0;
 }
 
 int DriverLampController::custom_command(int argc, char *argv[])
@@ -334,36 +338,36 @@ int DriverLampController::custom_command(int argc, char *argv[])
 int DriverLampController::test_mode(int argc, char *argv[])
 {
 	if (!strcmp(argv[0], "off")) {
-		_test_mode = true;
+		_test_mode_active = true;
 		_current_mode = LampMode::OFF;
 		PX4_INFO("Test mode: OFF");
 
 	} else if (!strcmp(argv[0], "left")) {
-		_test_mode = true;
+		_test_mode_active = true;
 		_current_mode = LampMode::LEFT_TURN;
-		_last_blink_time = hrt_absolute_time();
+		_last_toggle = hrt_absolute_time();
 		PX4_INFO("Test mode: LEFT_TURN");
 
 	} else if (!strcmp(argv[0], "right")) {
-		_test_mode = true;
+		_test_mode_active = true;
 		_current_mode = LampMode::RIGHT_TURN;
-		_last_blink_time = hrt_absolute_time();
+		_last_toggle = hrt_absolute_time();
 		PX4_INFO("Test mode: RIGHT_TURN");
 
 	} else if (!strcmp(argv[0], "reverse")) {
-		_test_mode = true;
+		_test_mode_active = true;
 		_current_mode = LampMode::REVERSE;
 		PX4_INFO("Test mode: REVERSE");
 
 	} else if (!strcmp(argv[0], "hazard")) {
-		_test_mode = true;
+		_test_mode_active = true;
 		_current_mode = LampMode::HAZARD;
 		_hazard_state = HazardState::FIRST_SHORT;
-		_hazard_pattern_start = hrt_absolute_time();
+		_hazard_timer = hrt_absolute_time();
 		PX4_INFO("Test mode: HAZARD");
 
 	} else if (!strcmp(argv[0], "normal")) {
-		_test_mode = false;
+		_test_mode_active = false;
 		PX4_INFO("Test mode disabled - returning to normal operation");
 
 	} else {
@@ -402,8 +406,8 @@ int DriverLampController::print_status()
 		break;
 	}
 
-	PX4_INFO("Mode: %s (test mode: %s)", mode_str, _test_mode ? "YES" : "NO");
-	PX4_INFO("Blink rate: %.2f Hz", (double)_param_drv_lamp_blink.get());
+	PX4_INFO("Mode: %s (test mode: %s)", mode_str, _test_mode_active ? "YES" : "NO");
+	PX4_INFO("Blink rate: %.2f Hz", (double)_param_blink_rate.get());
 	PX4_INFO("Left lamp: %s, Right lamp: %s", _left_lamp_on ? "ON" : "OFF", _right_lamp_on ? "ON" : "OFF");
 
 	perf_print_counter(_loop_perf);

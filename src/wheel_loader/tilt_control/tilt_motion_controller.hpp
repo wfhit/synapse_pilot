@@ -106,13 +106,13 @@ public:
 	 * @brief Initialize controller with configuration
 	 * @param config Controller configuration
 	 */
-	void initialize(const ControllerConfig& config);
+	void initialize(const ControllerConfig &config);
 
 	/**
 	 * @brief Update controller configuration
 	 * @param config New configuration
 	 */
-	void update_config(const ControllerConfig& config);
+	void update_config(const ControllerConfig &config);
 
 	/**
 	 * @brief Generate smooth trajectory to target position
@@ -132,7 +132,7 @@ public:
 	 * @return Control output
 	 */
 	ControlOutput compute_control(
-		const MotionSetpoint& setpoint,
+		const MotionSetpoint &setpoint,
 		float current_position,
 		float current_velocity,
 		float dt
@@ -165,9 +165,9 @@ public:
 	 * @param control_effort Output: Average control effort
 	 */
 	void get_performance_metrics(
-		float& position_rms_error,
-		float& velocity_rms_error,
-		float& control_effort) const;
+		float &position_rms_error,
+		float &velocity_rms_error,
+		float &control_effort) const;
 
 private:
 	// Control components
@@ -202,7 +202,7 @@ private:
 	 * @param setpoint Motion setpoint
 	 * @return True if safe to continue
 	 */
-	bool check_safety_constraints(float position, float velocity, const MotionSetpoint& setpoint);
+	bool check_safety_constraints(float position, float velocity, const MotionSetpoint &setpoint);
 
 	/**
 	 * @brief Update performance metrics
@@ -217,7 +217,7 @@ private:
 	 * @param setpoint Motion setpoint
 	 * @return Feedforward control term
 	 */
-	float compute_feedforward(const MotionSetpoint& setpoint);
+	float compute_feedforward(const MotionSetpoint &setpoint);
 
 	// Control parameters
 	DEFINE_PARAMETERS(

@@ -52,7 +52,8 @@ float BoomKinematics::actuator_length_to_boom_angle(float actuator_length) const
 	float base_to_joint_distance = actuator_length;  // Actuator cylinder length
 
 	// Use law of cosines to find angle at boom pivot
-	float pivot_triangle_angle = law_of_cosines_angle(pivot_to_base_distance, pivot_to_joint_distance, base_to_joint_distance);
+	float pivot_triangle_angle = law_of_cosines_angle(pivot_to_base_distance, pivot_to_joint_distance,
+				     base_to_joint_distance);
 
 	// Use cached angle of pivot-to-base line from horizontal
 	float base_mount_angle = _config.actuator_base_to_pivot_angle;
@@ -84,7 +85,8 @@ float BoomKinematics::boom_angle_to_actuator_length(float boom_angle) const
 	float pivot_to_joint_distance = _config.actuator_joint_to_pivot_length;  // Distance from pivot to joint
 
 	// Use law of cosines to find actuator length
-	float required_actuator_length = law_of_cosines_side(pivot_to_base_distance, pivot_to_joint_distance, pivot_triangle_angle);
+	float required_actuator_length = law_of_cosines_side(pivot_to_base_distance, pivot_to_joint_distance,
+					 pivot_triangle_angle);
 
 	return required_actuator_length;
 }
@@ -103,7 +105,8 @@ float BoomKinematics::encoder_angle_to_actuator_length(float encoder_angle) cons
 	float pivot_to_joint_distance = _config.actuator_joint_to_pivot_length;  // OB - pivot to actuator joint
 
 	// Use law of cosines: AB = sqrt(OA² + OB² - 2*OA*OB*cos(angle_OAB))
-	float calculated_actuator_length = law_of_cosines_side(pivot_to_base_distance, pivot_to_joint_distance, geometric_angle_oab);
+	float calculated_actuator_length = law_of_cosines_side(pivot_to_base_distance, pivot_to_joint_distance,
+					   geometric_angle_oab);
 
 	return calculated_actuator_length;
 }
@@ -115,7 +118,8 @@ float BoomKinematics::sensor_angle_to_actuator_length(float sensor_angle) const
 	// to calculate actuator length directly from the sensor angle measurement.
 
 	// Get geometric parameters from configuration
-	const float chassis_to_pivot_length = _config.actuator_base_to_pivot_length;  // Distance from chassis reference to pivot
+	const float chassis_to_pivot_length =
+		_config.actuator_base_to_pivot_length;  // Distance from chassis reference to pivot
 	const float chassis_to_boom_end_length = _config.boom_length;  // Distance from chassis reference to boom end
 
 	// Get valid angle range

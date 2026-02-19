@@ -59,9 +59,13 @@
 #include <uORB/topics/chassis_setpoint.h>
 #include <uORB/topics/boom_setpoint.h>
 #include <uORB/topics/tilt_setpoint.h>
+#include <uORB/topics/boom_status.h>
+#include <uORB/topics/bucket_status.h>
+#include <uORB/topics/steering_status.h>
 
 #include <matrix/matrix/math.hpp>
 #include <mathlib/mathlib.h>
+#include <px4_platform_common/module_params.h>
 
 class HoldMode : public OperationModeBase
 {
@@ -117,6 +121,9 @@ private:
 	// Subscriptions
 	uORB::Subscription _vehicle_local_position_sub{ORB_ID(vehicle_local_position)};
 	uORB::Subscription _vehicle_attitude_sub{ORB_ID(vehicle_attitude)};
+	uORB::Subscription _boom_status_sub{ORB_ID(boom_status)};
+	uORB::Subscription _bucket_status_sub{ORB_ID(bucket_status)};
+	uORB::Subscription _steering_status_sub{ORB_ID(steering_status)};
 
 	// Publications
 	uORB::Publication<chassis_setpoint_s> _chassis_setpoint_pub{ORB_ID(chassis_setpoint)};
@@ -139,4 +146,18 @@ private:
 
 	static constexpr float UPDATE_RATE = 20.0f;  // 20 Hz
 	static constexpr float UPDATE_DT = 1.0f / UPDATE_RATE;
+
+	// Parameters
+	DEFINE_PARAMETERS(
+		(ParamFloat<px4::params::HM_CHAS_POS_G>) _param_chassis_position_gain,
+		(ParamFloat<px4::params::HM_CHAS_HDG_G>) _param_chassis_heading_gain,
+		(ParamFloat<px4::params::HM_ART_GAIN>) _param_articulation_gain,
+		(ParamFloat<px4::params::HM_BOOM_POS_G>) _param_boom_position_gain,
+		(ParamFloat<px4::params::HM_TILT_ANG_G>) _param_tilt_angle_gain,
+		(ParamFloat<px4::params::HM_MAX_CHAS_V>) _param_max_chassis_velocity,
+		(ParamFloat<px4::params::HM_MAX_CHAS_R>) _param_max_chassis_yaw_rate,
+		(ParamFloat<px4::params::HM_MAX_ART_R>) _param_max_articulation_rate,
+		(ParamFloat<px4::params::HM_MAX_BOOM_V>) _param_max_boom_velocity,
+		(ParamFloat<px4::params::HM_MAX_TILT_R>) _param_max_tilt_rate
+	)
 };

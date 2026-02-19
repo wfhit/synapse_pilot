@@ -134,18 +134,20 @@ public:
 	{
 		// ========== 1. BATTERY CHECK ==========
 		battery_status_s battery;
+
 		if (!_battery_sub.copy(&battery)) {
 			return StrategyResult::Failure("Battery status unavailable");
 		}
 
 		if (battery.remaining < BATTERY_MIN_START) {
 			PX4_ERR("Calibration: Battery too low (%.1f%% < %.1f%%)",
-			        (double)(battery.remaining * 100.0f), (double)(BATTERY_MIN_START * 100.0f));
+				(double)(battery.remaining * 100.0f), (double)(BATTERY_MIN_START * 100.0f));
 			return StrategyResult::Failure("Battery too low for calibration");
 		}
 
 		// ========== 2. ARM STATUS (most calibrations require disarmed) ==========
 		actuator_armed_s armed;
+
 		if (!_armed_sub.copy(&armed)) {
 			return StrategyResult::Failure("Arm status unavailable");
 		}
@@ -153,15 +155,17 @@ public:
 		// Only IMU calibration can be performed while disarmed
 		if (_cal_type != CAL_IMU && armed.armed) {
 			PX4_ERR("Calibration: Vehicle must be disarmed for %s calibration",
-			        get_calibration_type_name());
+				get_calibration_type_name());
 			return StrategyResult::Failure("Vehicle must be disarmed");
 		}
 
 		// ========== 3. STATIONARY CHECK ==========
 		vehicle_local_position_s local_pos;
+
 		if (_local_pos_sub.copy(&local_pos)) {
 			if (local_pos.v_xy_valid) {
 				float velocity = sqrtf(local_pos.vx * local_pos.vx + local_pos.vy * local_pos.vy);
+
 				if (velocity > VELOCITY_MAX) {
 					PX4_ERR("Calibration: Vehicle not stationary (%.3f m/s)", (double)velocity);
 					return StrategyResult::Failure("Vehicle must be stationary");
@@ -171,10 +175,12 @@ public:
 
 		// ========== 4. ROTATION CHECK ==========
 		vehicle_angular_velocity_s angular_vel;
+
 		if (_angular_vel_sub.copy(&angular_vel)) {
 			float angular_rate = sqrtf(angular_vel.xyz[0] * angular_vel.xyz[0] +
-			                            angular_vel.xyz[1] * angular_vel.xyz[1] +
-			                            angular_vel.xyz[2] * angular_vel.xyz[2]);
+						   angular_vel.xyz[1] * angular_vel.xyz[1] +
+						   angular_vel.xyz[2] * angular_vel.xyz[2]);
+
 			if (angular_rate > ANGULAR_RATE_MAX) {
 				PX4_ERR("Calibration: Vehicle rotating (%.3f rad/s)", (double)angular_rate);
 				return StrategyResult::Failure("Vehicle must be stationary");
@@ -223,8 +229,8 @@ public:
 				if (_mode_status_sub.copy(&mode_status)) {
 					if (mode_status.current_mode == operation_mode_cmd_s::MODE_WL_CALIBRATION) {
 						PX4_INFO("Calibration: Mode activated - ready for %s calibration",
-						         get_calibration_type_name());
-					_current_step = STEP_PREPARE;
+							 get_calibration_type_name());
+						_current_step = STEP_PREPARE;
 					}
 				}
 			}
@@ -238,12 +244,13 @@ public:
 
 				// Wait for operator confirmation
 				manual_control_setpoint_s manual_control;
+
 				if (_manual_control_sub.copy(&manual_control)) {
 					// Check for confirmation (e.g., throttle stick press)
 					if (fabsf(manual_control.throttle - 1.0f) < 0.1f) {
 						if (!_operator_confirmed) {
 							PX4_INFO("Calibration: Operator confirmed - starting %s calibration",
-							         get_calibration_type_name());
+								 get_calibration_type_name());
 							_operator_confirmed = true;
 							_current_step = STEP_CALIBRATE;
 							_cal_start_time = now;
@@ -270,13 +277,15 @@ public:
 
 				// Perform calibration based on type
 				StrategyResult cal_result = perform_calibration();
-				if (!cal_result.success) {				
+
+				if (!cal_result.success) {
 					return cal_result;
 				}
+
 				// Check if sufficient samples collected
 				if (_sample_count >= SAMPLES_TARGET) {
 					PX4_INFO("Calibration: Collected %" PRIu32 " samples - proceeding to validation",
-					         _sample_count);
+						 _sample_count);
 					_current_step = STEP_VALIDATE;
 				}
 
@@ -285,9 +294,10 @@ public:
 					if (_sample_count >= SAMPLES_MIN) {
 						PX4_WARN("Calibration: Timeout but sufficient samples - proceeding");
 						_current_step = STEP_VALIDATE;
+
 					} else {
 						PX4_ERR("Calibration: Timeout with insufficient samples (%" PRIu32 " < %" PRIu32 ")",
-						        _sample_count, SAMPLES_MIN);
+							_sample_count, SAMPLES_MIN);
 						return StrategyResult::Failure("Calibration timeout");
 					}
 				}
@@ -298,12 +308,14 @@ public:
 			// ========== STEP: Validate calibration data ==========
 			{
 				StrategyResult val_result = validate_calibration();
+
 				if (val_result.success) {
 					_cal_data_valid = true;
 					PX4_INFO("Calibration: Validation successful");
 					_current_step = STEP_SAVE;
+
 				} else {
-				PX4_ERR("Calibration: Validation failed - %s", val_result.message);
+					PX4_ERR("Calibration: Validation failed - %s", val_result.message);
 					// Rollback to previous calibration
 					restore_backup_calibration();
 					return val_result;
@@ -316,14 +328,17 @@ public:
 			{
 				if (_cal_data_valid) {
 					StrategyResult save_result = save_calibration();
+
 					if (save_result.success) {
 						PX4_INFO("Calibration: Data saved successfully");
 						_current_step = STEP_COMPLETE;
+
 					} else {
 						PX4_ERR("Calibration: Save failed - %s", save_result.message);
 						restore_backup_calibration();
 						return save_result;
 					}
+
 				} else {
 					return StrategyResult::Failure("Invalid calibration data");
 				}
@@ -333,7 +348,7 @@ public:
 		case STEP_COMPLETE:
 			// ========== STEP: Calibration complete ==========
 			PX4_INFO("Calibration: %s calibration completed successfully",
-			         get_calibration_type_name());
+				 get_calibration_type_name());
 			return StrategyResult::Success();
 		}
 
@@ -379,8 +394,8 @@ private:
 	hrt_abstime _cal_start_time{0};
 
 	// Calibration data storage
-	float _cal_data[10]{};           // Generic storage for calibration values
-	float _cal_backup[10]{};         // Backup of previous calibration
+	float _cal_data[10] {};          // Generic storage for calibration values
+	float _cal_backup[10] {};        // Backup of previous calibration
 
 	/**
 	 * Get calibration type name
@@ -438,31 +453,35 @@ private:
 			PX4_INFO("  3. Turn to full left, then full right");
 			break;
 
-	case CAL_TYPE_COUNT:
-		// Not a real calibration type, just a count marker
-		PX4_ERR("Invalid calibration type");
-		break;
+		case CAL_TYPE_COUNT:
+			// Not a real calibration type, just a count marker
+			PX4_ERR("Invalid calibration type");
+			break;
+		}
 	}
-}
 
-/**
- * Check if vehicle is stationary
- */
-bool check_stationary()
-{
+	/**
+	 * Check if vehicle is stationary
+	 */
+	bool check_stationary()
+	{
 		vehicle_local_position_s local_pos;
+
 		if (_local_pos_sub.copy(&local_pos) && local_pos.v_xy_valid) {
 			float velocity = sqrtf(local_pos.vx * local_pos.vx + local_pos.vy * local_pos.vy);
+
 			if (velocity > VELOCITY_MAX) {
 				return false;
 			}
 		}
 
 		vehicle_angular_velocity_s angular_vel;
+
 		if (_angular_vel_sub.copy(&angular_vel)) {
 			float angular_rate = sqrtf(angular_vel.xyz[0] * angular_vel.xyz[0] +
-			                            angular_vel.xyz[1] * angular_vel.xyz[1] +
-			                            angular_vel.xyz[2] * angular_vel.xyz[2]);
+						   angular_vel.xyz[1] * angular_vel.xyz[1] +
+						   angular_vel.xyz[2] * angular_vel.xyz[2]);
+
 			if (angular_rate > ANGULAR_RATE_MAX) {
 				return false;
 			}
@@ -592,6 +611,7 @@ bool check_stationary()
 	{
 		// TODO: Restore previous calibration from backup
 		PX4_WARN("Calibration: Restoring previous calibration");
+
 		for (size_t i = 0; i < sizeof(_cal_data) / sizeof(_cal_data[0]); i++) {
 			_cal_data[i] = _cal_backup[i];
 		}

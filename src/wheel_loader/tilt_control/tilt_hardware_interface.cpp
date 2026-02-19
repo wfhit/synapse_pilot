@@ -62,7 +62,7 @@ bool TiltHardwareInterface::initialize(uint8_t motor_index, uint8_t encoder_inde
 	return true;
 }
 
-bool TiltHardwareInterface::update_sensors(SensorData& data)
+bool TiltHardwareInterface::update_sensors(SensorData &data)
 {
 	bool all_sensors_updated = true;
 	data.timestamp = hrt_absolute_time();
@@ -86,13 +86,14 @@ bool TiltHardwareInterface::update_sensors(SensorData& data)
 	return all_sensors_updated;
 }
 
-bool TiltHardwareInterface::update_encoder_data(SensorData& data)
+bool TiltHardwareInterface::update_encoder_data(SensorData &data)
 {
 	sensor_quad_encoder_s encoder_msg;
 
 	// Select encoder instance if not already selected
 	if (_encoder_selected < 0) {
 		_encoder_selected = select_encoder_instance();
+
 		if (_encoder_selected < 0) {
 			data.encoder_fault = true;
 			return false;
@@ -106,7 +107,7 @@ bool TiltHardwareInterface::update_encoder_data(SensorData& data)
 			// Convert encoder position to hbridge length
 			float position_rad = static_cast<float>(encoder_msg.position) * 1e-6f;
 			data.hbridge_position = (position_rad - _encoder_zero_offset) * _encoder_scale_factor +
-					_param_hbridge_min_length.get();
+						_param_hbridge_min_length.get();
 
 			// Convert encoder velocity to hbridge velocity
 			float velocity_rad_s = static_cast<float>(encoder_msg.velocity) * 1e-6f;
@@ -121,7 +122,7 @@ bool TiltHardwareInterface::update_encoder_data(SensorData& data)
 	return false;
 }
 
-bool TiltHardwareInterface::update_boom_angle(SensorData& data)
+bool TiltHardwareInterface::update_boom_angle(SensorData &data)
 {
 	sensor_mag_encoder_s mag_encoder_msg;
 
@@ -135,12 +136,15 @@ bool TiltHardwareInterface::update_boom_angle(SensorData& data)
 			data.sensor_angle = mag_encoder_msg.angle;
 			data.sensor_angle_valid = true;
 			return true;
+
 		} else {
 			// Log sensor issues for debugging
 			if (!mag_encoder_msg.magnet_detected) {
 				PX4_DEBUG("Boom encoder: No magnet detected");
+
 			} else if (mag_encoder_msg.magnet_too_strong) {
 				PX4_DEBUG("Boom encoder: Magnet too strong");
+
 			} else if (mag_encoder_msg.magnet_too_weak) {
 				PX4_DEBUG("Boom encoder: Magnet too weak");
 			}
@@ -151,7 +155,7 @@ bool TiltHardwareInterface::update_boom_angle(SensorData& data)
 	return false;
 }
 
-bool TiltHardwareInterface::update_limit_switches(SensorData& data)
+bool TiltHardwareInterface::update_limit_switches(SensorData &data)
 {
 	sensor_limit_switch_s limit_msg;
 	bool load_updated = false;
@@ -160,6 +164,7 @@ bool TiltHardwareInterface::update_limit_switches(SensorData& data)
 	// Select limit sensor instances if not already selected
 	if (_limit_load_selected < 0 || _limit_dump_selected < 0) {
 		int load_instance, dump_instance;
+
 		if (select_limit_sensor_instances(load_instance, dump_instance)) {
 			_limit_load_selected = load_instance;
 			_limit_dump_selected = dump_instance;
@@ -185,13 +190,14 @@ bool TiltHardwareInterface::update_limit_switches(SensorData& data)
 	return load_updated && dump_updated;
 }
 
-bool TiltHardwareInterface::update_motor_status(SensorData& data)
+bool TiltHardwareInterface::update_motor_status(SensorData &data)
 {
 	hbridge_status_s hbridge_msg;
 
 	// Select hbridge instance if not already selected
 	if (_hbridge_status_selected < 0) {
 		_hbridge_status_selected = select_hbridge_instance();
+
 		if (_hbridge_status_selected < 0) {
 			data.motor_fault = true;
 			return false;
@@ -225,6 +231,7 @@ int TiltHardwareInterface::select_encoder_instance()
 				    (encoder_msg.instance == _encoder_index)) {
 
 					int n_encoders = orb_group_count(ORB_ID(sensor_quad_encoder));
+
 					if (n_encoders > 1) {
 						PX4_INFO("Selected encoder instance %d (index %d)", i, _encoder_index);
 					}
@@ -251,6 +258,7 @@ int TiltHardwareInterface::select_hbridge_instance()
 				    (hbridge_msg.instance == _motor_index)) {
 
 					int n_hbridge = orb_group_count(ORB_ID(hbridge_status));
+
 					if (n_hbridge > 1) {
 						PX4_INFO("Selected hbridge instance %d (motor %d)", i, _motor_index);
 					}
@@ -264,7 +272,7 @@ int TiltHardwareInterface::select_hbridge_instance()
 	return -1;
 }
 
-bool TiltHardwareInterface::select_limit_sensor_instances(int& load_instance, int& dump_instance)
+bool TiltHardwareInterface::select_limit_sensor_instances(int &load_instance, int &dump_instance)
 {
 	sensor_limit_switch_s limit_msg;
 	const hrt_abstime timestamp_stale = math::max(hrt_absolute_time(), SENSOR_TIMEOUT_US) - SENSOR_TIMEOUT_US;
@@ -277,6 +285,7 @@ bool TiltHardwareInterface::select_limit_sensor_instances(int& load_instance, in
 					if (limit_msg.instance == _limit_load_index && !load_found) {
 						load_instance = static_cast<int>(i);
 						load_found = true;
+
 					} else if (limit_msg.instance == _limit_dump_index && !dump_found) {
 						dump_instance = static_cast<int>(i);
 						dump_found = true;
@@ -287,7 +296,8 @@ bool TiltHardwareInterface::select_limit_sensor_instances(int& load_instance, in
 	}
 
 	if (load_found && dump_found) {
-		int n_limits = orb_group_count(ORB_ID(limit_sensor));
+		int n_limits = orb_group_count(ORB_ID(sensor_limit_switch));
+
 		if (n_limits > 2) {
 			PX4_INFO("Selected limit sensors: load=%d, dump=%d", load_instance, dump_instance);
 		}
@@ -296,7 +306,7 @@ bool TiltHardwareInterface::select_limit_sensor_instances(int& load_instance, in
 	return load_found && dump_found;
 }
 
-bool TiltHardwareInterface::send_hbridge_setpoint(const HbridgeSetpoint& command)
+bool TiltHardwareInterface::send_hbridge_setpoint(const HbridgeSetpoint &command)
 {
 	// Start with the command as-is
 	HbridgeSetpoint limited_command = command;
@@ -304,6 +314,7 @@ bool TiltHardwareInterface::send_hbridge_setpoint(const HbridgeSetpoint& command
 	// Check limit switches and block movement if necessary
 	if (limited_command.enable && fabsf(limited_command.duty_cycle) > 0.1f) {
 		bool direction_dump = limited_command.duty_cycle > 0.0f;
+
 		if (is_movement_blocked_by_limits(direction_dump)) {
 			PX4_WARN("Movement blocked by limit switch, setting duty cycle to 0");
 			limited_command.duty_cycle = 0.0f;
@@ -354,6 +365,7 @@ bool TiltHardwareInterface::perform_self_test()
 
 	// Test 1: Check encoder communication
 	SensorData test_data{};
+
 	if (!update_encoder_data(test_data)) {
 		PX4_ERR("Self-test failed: Encoder communication");
 		return false;
@@ -375,6 +387,7 @@ bool TiltHardwareInterface::perform_self_test()
 	HbridgeSetpoint test_cmd{};
 	test_cmd.duty_cycle = 0.0f;
 	test_cmd.enable = true;
+
 	if (!send_hbridge_setpoint(test_cmd)) {
 		PX4_ERR("Self-test failed: Motor command");
 		return false;
@@ -382,6 +395,7 @@ bool TiltHardwareInterface::perform_self_test()
 
 	// Test 5: Check hbridge position range
 	float position_range = _param_hbridge_max_length.get() - _param_hbridge_min_length.get();
+
 	if (position_range <= 0.0f) {
 		PX4_ERR("Self-test failed: Invalid hbridge range");
 		return false;
@@ -391,7 +405,7 @@ bool TiltHardwareInterface::perform_self_test()
 	return true;
 }
 
-bool TiltHardwareInterface::get_hardware_status(bool& motor_enabled, bool& encoder_valid, bool& limits_valid) const
+bool TiltHardwareInterface::get_hardware_status(bool &motor_enabled, bool &encoder_valid, bool &limits_valid) const
 {
 	if (!_sensor_data_valid) {
 		return false;
@@ -417,16 +431,16 @@ void TiltHardwareInterface::update_parameters()
 
 	// Check if motor or encoder indices have changed (requires reinitialization)
 	bool indices_changed = (new_motor_index != _motor_index) ||
-	                      (new_encoder_index != _encoder_index) ||
-	                      (new_limit_load_index != _limit_load_index) ||
-	                      (new_limit_dump_index != _limit_dump_index);
+			       (new_encoder_index != _encoder_index) ||
+			       (new_limit_load_index != _limit_load_index) ||
+			       (new_limit_dump_index != _limit_dump_index);
 
 	if (indices_changed) {
 		PX4_INFO("Hardware indices changed, reinitializing interface");
 		PX4_INFO("  Motor: %d -> %d, Encoder: %d -> %d",
-			_motor_index, new_motor_index, _encoder_index, new_encoder_index);
+			 _motor_index, new_motor_index, _encoder_index, new_encoder_index);
 		PX4_INFO("  Limit load: %d -> %d, Limit dump: %d -> %d",
-			_limit_load_index, new_limit_load_index, _limit_dump_index, new_limit_dump_index);
+			 _limit_load_index, new_limit_load_index, _limit_dump_index, new_limit_dump_index);
 
 		// Update indices
 		_motor_index = new_motor_index;
@@ -452,8 +466,8 @@ void TiltHardwareInterface::update_parameters()
 	    fabsf(new_encoder_offset - _encoder_zero_offset) > 0.001f) {
 
 		PX4_DEBUG("Encoder calibration updated: scale=%.4f->%.4f, offset=%.2f->%.2f",
-			(double)_encoder_scale_factor, (double)new_encoder_scale,
-			(double)_encoder_zero_offset, (double)new_encoder_offset);
+			  (double)_encoder_scale_factor, (double)new_encoder_scale,
+			  (double)_encoder_zero_offset, (double)new_encoder_offset);
 
 		_encoder_scale_factor = new_encoder_scale;
 		_encoder_zero_offset = new_encoder_offset;

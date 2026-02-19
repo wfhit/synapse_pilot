@@ -15,4 +15,3 @@ menuconfig WHEEL_LOADER_ARTICULATED_CHASSIS_DRIVETRAIN_CONTROLLER
 		The controller accepts speed setpoints and maintains precise wheel
 		velocity control for traction optimization and stable operation
 		in mining environments.
-

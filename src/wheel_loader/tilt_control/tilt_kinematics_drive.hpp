@@ -126,7 +126,7 @@ public:
 	 * @param state Current drive state
 	 * @return 2x2 Jacobian [dbellcrank/dlength, dbellcrank/dboom]
 	 */
-	matrix::Matrix<float, 2, 2> compute_jacobian(const DriveState& state) const;
+	matrix::Matrix<float, 2, 2> compute_jacobian(const DriveState &state) const;
 
 	/**
 	 * @brief Update configuration from parameters
@@ -139,12 +139,12 @@ public:
 	 * @param coupler_to_pivot_angle Angle BCA in boom pivot triangle
 	 */
 	void set_triangle_angles(float bellcrank_boom_alignment_offset,
-	                         float coupler_to_pivot_angle);
+				 float coupler_to_pivot_angle);
 
 	/**
 	 * @brief Get current configuration
 	 */
-	const DriveConfiguration& get_configuration() const { return _config; }
+	const DriveConfiguration &get_configuration() const { return _config; }
 
 private:
 	DriveConfiguration _config;
@@ -177,7 +177,7 @@ private:
 	 * @param state Output drive state
 	 * @return True if valid solution found
 	 */
-	bool solve_trigonometric(float actuator_length, float boom_angle, DriveState& state) const;
+	bool solve_trigonometric(float actuator_length, float boom_angle, DriveState &state) const;
 
 	/**
 	 * @brief Inverse solve: Required AB length for bellcrank angle
@@ -213,7 +213,7 @@ private:
 	 * @param point_A Motor base position
 	 * @return Angle OCA in radians
 	 */
-	float calculate_angle_OCA(const matrix::Vector2f& point_C, const matrix::Vector2f& point_A) const;
+	float calculate_angle_OCA(const matrix::Vector2f &point_C, const matrix::Vector2f &point_A) const;
 
 	// =========================
 	// VALIDATION AND ANALYSIS
@@ -224,7 +224,7 @@ private:
 	 * @param state Drive state to validate
 	 * @return True if state is mechanically valid and within limits
 	 */
-	bool check_mechanical_limits(const DriveState& state) const;
+	bool check_mechanical_limits(const DriveState &state) const;
 
 
 
@@ -233,7 +233,7 @@ private:
 	 * @param state Current drive state
 	 * @return Condition number (higher = closer to singularity)
 	 */
-	float compute_condition_number(const DriveState& state) const;
+	float compute_condition_number(const DriveState &state) const;
 
 	/**
 	 * @brief Validate that triangle with given side lengths is possible

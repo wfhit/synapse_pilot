@@ -122,6 +122,7 @@ void TrajFollowerMode::update(float dt)
 		if (_trajectory.hold_last_point) {
 			PX4_DEBUG("Trajectory complete, holding last point");
 			// Continue publishing last setpoint
+
 		} else {
 			PX4_INFO("Trajectory complete, stopping");
 			_has_active_trajectory = false;
@@ -157,21 +158,7 @@ bool TrajFollowerMode::is_valid() const
 
 void TrajFollowerMode::processNewTrajectory()
 {
-	vla_trajectory_s traj;
-
-	if (!_trajectory_sub.copy(&traj)) {
-		return;
-	}
-
-	PX4_INFO("Received new trajectory: %d points, type %d", traj.num_points, traj.trajectory_type);
-
-	// Validate trajectory
-	if (traj.num_points == 0 || traj.num_points > MAX_TRAJ_POINTS) {
-		PX4_WARN("Invalid trajectory point count: %d", traj.num_points);
-		return;
-	}
-
-	// Store previous trajectory for blending (only keep first few points)
+	// Save blending data before overwriting _trajectory
 	if (_has_active_trajectory && _trajectory.smooth_transition) {
 		_prev_num_points = math::min(_num_decoded_points, static_cast<uint8_t>(MAX_PREV_POINTS));
 		memcpy(_prev_chassis_trajectory, _chassis_trajectory, sizeof(ChassisState) * _prev_num_points);
@@ -179,8 +166,18 @@ void TrajFollowerMode::processNewTrajectory()
 		memcpy(_prev_tilt_trajectory, _tilt_trajectory, sizeof(float) * _prev_num_points);
 	}
 
-	// Store new trajectory
-	_trajectory = traj;
+	// Read directly into member to avoid ~1.8kB stack allocation
+	if (!_trajectory_sub.copy(&_trajectory)) {
+		return;
+	}
+
+	PX4_INFO("Received new trajectory: %d points, type %d", _trajectory.num_points, _trajectory.trajectory_type);
+
+	// Validate trajectory
+	if (_trajectory.num_points == 0 || _trajectory.num_points > MAX_TRAJ_POINTS) {
+		PX4_WARN("Invalid trajectory point count: %d", _trajectory.num_points);
+		return;
+	}
 
 	// Step 1: Decode entire trajectory into 3 separate trajectories
 	decodeEntireTrajectory();
@@ -291,6 +288,7 @@ void TrajFollowerMode::decodeEntireTrajectory()
 			_boom_trajectory[i] = boom_target;
 			_tilt_trajectory[i] = tilt_target;
 			_trajectory_timestamps[i] = _trajectory.point_timestamps[i];
+
 		} else {
 			PX4_WARN("Failed to decode trajectory point %d", i);
 			_num_decoded_points = i;
@@ -313,13 +311,13 @@ void TrajFollowerMode::fuseTrajectories()
 	// Only blend the first point
 	if (_num_decoded_points > 0) {
 		_chassis_trajectory[0].x = _current_chassis_state.x * (1.0f - blend_factor) +
-					    _chassis_trajectory[0].x * blend_factor;
+					   _chassis_trajectory[0].x * blend_factor;
 		_chassis_trajectory[0].y = _current_chassis_state.y * (1.0f - blend_factor) +
-					    _chassis_trajectory[0].y * blend_factor;
+					   _chassis_trajectory[0].y * blend_factor;
 		_chassis_trajectory[0].heading = _current_chassis_state.heading * (1.0f - blend_factor) +
-							 _chassis_trajectory[0].heading * blend_factor;
+						 _chassis_trajectory[0].heading * blend_factor;
 		_chassis_trajectory[0].velocity = _current_chassis_state.velocity * (1.0f - blend_factor) +
-							  _chassis_trajectory[0].velocity * blend_factor;
+						  _chassis_trajectory[0].velocity * blend_factor;
 
 		_boom_trajectory[0] = _current_boom_state.position * (1.0f - blend_factor) +
 				      _boom_trajectory[0] * blend_factor;

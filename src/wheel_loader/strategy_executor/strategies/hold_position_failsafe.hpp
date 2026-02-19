@@ -70,6 +70,7 @@ protected:
 
 		// ========== 1. LOCALIZATION HEALTH ==========
 		vehicle_local_position_s local_pos;
+
 		if (_local_pos_sub.copy(&local_pos)) {
 			// Check position validity
 			if (!local_pos.xy_valid || !local_pos.z_valid) {
@@ -89,8 +90,9 @@ protected:
 
 				if (velocity > VELOCITY_CRITICAL) {
 					PX4_ERR("HoldPositionFailsafe: Unexpected velocity during hold: %.2f m/s",
-					        (double)velocity);
-					return FailsafeResult::Critical(FailsafeViolation::STATE_INVALID, FailsafeAction::SWITCH_TO_HOLD, "Unexpected motion detected");
+						(double)velocity);
+					return FailsafeResult::Critical(FailsafeViolation::STATE_INVALID, FailsafeAction::SWITCH_TO_HOLD,
+									"Unexpected motion detected");
 				}
 			}
 
@@ -100,10 +102,11 @@ protected:
 
 				if (acceleration > ACCELERATION_CRITICAL) {
 					PX4_WARN("HoldPositionFailsafe: High acceleration: %.2f m/s² - possible collision",
-					         (double)acceleration);
+						 (double)acceleration);
 					// Warning level - may indicate collision or external force
 				}
 			}
+
 		} else {
 			PX4_ERR("HoldPositionFailsafe: No localization data available");
 			return FailsafeResult::Emergency(FailsafeViolation::SENSOR_FAILURE, "Localization unavailable");
@@ -112,15 +115,16 @@ protected:
 		// ========== 2. ATTITUDE STABILITY ==========
 		vehicle_attitude_s attitude;
 		vehicle_angular_velocity_s angular_vel;
+
 		if (_attitude_sub.copy(&attitude) && _angular_vel_sub.copy(&angular_vel)) {
 			// Check for excessive rotation rates (should be near zero during hold)
 			float angular_rate = sqrtf(angular_vel.xyz[0] * angular_vel.xyz[0] +
-			                            angular_vel.xyz[1] * angular_vel.xyz[1] +
-			                            angular_vel.xyz[2] * angular_vel.xyz[2]);
+						   angular_vel.xyz[1] * angular_vel.xyz[1] +
+						   angular_vel.xyz[2] * angular_vel.xyz[2]);
 
 			if (angular_rate > 0.1f) {  // 0.1 rad/s threshold
 				PX4_WARN("HoldPositionFailsafe: Unexpected rotation during hold: %.2f rad/s",
-				         (double)angular_rate);
+					 (double)angular_rate);
 				// Warning - may indicate loss of heading control
 			}
 
@@ -131,7 +135,7 @@ protected:
 
 			if (pitch_deg > 30.0f || roll_deg > 30.0f) {
 				PX4_ERR("HoldPositionFailsafe: Extreme attitude - pitch: %.1f°, roll: %.1f°",
-				        (double)pitch_deg, (double)roll_deg);
+					(double)pitch_deg, (double)roll_deg);
 				return FailsafeResult::Emergency(FailsafeViolation::STATE_INVALID, "Vehicle tipping");
 			}
 		}

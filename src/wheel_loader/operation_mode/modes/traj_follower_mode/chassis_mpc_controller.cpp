@@ -107,7 +107,7 @@ void ChassisMPCController::articulatedKinematics(const ChassisState &state, cons
 {
 	// Articulated vehicle kinematics
 	// Using simplified model: front section steers, rear follows
-	
+
 	float v = control.velocity;
 	float omega = control.yaw_rate;
 	float alpha = state.articulation; // Current articulation angle

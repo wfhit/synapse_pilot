@@ -118,6 +118,7 @@ public:
 	{
 		// ========== 1. ARM STATUS ==========
 		actuator_armed_s armed;
+
 		if (!_armed_sub.copy(&armed) || !armed.armed) {
 			PX4_ERR("ManualDirect: Vehicle not armed");
 			return StrategyResult::Failure("Vehicle not armed");
@@ -125,29 +126,33 @@ public:
 
 		// ========== 2. BATTERY CHECK ==========
 		battery_status_s battery;
+
 		if (!_battery_sub.copy(&battery)) {
 			return StrategyResult::Failure("Battery status unavailable");
 		}
 
 		if (battery.remaining < BATTERY_MIN_START) {
 			PX4_ERR("ManualDirect: Battery too low (%.1f%% < %.1f%%)",
-			        (double)(battery.remaining * 100.0f), (double)(BATTERY_MIN_START * 100.0f));
+				(double)(battery.remaining * 100.0f), (double)(BATTERY_MIN_START * 100.0f));
 			return StrategyResult::Failure("Battery too low to start");
 		}
 
 		// ========== 3. MANUAL CONTROL AVAILABLE ==========
 		manual_control_setpoint_s manual_control;
+
 		if (!_manual_control_sub.copy(&manual_control)) {
 			return StrategyResult::Failure("Manual control unavailable");
 		}
 
 		hrt_abstime now = hrt_absolute_time();
+
 		if (now - manual_control.timestamp > CONTROL_INPUT_TIMEOUT) {
 			return StrategyResult::Failure("Manual control input stale");
 		}
 
 		// ========== 4. ATTITUDE CHECK ==========
 		vehicle_attitude_s attitude;
+
 		if (!_attitude_sub.copy(&attitude)) {
 			return StrategyResult::Failure("Attitude data unavailable");
 		}
@@ -160,15 +165,17 @@ public:
 
 		if (slope > SLOPE_MAX) {
 			PX4_ERR("ManualDirect: Slope too steep (%.1f° > %.1f°)",
-			        (double)slope, (double)SLOPE_MAX);
+				(double)slope, (double)SLOPE_MAX);
 			return StrategyResult::Failure("Slope too steep");
 		}
 
 		// ========== 5. LOCALIZATION HEALTH ==========
 		vehicle_local_position_s local_pos;
+
 		if (!_local_pos_sub.copy(&local_pos)) {
 			PX4_WARN("ManualDirect: Localization unavailable - proceeding with caution");
 			// Allow manual control even without localization, but warn
+
 		} else {
 			if (now - local_pos.timestamp > LOCALIZATION_TIMEOUT) {
 				PX4_WARN("ManualDirect: Localization data stale - proceeding with caution");
@@ -209,7 +216,7 @@ public:
 				if (_mode_status_sub.copy(&mode_status)) {
 					if (mode_status.current_mode == operation_mode_cmd_s::MODE_WL_MANUAL_DIRECT) {
 						PX4_INFO("ManualDirect: Mode activated - direct control ready");
-					_current_step = STEP_DIRECT_CONTROL;
+						_current_step = STEP_DIRECT_CONTROL;
 						_control_start_time = get_step_elapsed();
 					}
 				}
@@ -221,6 +228,7 @@ public:
 			{
 				// Verify mode is still active
 				operation_mode_status_s mode_status;
+
 				if (_mode_status_sub.copy(&mode_status)) {
 					if (mode_status.current_mode != operation_mode_cmd_s::MODE_WL_MANUAL_DIRECT) {
 						return StrategyResult::Failure("Manual direct mode lost");
@@ -231,14 +239,17 @@ public:
 
 				// --- Battery monitoring ---
 				battery_status_s battery;
+
 				if (_battery_sub.copy(&battery)) {
 					if (battery.remaining < BATTERY_CRITICAL) {
 						PX4_ERR("ManualDirect: CRITICAL - Battery %.1f%%", (double)(battery.remaining * 100.0f));
 						return StrategyResult::Failure("Battery critically low");
+
 					} else if (battery.remaining < BATTERY_DEGRADED) {
 						PX4_WARN("ManualDirect: Low battery %.1f%% - entering degraded mode",
-						         (double)(battery.remaining * 100.0f));
+							 (double)(battery.remaining * 100.0f));
 						degraded_condition = true;
+
 					} else if (battery.remaining < BATTERY_WARN) {
 						warn_throttled(now, "Battery low: %.1f%%", (double)(battery.remaining * 100.0f));
 					}
@@ -246,15 +257,17 @@ public:
 
 				// --- Dead-man switch monitoring (critical safety feature) ---
 				manual_control_setpoint_s manual_control;
+
 				if (_manual_control_sub.copy(&manual_control)) {
 					// Check for active control input (dead-man switch)
 					bool has_input = (fabsf(manual_control.roll) > 0.01f ||
-					                  fabsf(manual_control.pitch) > 0.01f ||
-					                  fabsf(manual_control.throttle) > 0.01f ||
-					                  fabsf(manual_control.yaw) > 0.01f);
+							  fabsf(manual_control.pitch) > 0.01f ||
+							  fabsf(manual_control.throttle) > 0.01f ||
+							  fabsf(manual_control.yaw) > 0.01f);
 
 					if (has_input) {
 						_last_input_time = now;
+
 						if (!_deadman_active) {
 							PX4_INFO("ManualDirect: Dead-man switch activated");
 							_deadman_active = true;
@@ -264,7 +277,7 @@ public:
 					// Check for dead-man switch timeout
 					if (now - _last_input_time > CONTROL_INPUT_TIMEOUT) {
 						PX4_ERR("ManualDirect: Dead-man switch timeout - no input for %.1fms",
-						        (double)((now - _last_input_time) / 1000.0f));
+							(double)((now - _last_input_time) / 1000.0f));
 						return StrategyResult::Failure("Dead-man switch timeout");
 					}
 
@@ -273,12 +286,14 @@ public:
 						PX4_ERR("ManualDirect: Control input data stale");
 						return StrategyResult::Failure("Control input lost");
 					}
+
 				} else {
 					return StrategyResult::Failure("Manual control input lost");
 				}
 
 				// --- Slope monitoring ---
 				vehicle_attitude_s attitude;
+
 				if (_attitude_sub.copy(&attitude)) {
 					matrix::Eulerf euler(matrix::Quatf(attitude.q));
 					float pitch_deg = math::degrees(euler.theta());
@@ -288,9 +303,11 @@ public:
 					if (slope > SLOPE_MAX) {
 						PX4_ERR("ManualDirect: CRITICAL - Slope %.1f°", (double)slope);
 						return StrategyResult::Failure("Slope exceeded maximum");
+
 					} else if (slope > SLOPE_DEGRADED) {
 						PX4_WARN("ManualDirect: Steep slope %.1f° - degraded mode", (double)slope);
 						degraded_condition = true;
+
 					} else if (slope > SLOPE_WARN) {
 						warn_throttled(now, "Slope warning: %.1f°", (double)slope);
 					}
@@ -298,6 +315,7 @@ public:
 
 				// --- Speed monitoring ---
 				vehicle_local_position_s local_pos;
+
 				if (_local_pos_sub.copy(&local_pos)) {
 					if (local_pos.v_xy_valid) {
 						float speed = sqrtf(local_pos.vx * local_pos.vx + local_pos.vy * local_pos.vy);
@@ -305,6 +323,7 @@ public:
 						if (speed > SPEED_CRITICAL) {
 							PX4_ERR("ManualDirect: CRITICAL - Excessive speed %.1f m/s", (double)speed);
 							return StrategyResult::Failure("Speed exceeded critical limit");
+
 						} else if (speed > SPEED_MAX_NORMAL) {
 							warn_throttled(now, "Speed high: %.1f m/s", (double)speed);
 						}
@@ -326,11 +345,12 @@ public:
 
 				// --- Switch monitoring (check for mode change request) ---
 				manual_control_switches_s switches;
+
 				if (_switches_sub.copy(&switches)) {
 					// Check if operator requested mode change via switch
 					if (switches.return_switch == manual_control_switches_s::SWITCH_POS_ON) {
 						PX4_INFO("ManualDirect: Return switch activated - exiting direct mode");
-					_current_step = STEP_COMPLETE;
+						_current_step = STEP_COMPLETE;
 						break;
 					}
 				}
@@ -339,8 +359,9 @@ public:
 				if (degraded_condition && !_is_degraded) {
 					_is_degraded = true;
 					PX4_WARN("ManualDirect: Entering DEGRADED mode - speed limited to %.1f m/s",
-					         (double)SPEED_MAX_DEGRADED);
+						 (double)SPEED_MAX_DEGRADED);
 					// TODO: Command speed limiter to controller
+
 				} else if (!degraded_condition && _is_degraded) {
 					_is_degraded = false;
 					PX4_INFO("ManualDirect: Exiting DEGRADED mode - normal speed limit");

@@ -79,7 +79,7 @@ public:
 	int print_status() override;
 
 private:
-    void Run() override;
+	void Run() override;
 	void updateParams() override;
 
 	// Multi-instance management
@@ -90,7 +90,7 @@ private:
 
 	// Instance details
 	const uint8_t _instance;
-	const hbridge_config_t* _board_config{nullptr};
+	const hbridge_config_t *_board_config{nullptr};
 
 	// Current state
 	float _current_duty_cycle{0.0f};
@@ -100,7 +100,7 @@ private:
 	bool _manual_mode{false};
 
 	// Publications
-    orb_advert_t _pub_handle{nullptr};
+	orb_advert_t _pub_handle{nullptr};
 
 	// Subscriptions (instance-specific command subscription)
 	uORB::Subscription _parameter_update_sub{ORB_ID(parameter_update)};
@@ -125,19 +125,27 @@ private:
 	void apply_safety_limits();
 
 	// Utilities
-	bool is_manager_instance() const {
-		return _instance == MANAGER_INSTANCE; }
-	int get_fwd_limit() const {
-		return _instance == 0 ? _param_0_fwd_limit.get() : _param_1_fwd_limit.get(); }
-	int get_rev_limit() const {
-		return _instance == 0 ? _param_0_rev_limit.get() : _param_1_rev_limit.get(); }
-	bool get_dir_reverse() const {
-		return _instance == 0 ? (_param_dir_reverse_0.get() != 0) : (_param_dir_reverse_1.get() != 0); }
+	bool is_manager_instance() const
+	{
+		return _instance == MANAGER_INSTANCE;
+	}
+	int get_fwd_limit() const
+	{
+		return _instance == 0 ? _param_0_fwd_limit.get() : _param_1_fwd_limit.get();
+	}
+	int get_rev_limit() const
+	{
+		return _instance == 0 ? _param_0_rev_limit.get() : _param_1_rev_limit.get();
+	}
+	bool get_dir_reverse() const
+	{
+		return _instance == 0 ? (_param_dir_reverse_0.get() != 0) : (_param_dir_reverse_1.get() != 0);
+	}
 	void publish_status();
 
 	// Board configuration
-	static const hbridge_config_t* get_board_config(uint8_t instance);
-	static const hbridge_manager_config_t* get_manager_config();
+	static const hbridge_config_t *get_board_config(uint8_t instance);
+	static const hbridge_manager_config_t *get_manager_config();
 	static bool start_instance(int instance);
 	static void stop_all_instances();
 	static void print_instance_status(uint8_t instance);  // Debug helper

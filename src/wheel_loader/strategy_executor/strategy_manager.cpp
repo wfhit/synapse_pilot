@@ -131,6 +131,7 @@ void StrategyExecutor::Run()
 
 	// Monitor system-wide health
 	hrt_abstime now = hrt_absolute_time();
+
 	if (now - _last_health_check > HEALTH_CHECK_INTERVAL) {
 		monitor_system_health();
 		_last_health_check = now;
@@ -176,20 +177,24 @@ void StrategyExecutor::process_commands()
 				_pending_command = _current_command;  // Save for potential rollback
 				_current_command = request;
 				execute_strategy_switch(request);
+
 			} else if (request.priority == _current_command.priority) {
 				// Equal priority - use timestamp (newer wins)
 				if (request.timestamp > _current_command.timestamp) {
 					PX4_INFO("Command replaces current (same priority, newer timestamp)");
 					_current_command = request;
 					execute_strategy_switch(request);
+
 				} else {
 					PX4_INFO("Command rejected (same priority, older timestamp)");
 				}
+
 			} else {
 				// Lower priority - reject
 				PX4_INFO("Command rejected (priority %u < %u)",
 					 request.priority, _current_command.priority);
 			}
+
 		} else {
 			// No active command - accept immediately
 			_current_command = request;
@@ -209,18 +214,21 @@ bool StrategyExecutor::execute_strategy_switch(const CommandRequest &request)
 		if (_active_strategy == nullptr) {
 			PX4_INFO("No active strategy to stop");
 			success = true;  // Already idle
+
 		} else {
 			PX4_INFO("Stopping strategy %u (%s)",
 				 _active_strategy_id, _active_strategy->get_name());
 			stop_current_strategy(false);
 			success = true;
 		}
+
 		perf_end(_strategy_switch_perf);
 		return success;
 	}
 
 	// Validate strategy ID
 	StrategyBase *new_strategy = get_strategy(request.strategy_id);
+
 	if (new_strategy == nullptr) {
 		PX4_ERR("Strategy %u not found in registry", request.strategy_id);
 		perf_end(_strategy_switch_perf);
@@ -231,6 +239,7 @@ bool StrategyExecutor::execute_strategy_switch(const CommandRequest &request)
 	if (_active_strategy != nullptr && _active_strategy_id != request.strategy_id) {
 		PX4_INFO("Switching from strategy %u to %u", _active_strategy_id, request.strategy_id);
 		stop_current_strategy(true);  // Preempted
+
 	} else if (_active_strategy != nullptr && _active_strategy_id == request.strategy_id) {
 		PX4_INFO("Restarting strategy %u (%s)", request.strategy_id, new_strategy->get_name());
 		stop_current_strategy(false);
@@ -255,6 +264,7 @@ bool StrategyExecutor::execute_strategy_switch(const CommandRequest &request)
 		PX4_INFO("Strategy %u activated successfully (state=%u)",
 			 request.strategy_id, new_strategy->get_state());
 		success = true;
+
 	} else {
 		PX4_ERR("Strategy %u activation failed: %s", request.strategy_id, result.message);
 		_active_strategy = nullptr;
@@ -280,6 +290,7 @@ void StrategyExecutor::update_active_strategy()
 
 	// Detect state transitions
 	uint8_t current_state = _active_strategy->get_state();
+
 	if (current_state != previous_state) {
 		log_state_transition(previous_state, current_state);
 		_previous_strategy_state = current_state;
@@ -299,6 +310,7 @@ void StrategyExecutor::update_active_strategy()
 		_active_strategy = nullptr;
 		_active_strategy_id = strategy_cmd_s::STRATEGY_IDLE;
 		_current_command.clear();
+
 	} else if (current_state == strategy_status_s::STATE_IDLE && previous_state != strategy_status_s::STATE_IDLE) {
 		// Strategy completed (transitioned back to IDLE)
 		PX4_INFO("Strategy %u (%s) completed successfully",
@@ -334,6 +346,7 @@ void StrategyExecutor::stop_current_strategy(bool preempted)
 	if (preempted) {
 		_strategy_stats[_active_strategy_id].preemption_count++;
 	}
+
 	hrt_abstime runtime = hrt_absolute_time() - _strategy_activation_time;
 	_strategy_stats[_active_strategy_id].total_runtime += runtime;
 
@@ -349,6 +362,7 @@ StrategyBase *StrategyExecutor::get_strategy(uint8_t strategy_id)
 			return _strategies[i];
 		}
 	}
+
 	return nullptr;
 }
 
@@ -394,6 +408,7 @@ bool StrategyExecutor::monitor_system_health()
 bool StrategyExecutor::check_battery_health()
 {
 	battery_status_s battery;
+
 	if (!_battery_sub.copy(&battery)) {
 		return true;  // No data - assume healthy
 	}
@@ -420,6 +435,7 @@ bool StrategyExecutor::check_battery_health()
 bool StrategyExecutor::check_vehicle_status()
 {
 	vehicle_status_s status;
+
 	if (!_vehicle_status_sub.copy(&status)) {
 		return true;  // No data - assume healthy
 	}
@@ -436,6 +452,7 @@ bool StrategyExecutor::check_vehicle_status()
 bool StrategyExecutor::check_arm_status()
 {
 	actuator_armed_s armed;
+
 	if (!_armed_sub.copy(&armed)) {
 		return true;  // No data - assume healthy
 	}
@@ -452,6 +469,7 @@ bool StrategyExecutor::check_arm_status()
 bool StrategyExecutor::check_safety_button()
 {
 	manual_control_switches_s switches;
+
 	if (!_manual_control_switches_sub.copy(&switches)) {
 		// No switch data available - assume safe
 		return true;
@@ -490,13 +508,16 @@ bool StrategyExecutor::check_safety_button()
 				PX4_ERR("Emergency stop triggered by safety button - aborting strategy %u", _active_strategy_id);
 			}
 		}
+
 		return false;  // System not healthy
+
 	} else {
 		// Button released - clear flag
 		if (_safety_button_triggered) {
 			PX4_INFO("Safety button released");
 			_safety_button_triggered = false;
 		}
+
 		return true;
 	}
 }
@@ -522,11 +543,13 @@ void StrategyExecutor::publish_status()
 
 		// Copy step name
 		const char *step_name = _active_strategy->get_step_name();
+
 		if (step_name != nullptr) {
 			size_t step_len = strlen(step_name);
 			size_t step_copy_len = math::min(step_len, sizeof(_status.current_step_name) - 1);
 			memcpy(_status.current_step_name, step_name, step_copy_len);
 			_status.current_step_name[step_copy_len] = '\0';
+
 		} else {
 			_status.current_step_name[0] = '\0';
 		}
@@ -578,6 +601,7 @@ int StrategyExecutor::print_status()
 
 		hrt_abstime runtime = hrt_absolute_time() - _strategy_activation_time;
 		PX4_INFO("  Runtime: %.2f s", (double)(runtime / 1000000.0));
+
 	} else {
 		PX4_INFO("Active Strategy: None (IDLE)");
 	}

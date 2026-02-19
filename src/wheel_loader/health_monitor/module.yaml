@@ -1,9 +1,4 @@
 module_name: Health Monitor Manager
-serial_config:
-    - command: health_monitor start
-      port_config_param:
-          name: None
-          group: Health Monitor
 
 parameters:
     - group: Health Monitor
