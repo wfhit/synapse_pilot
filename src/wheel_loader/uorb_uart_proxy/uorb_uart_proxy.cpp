@@ -300,17 +300,16 @@ void UorbUartProxy::send_heartbeat()
 		payload.tx_errors = _stats.tx_errors;
 		payload.rx_errors = _stats.rx_errors;
 
-		uint8_t buffer[512];
 		size_t frame_size = _frame_builder.build_heartbeat_frame(
-					    buffer,
-					    sizeof(buffer),
+					    _tx_buffer,
+					    IO_BUFFER_SIZE,
 					    _node_id,
 					    payload,
 					    _tx_sequence++
 				    );
 
 		if (frame_size > 0) {
-			send_frame(buffer, frame_size);
+			send_frame(_tx_buffer, frame_size);
 			perf_count(_packet_tx_perf);
 		}
 
@@ -366,8 +365,9 @@ void UorbUartProxy::process_outgoing_messages()
 	}
 
 	// Get all registered topics for sending status to X7+
-	const TopicInfo *topics[MAX_REGISTERED_TOPICS];
-	size_t topic_count = g_topic_registry.get_all_topics(topics, MAX_REGISTERED_TOPICS);
+	static constexpr size_t MAX_LOCAL_TOPICS = 16;
+	const TopicInfo *topics[MAX_LOCAL_TOPICS];
+	size_t topic_count = g_topic_registry.get_all_topics(topics, MAX_LOCAL_TOPICS);
 
 	// Send status information from NXT to X7+
 	for (size_t i = 0; i < topic_count; i++) {
@@ -377,34 +377,33 @@ void UorbUartProxy::process_outgoing_messages()
 			continue;
 		}
 
-		// Create subscription if needed
-		uORB::Subscription *sub = new uORB::Subscription(topic_info->meta);
+		// Skip topics larger than our buffer
+		if (topic_info->meta->o_size > MAX_TOPIC_DATA_SIZE) {
+			continue;
+		}
+
+		// Use stack-minimal subscription check
+		uORB::Subscription sub(topic_info->meta);
 
 		// Check for new data to send upstream
-		if (sub->updated()) {
-			uint8_t data[topic_info->meta->o_size];
-
-			if (sub->copy(data)) {
-				uint8_t buffer[512];
-
+		if (sub.updated()) {
+			if (sub.copy(_topic_data)) {
 				size_t frame_size = _frame_builder.build_data_frame(
-							    buffer, sizeof(buffer),
+							    _tx_buffer, IO_BUFFER_SIZE,
 							    topic_info->topic_id, 0,
 							    _node_id, NodeId::X7_MAIN,
-							    data, topic_info->meta->o_size,
+							    _topic_data, topic_info->meta->o_size,
 							    Priority::NORMAL, Reliability::BEST_EFFORT,
 							    _tx_sequence++);
 
 				if (frame_size > 0) {
-					send_frame(buffer, frame_size);
+					send_frame(_tx_buffer, frame_size);
 					_stats.tx_packets++;
 					perf_count(_packet_tx_perf);
 					perf_count(_bytes_tx_perf);
 				}
 			}
 		}
-
-		delete sub;
 	}
 }
 
@@ -467,8 +466,7 @@ bool UorbUartProxy::receive_frames()
 		return false;
 	}
 
-	uint8_t buffer[512];
-	ssize_t bytes_read = read(_uart_fd, buffer, sizeof(buffer));
+	ssize_t bytes_read = read(_uart_fd, _rx_buffer, IO_BUFFER_SIZE);
 
 	if (bytes_read > 0) {
 		_last_message_time = hrt_absolute_time();
@@ -476,7 +474,7 @@ bool UorbUartProxy::receive_frames()
 
 		// Parse received data for complete frames
 		for (ssize_t i = 0; i < bytes_read;) {
-			const ProtocolFrame *frame = _frame_parser.parse_frame(&buffer[i], bytes_read - i);
+			const ProtocolFrame *frame = _frame_parser.parse_frame(&_rx_buffer[i], bytes_read - i);
 
 			if (frame != nullptr) {
 				handle_received_frame(frame);

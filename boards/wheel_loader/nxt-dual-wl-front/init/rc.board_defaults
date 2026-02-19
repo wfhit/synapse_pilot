@@ -27,24 +27,29 @@ param set-default CBRK_SUPPLY_CHK 894281
 # USB CDC ACM auto-start configuration
 param set-default SYS_USB_AUTO 1
 
+# --- Wheel loader params commented out for incremental bringup ---
+
+# uORB UART Proxy: USART1 = ttyS0 on this board (SERIAL_DISABLE_REORDERING)
+param set-default UORB_PX_UART 0
+
 # AS5600 magnetic encoder configuration for tilt position feedback
 param set-default SENS_EN_AS5600 1
 param set-default AS5600_I2C_BUS 1
 param set-default AS5600_OFFSET 0.0
 
-# Tilt Control Configuration (front board controls tilt/bucket)
-param set-default TILT_CTRL_EN 1
-param set-default TILT_KP 1.0
-param set-default TILT_KI 0.1
-param set-default TILT_KD 0.05
-param set-default TILT_MAX_ANGLE 60.0
-param set-default TILT_MIN_ANGLE -10.0
+## Tilt Control Configuration (front board controls tilt/bucket)
+#param set-default TILT_CTRL_EN 1
+#param set-default TILT_KP 1.0
+#param set-default TILT_KI 0.1
+#param set-default TILT_KD 0.05
+#param set-default TILT_MAX_ANGLE 60.0
+#param set-default TILT_MIN_ANGLE -10.0
 
-# Front Wheel Control Parameters (motor drive)
-param set-default WL_FRONT_WHEEL_EN 1
-param set-default WL_FRONT_WHEEL_KP 0.5
-param set-default WL_FRONT_WHEEL_KI 0.1
-param set-default WL_FRONT_WHEEL_KD 0.05
+## Front Wheel Control Parameters (motor drive)
+#param set-default WL_FRONT_WHEEL_EN 1
+#param set-default WL_FRONT_WHEEL_KP 0.5
+#param set-default WL_FRONT_WHEEL_KI 0.1
+#param set-default WL_FRONT_WHEEL_KD 0.05
 
 # Quadrature Encoder Configuration
 # Global encoder update rate

@@ -175,6 +175,13 @@ private:
 	static constexpr uint32_t CONNECTION_TIMEOUT_MS = 3000;
 	static constexpr size_t MAX_TX_QUEUE_SIZE = 30;
 
+	// Shared I/O buffers (heap-allocated with class, not on work queue stack)
+	static constexpr size_t IO_BUFFER_SIZE = 512;
+	static constexpr size_t MAX_TOPIC_DATA_SIZE = 256;
+	uint8_t _tx_buffer[IO_BUFFER_SIZE];
+	uint8_t _rx_buffer[IO_BUFFER_SIZE];
+	uint8_t _topic_data[MAX_TOPIC_DATA_SIZE];
+
 	// Module parameters (≤16 chars per coding style)
 	DEFINE_PARAMETERS(
 		(ParamBool<px4::params::UORB_PX_EN>) _param_enable,

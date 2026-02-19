@@ -4,6 +4,8 @@
 # Tilt control and front wheel board
 #------------------------------------------------------------------------------
 
+# --- Wheel loader modules commented out for incremental bringup ---
+
 # Start quadrature encoders for position feedback
 echo "Starting quadrature encoders"
 quadrature_encoder start
@@ -19,25 +21,25 @@ then
 	limit_sensor start
 fi
 
-# Start tilt control module (controls bucket tilt)
-if param compare TILT_CTRL_EN 1
-then
-	echo "Starting tilt control module"
-	tilt_control start
-	echo "Tilt control module started"
-fi
+## Start tilt control module (controls bucket tilt)
+#if param compare TILT_CTRL_EN 1
+#then
+#	echo "Starting tilt control module"
+#	tilt_control start
+#	echo "Tilt control module started"
+#fi
 
-# Start front wheel control module (controls front wheel drive)
-if param compare WL_FRONT_WHEEL_EN 1
-then
-	echo "Starting front wheel control module"
-	wheel_controller start
-	echo "Front wheel control module started"
-fi
+## Start front wheel control module (controls front wheel drive)
+#if param compare WL_FRONT_WHEEL_EN 1
+#then
+#	echo "Starting front wheel control module"
+#	wheel_controller start
+#	echo "Front wheel control module started"
+#fi
 
-# Start uORB UART proxy for distributed system communication
-echo "Starting uORB UART proxy"
-uorb_uart_proxy start
+## Start uORB UART proxy for distributed system communication (deferred - stack fix needed)
+#echo "Starting uORB UART proxy"
+#uorb_uart_proxy start
 
 # CDC ACM already auto-started for NSH console
 echo "CDC ACM enabled for NSH console access"
