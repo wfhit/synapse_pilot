@@ -78,8 +78,9 @@ int up_motor_pwm_set_duty_cycle(unsigned channel, float duty_cycle)
 	}
 
 	/* Clamp duty cycle */
-	if (duty_cycle < 0.0f) duty_cycle = 0.0f;
-	if (duty_cycle > 1.0f) duty_cycle = 1.0f;
+	if (duty_cycle < 0.0f) { duty_cycle = 0.0f; }
+
+	if (duty_cycle > 1.0f) { duty_cycle = 1.0f; }
 
 	/* Store the duty cycle */
 	motor_pwm_duty_cycles[channel] = duty_cycle;
@@ -151,10 +152,13 @@ int up_motor_pwm_set_rate(unsigned rate)
 
 	/* Set rate for all motor PWM timer groups */
 	int ret = OK;
+
 	for (unsigned group = 0; group < MAX_IO_TIMERS; group++) {
 		uint32_t group_channels = up_motor_pwm_get_rate_group(group);
+
 		if (group_channels != 0) {
 			int group_ret = up_motor_pwm_set_rate_group_update(group, rate);
+
 			if (group_ret != OK) {
 				ret = group_ret;
 			}

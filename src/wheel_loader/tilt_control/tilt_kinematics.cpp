@@ -95,6 +95,7 @@ float TiltKinematics::get_bellcrank_internal_angle() const
 
 	if (!std::isnan(angle_ABC)) {
 		return 2.0f * static_cast<float>(M_PI) - angle_ABC;
+
 	} else {
 		PX4_WARN("Invalid bellcrank triangle geometry for internal angle calculation");
 		return 0.0f;
@@ -139,6 +140,7 @@ TiltKinematics::LinkageState TiltKinematics::compute_forward_kinematics(
 	// Stage 1: Compute drive kinematics
 	TiltKinematicsDrive::DriveState drive_state =
 		_drive_kinematics.compute_forward_kinematics(actuator_length, boom_angle);
+
 	if (!drive_state.is_valid) {
 		PX4_WARN("Drive kinematics failed for actuator length: %.2f mm", (double)actuator_length);
 		return combined_state;
@@ -147,6 +149,7 @@ TiltKinematics::LinkageState TiltKinematics::compute_forward_kinematics(
 	// Stage 2: Compute tilt kinematics using drive result
 	TiltKinematicsTilt::TiltState tilt_state =
 		_tilt_kinematics.compute_forward_kinematics(drive_state.bellcrank_angle, boom_angle);
+
 	if (!tilt_state.is_valid) {
 		PX4_WARN("Tilt kinematics failed for bellcrank angle: %.3f rad", (double)drive_state.bellcrank_angle);
 		return combined_state;
@@ -167,6 +170,7 @@ TiltKinematics::LinkageState TiltKinematics::compute_inverse_kinematics(
 
 	// Stage 2 Inverse: Find required bellcrank angle for desired tilt angle
 	float required_bellcrank_tilt = _tilt_kinematics.compute_inverse_kinematics(bucket_angle, boom_angle);
+
 	if (!std::isfinite(required_bellcrank_tilt)) {
 		PX4_WARN("Tilt inverse kinematics failed for tilt angle: %.3f rad", (double)bucket_angle);
 		return combined_state;
@@ -177,6 +181,7 @@ TiltKinematics::LinkageState TiltKinematics::compute_inverse_kinematics(
 
 	// Stage 1 Inverse: Find required actuator length for bellcrank angle
 	float required_actuator_length = _drive_kinematics.compute_inverse_kinematics(required_bellcrank_drive, boom_angle);
+
 	if (required_actuator_length < 0.0f) {
 		PX4_WARN("Drive inverse kinematics failed for bellcrank angle: %.3f rad", (double)required_bellcrank_drive);
 		return combined_state;
@@ -189,8 +194,8 @@ TiltKinematics::LinkageState TiltKinematics::compute_inverse_kinematics(
 }
 
 TiltKinematics::LinkageState TiltKinematics::combine_states(
-	const TiltKinematicsDrive::DriveState& drive_state,
-	const TiltKinematicsTilt::TiltState& tilt_state) const
+	const TiltKinematicsDrive::DriveState &drive_state,
+	const TiltKinematicsTilt::TiltState &tilt_state) const
 {
 	LinkageState combined_state{};
 
@@ -227,7 +232,7 @@ bool TiltKinematics::validate_configuration() const
 	return drive_valid && tilt_valid;
 }
 
-matrix::Matrix<float, 2, 2> TiltKinematics::compute_jacobian(const LinkageState& state) const
+matrix::Matrix<float, 2, 2> TiltKinematics::compute_jacobian(const LinkageState &state) const
 {
 	// Use drive kinematics Jacobian as the primary source
 	// Create temporary drive state from combined state
@@ -256,7 +261,7 @@ float TiltKinematics::encoder_angle_to_actuator_length(float encoder_angle) cons
 	float OA = _drive_kinematics.get_configuration().motor_base.norm(); // mm, pivot to actuator base
 	float OB = _drive_kinematics.get_configuration().crank_joint_to_pivot_length; // mm, pivot to crank joint
 	// AB = sqrt(OA^2 + OB^2 - 2*OA*OB*cos(angle))
-	float actuator_length = sqrtf(OA*OA + OB*OB - 2.0f*OA*OB*cosf(geometric_angle_rad));
+	float actuator_length = sqrtf(OA * OA + OB * OB - 2.0f * OA * OB * cosf(geometric_angle_rad));
 	return actuator_length;
 }
 
@@ -276,4 +281,3 @@ TiltKinematics::LinkageState TiltKinematics::get_kinematic_state_from_encoder(fl
 	// For now, assume boom_angle = 0.0f (should be replaced with actual calculation if needed)
 	return compute_forward_kinematics(actuator_length, 0.0f);
 }
-

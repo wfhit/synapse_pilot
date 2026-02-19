@@ -373,7 +373,6 @@ parameters:
             min: 10.0
             max: 500.0
             default: 100.0
-            unit: ""
 
         BCT_MAX_ACC:
             description:
@@ -384,7 +383,6 @@ parameters:
             min: 50.0
             max: 1000.0
             default: 200.0
-            unit: ""
 
         BCT_MAX_JERK:
             description:
@@ -395,7 +393,6 @@ parameters:
             min: 100.0
             max: 5000.0
             default: 1000.0
-            unit: ""
 
         BCT_DUTY_LIM:
             description:
@@ -440,7 +437,6 @@ parameters:
             min: 50.0
             max: 500.0
             default: 250.0
-            unit: ""
 
     - group: Calibration
       definitions:
@@ -454,7 +450,6 @@ parameters:
             min: 10.0
             max: 200.0
             default: 50.0
-            unit: ""
 
         BCT_CAL_SLOW_SPD:
             description:
@@ -465,7 +460,6 @@ parameters:
             min: 1.0
             max: 50.0
             default: 10.0
-            unit: ""
 
         BCT_CAL_REQUIRED:
             description:
@@ -535,7 +529,6 @@ parameters:
             min: 1.0
             max: 1000.0
             default: 100.0
-            unit: ""
 
         BCT_ENC_OFFSET:
             description:

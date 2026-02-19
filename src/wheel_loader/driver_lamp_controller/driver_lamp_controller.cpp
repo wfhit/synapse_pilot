@@ -122,28 +122,28 @@ void DriverLampController::process_lamp_state()
 		break;
 
 	case LampMode::LEFT_TURN: {
-		hrt_abstime interval = get_turn_signal_interval_us();
+			hrt_abstime interval = get_turn_signal_interval_us();
 
-		if (now - _last_toggle > interval) {
-			_left_lamp_on = !_left_lamp_on;
-			_last_toggle = now;
+			if (now - _last_toggle > interval) {
+				_left_lamp_on = !_left_lamp_on;
+				_last_toggle = now;
+			}
+
+			_right_lamp_on = false;
+			break;
 		}
-
-		_right_lamp_on = false;
-		break;
-	}
 
 	case LampMode::RIGHT_TURN: {
-		hrt_abstime interval = get_turn_signal_interval_us();
+			hrt_abstime interval = get_turn_signal_interval_us();
 
-		if (now - _last_toggle > interval) {
-			_right_lamp_on = !_right_lamp_on;
-			_last_toggle = now;
+			if (now - _last_toggle > interval) {
+				_right_lamp_on = !_right_lamp_on;
+				_last_toggle = now;
+			}
+
+			_left_lamp_on = false;
+			break;
 		}
-
-		_left_lamp_on = false;
-		break;
-	}
 
 	case LampMode::HAZARD:
 		process_hazard_pattern();

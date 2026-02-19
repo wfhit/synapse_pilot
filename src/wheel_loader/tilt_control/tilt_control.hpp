@@ -67,8 +67,8 @@ class TiltStateManager;
  * - State management and fault handling
  */
 class TiltControl final : public ModuleBase<TiltControl>,
-                            public ModuleParams,
-                            public px4::ScheduledWorkItem
+	public ModuleParams,
+	public px4::ScheduledWorkItem
 {
 public:
 	TiltControl();
@@ -102,19 +102,19 @@ private:
 	 * @brief Control execution helper methods
 	 */
 	bool determine_target_position(
-		const TiltStateManager::StateInfo& state_info,
-		const TiltHardwareInterface::SensorData& sensor_data,
-		float& target_actuator_position);
+		const TiltStateManager::StateInfo &state_info,
+		const TiltHardwareInterface::SensorData &sensor_data,
+		float &target_actuator_position);
 	void send_zero_command();
 	void execute_motion_control(
 		float target_actuator_position,
-		const TiltHardwareInterface::SensorData& sensor_data);
+		const TiltHardwareInterface::SensorData &sensor_data);
 
 	// Core components
-	TiltKinematics* _kinematics{nullptr};
-	TiltHardwareInterface* _hardware_interface{nullptr};
-	TiltMotionController* _motion_controller{nullptr};
-	TiltStateManager* _state_manager{nullptr};
+	TiltKinematics *_kinematics{nullptr};
+	TiltHardwareInterface *_hardware_interface{nullptr};
+	TiltMotionController *_motion_controller{nullptr};
+	TiltStateManager *_state_manager{nullptr};
 
 	// uORB interface
 	uORB::Subscription _tilt_control_setpoint_sub{ORB_ID(tilt_control_setpoint)};

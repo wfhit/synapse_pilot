@@ -10,7 +10,8 @@
 
 NavLampController::NavLampController() : ModuleParams(nullptr) {}
 
-NavLampController::~NavLampController() {
+NavLampController::~NavLampController()
+{
 	perf_free(_loop_perf);
 	perf_free(_command_perf);
 }
@@ -45,12 +46,15 @@ int NavLampController::calculate_steps_to_target(uint8_t target_state)
 	if (target_state >= MAX_STATES) {
 		return -1;
 	}
+
 	if (target_state == _current_state) {
 		return 0;
 	}
+
 	if (target_state > _current_state) {
 		return target_state - _current_state;
 	}
+
 	return (MAX_STATES - _current_state) + target_state;
 }
 
@@ -72,6 +76,7 @@ void NavLampController::handle_state_change(uint8_t target_state)
 
 	for (int i = 0; i < steps; i++) {
 		change_state_lamp();
+
 		if (i < steps - 1) {
 			px4_usleep(_param_state_interval.get() * 1000);
 		}
@@ -83,6 +88,7 @@ void NavLampController::handle_state_change(uint8_t target_state)
 void NavLampController::process_commands()
 {
 	nav_lamp_command_s cmd;
+
 	if (_lamp_command_sub.update(&cmd)) {
 		perf_count(_command_perf);
 
@@ -183,14 +189,16 @@ int NavLampController::print_status()
 int NavLampController::task_spawn(int argc, char *argv[])
 {
 	NavLampController *instance = new NavLampController();
+
 	if (instance) {
 		_object.store(instance);
 		_task_id = px4_task_spawn_cmd("nav_lamp_controller",
-									  SCHED_DEFAULT,
-									  SCHED_PRIORITY_DEFAULT - 5,
-									  1024,
-									  (px4_main_t)&run_trampoline,
-									  (char *const *)argv);
+					      SCHED_DEFAULT,
+					      SCHED_PRIORITY_DEFAULT - 5,
+					      1024,
+					      (px4_main_t)&run_trampoline,
+					      (char *const *)argv);
+
 		if (_task_id < 0) {
 			PX4_ERR("task start failed");
 			delete instance;
@@ -198,8 +206,10 @@ int NavLampController::task_spawn(int argc, char *argv[])
 			_task_id = -1;
 			return PX4_ERROR;
 		}
+
 		return PX4_OK;
 	}
+
 	PX4_ERR("alloc failed");
 	return PX4_ERROR;
 }
@@ -219,6 +229,7 @@ int NavLampController::custom_command(int argc, char *argv[])
 		}
 
 		int target_state = atoi(argv[1]);
+
 		if (target_state < 0 || target_state >= MAX_STATES) {
 			PX4_WARN("Invalid state: %d. Valid range: 0-%d", target_state, MAX_STATES - 1);
 			return 1;
@@ -246,9 +257,11 @@ int NavLampController::custom_command(int argc, char *argv[])
 		if (!strcmp(argv[1], "on")) {
 			instance->set_light_state(true);
 			return 0;
+
 		} else if (!strcmp(argv[1], "off")) {
 			instance->set_light_state(false);
 			return 0;
+
 		} else {
 			PX4_WARN("Invalid light command: %s. Use 'on' or 'off'", argv[1]);
 			return 1;
@@ -263,6 +276,7 @@ int NavLampController::print_usage(const char *reason)
 	if (reason) {
 		PX4_WARN("%s\n", reason);
 	}
+
 	PRINT_MODULE_DESCRIPTION(
 		R"DESCR_STR(
 ### Description

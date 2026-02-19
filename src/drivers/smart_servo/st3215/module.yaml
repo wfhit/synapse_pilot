@@ -4,25 +4,6 @@ serial_config:
       port_config_param:
           name: ST3215_CONFIG
           group: Serial
-          description:
-              short: ST3215 serial port configuration
-              long: |
-                  Configure on which serial port to run ST3215 servo driver.
-          type: enum
-          values:
-              0: Disabled
-              6: UART 6
-              101: TELEM 1
-              102: TELEM 2
-              103: TELEM 3
-              201: GPS 1
-              202: GPS 2
-              401: UART 4
-              402: UART 7
-              403: UART 8
-              601: SERVO 1
-              602: SERVO 2
-          reboot_required: true
 parameters:
     - group: ST3215 Servo
       definitions:

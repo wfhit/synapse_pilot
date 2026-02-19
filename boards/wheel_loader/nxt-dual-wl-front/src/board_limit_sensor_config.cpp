@@ -44,26 +44,26 @@
 
 // Define limit sensor instances with their GPIO mappings for front board
 const limit_sensor_config_t g_limit_sensor_config[BOARD_NUM_LIMIT_SENSORS] = {
-    // Instance 0: Bucket Load Limit (WITH REDUNDANCY)
-    {
-        .instance_id = 0,
-        .function = 0,  // BUCKET_LOAD
-        .gpio_pin_1 = BUCKET_LOAD_LIMIT_SW1_GPIO,   // PB10
-        .gpio_pin_2 = BUCKET_LOAD_LIMIT_SW2_GPIO,   // PB11
-        .inverted = false,
-        .redundancy_enabled = true,  // REDUNDANCY ENABLED
-        .name = "bucket_load"
-    },
-    // Instance 1: Bucket Dump Limit (WITH REDUNDANCY)
-    {
-        .instance_id = 1,
-        .function = 1,  // BUCKET_DUMP
-        .gpio_pin_1 = BUCKET_DUMP_LIMIT_SW1_GPIO,   // PB0
-        .gpio_pin_2 = BUCKET_DUMP_LIMIT_SW2_GPIO,   // PB1
-        .inverted = false,
-        .redundancy_enabled = true,  // REDUNDANCY ENABLED
-        .name = "bucket_dump"
-    }
+	// Instance 0: Bucket Load Limit (WITH REDUNDANCY)
+	{
+		.instance_id = 0,
+		.function = 0,  // BUCKET_LOAD
+		.gpio_pin_1 = BUCKET_LOAD_LIMIT_SW1_GPIO,   // PB10
+		.gpio_pin_2 = BUCKET_LOAD_LIMIT_SW2_GPIO,   // PB11
+		.inverted = false,
+		.redundancy_enabled = true,  // REDUNDANCY ENABLED
+		.name = "bucket_load"
+	},
+	// Instance 1: Bucket Dump Limit (WITH REDUNDANCY)
+	{
+		.instance_id = 1,
+		.function = 1,  // BUCKET_DUMP
+		.gpio_pin_1 = BUCKET_DUMP_LIMIT_SW1_GPIO,   // PB0
+		.gpio_pin_2 = BUCKET_DUMP_LIMIT_SW2_GPIO,   // PB1
+		.inverted = false,
+		.redundancy_enabled = true,  // REDUNDANCY ENABLED
+		.name = "bucket_dump"
+	}
 };
 
 #endif // BOARD_HAS_LIMIT_SENSOR_CONFIG

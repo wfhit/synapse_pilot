@@ -1,11 +1,8 @@
 module_name: uorb_uart_proxy
 serial_config:
-    - command: uorb_uart_proxy start -d ${SERIAL_DEV} -b ${BAUD}
+    - command: uorb_uart_proxy start -d ${SERIAL_DEV} -b p:${BAUD_PARAM}
       port_config_param:
-        name: UORB_PX_DEV
-        group: uORB UART Proxy
-      baudrate_config_param:
-        name: UORB_PX_BAUD
+        name: UORB_PX_CFG
         group: uORB UART Proxy
 
 parameters:

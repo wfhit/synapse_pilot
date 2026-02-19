@@ -185,8 +185,8 @@ void ManualDirectMode::applyLimits()
 
 	// Clamp articulation angle
 	_target_articulation_angle = math::constrain(_target_articulation_angle,
-			_vehicle_params.articulation_min,
-			_vehicle_params.articulation_max);
+				     _vehicle_params.articulation_min,
+				     _vehicle_params.articulation_max);
 
 	// Clamp tilt angle
 	_target_tilt_angle = math::constrain(_target_tilt_angle,

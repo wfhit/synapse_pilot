@@ -67,11 +67,12 @@ protected:
 
 		// ========== 1. CRITICAL: DEAD-MAN SWITCH ENFORCEMENT ==========
 		manual_control_setpoint_s manual_control;
+
 		if (_manual_control_sub.copy(&manual_control)) {
 			// Check for control input timeout (dead-man switch)
 			if (now - manual_control.timestamp > CONTROL_CRITICAL_TIMEOUT) {
 				PX4_ERR("ManualDirectFailsafe: DEAD-MAN SWITCH TIMEOUT - no input for %.1fms",
-				        (double)((now - manual_control.timestamp) / 1000.0f));
+					(double)((now - manual_control.timestamp) / 1000.0f));
 				return FailsafeResult::Emergency(FailsafeViolation::HEARTBEAT_TIMEOUT, "Dead-man switch timeout");
 			}
 
@@ -83,6 +84,7 @@ protected:
 				PX4_ERR("ManualDirectFailsafe: Invalid control values detected");
 				return FailsafeResult::Emergency(FailsafeViolation::STATE_INVALID, "Invalid control input");
 			}
+
 		} else {
 			PX4_ERR("ManualDirectFailsafe: No control input available");
 			return FailsafeResult::Emergency(FailsafeViolation::HEARTBEAT_TIMEOUT, "Control input lost");
@@ -100,15 +102,18 @@ protected:
 
 		// ========== 3. POSITION VALIDITY ==========
 		vehicle_local_position_s local_pos;
+
 		if (_local_pos_sub.copy(&local_pos)) {
 			// While localization is not required for manual control,
 			// if available it should be valid
 			if (local_pos.v_xy_valid) {
 				// Check for excessive velocity (sanity check)
 				float speed = sqrtf(local_pos.vx * local_pos.vx + local_pos.vy * local_pos.vy);
+
 				if (speed > 10.0f) {  // 10 m/s absolute max
 					PX4_ERR("ManualDirectFailsafe: Excessive velocity detected: %.1f m/s", (double)speed);
-					return FailsafeResult::Critical(FailsafeViolation::STATE_INVALID, FailsafeAction::SWITCH_TO_HOLD, "Velocity exceeded safety limit");
+					return FailsafeResult::Critical(FailsafeViolation::STATE_INVALID, FailsafeAction::SWITCH_TO_HOLD,
+									"Velocity exceeded safety limit");
 				}
 			}
 		}

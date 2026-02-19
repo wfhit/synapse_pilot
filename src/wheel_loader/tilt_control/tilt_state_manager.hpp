@@ -83,7 +83,7 @@ public:
 		uint32_t error_flags;
 		hrt_abstime state_entry_time;
 		hrt_abstime time_in_state;
-		const char* status_message;
+		const char *status_message;
 		float calibration_progress;     // 0.0 to 1.0
 	};
 
@@ -119,7 +119,7 @@ public:
 	 * @param reason Reason for state change (for logging)
 	 * @return True if transition is valid and accepted
 	 */
-	bool request_state_transition(OperationalState new_state, const char* reason = nullptr);
+	bool request_state_transition(OperationalState new_state, const char *reason = nullptr);
 
 	/**
 	 * @brief Start calibration sequence
@@ -131,13 +131,13 @@ public:
 	 * @brief Stop calibration sequence
 	 * @param reason Reason for stopping calibration
 	 */
-	void stop_calibration(const char* reason);
+	void stop_calibration(const char *reason);
 
 	/**
 	 * @brief Trigger emergency stop
 	 * @param reason Reason for emergency stop
 	 */
-	void trigger_emergency_stop(const char* reason);
+	void trigger_emergency_stop(const char *reason);
 
 	/**
 	 * @brief Clear emergency stop (manual recovery)
@@ -161,7 +161,7 @@ public:
 	 * @brief Get calibration results
 	 * @return Calibration results structure
 	 */
-	const CalibrationResults& get_calibration_results() const { return _calibration_results; }
+	const CalibrationResults &get_calibration_results() const { return _calibration_results; }
 
 	/**
 	 * @brief Check if system is operational (ready or active)
@@ -181,7 +181,7 @@ public:
 	 * @param velocity_target Output: target velocity for calibration (mm/s)
 	 * @return True if calibration command is active
 	 */
-	bool get_calibration_command(float& position_target, float& velocity_target) const;
+	bool get_calibration_command(float &position_target, float &velocity_target) const;
 
 private:
 	// Current state
@@ -201,11 +201,11 @@ private:
 
 	// Error tracking
 	uint32_t _error_flags{0};
-	const char* _last_error_message{nullptr};
+	const char *_last_error_message{nullptr};
 
 	// Emergency stop state
 	bool _emergency_stop_active{false};
-	const char* _emergency_stop_reason{nullptr};
+	const char *_emergency_stop_reason{nullptr};
 	hrt_abstime _emergency_stop_time{0};
 
 	// Error flag definitions
@@ -255,7 +255,7 @@ private:
 	 * @param error_flag Error flag to set
 	 * @param message Error message for logging
 	 */
-	void set_error_flag(uint32_t error_flag, const char* message);
+	void set_error_flag(uint32_t error_flag, const char *message);
 
 	/**
 	 * @brief Clear error flag
@@ -268,14 +268,14 @@ private:
 	 * @param state Operational state
 	 * @return State name string
 	 */
-	static const char* get_state_name(OperationalState state);
+	static const char *get_state_name(OperationalState state);
 
 	/**
 	 * @brief Get human-readable calibration phase name
 	 * @param phase Calibration phase
 	 * @return Phase name string
 	 */
-	static const char* get_phase_name(CalibrationPhase phase);
+	static const char *get_phase_name(CalibrationPhase phase);
 
 	// Calibration parameters
 	DEFINE_PARAMETERS(

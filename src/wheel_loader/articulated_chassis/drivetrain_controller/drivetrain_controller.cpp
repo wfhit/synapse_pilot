@@ -113,10 +113,12 @@ bool DrivetrainController::init()
 
 	// Initialize speed filter with validated frequency
 	float filter_freq = _param_filter_freq.get();
+
 	if (filter_freq <= 0.0f || filter_freq > 100.0f) {
 		PX4_ERR("Invalid filter frequency: %f Hz", (double)filter_freq);
 		return false;
 	}
+
 	_speed_filter.set_cutoff_frequency(CONTROL_DT, filter_freq);
 
 	// Initialize state
@@ -162,6 +164,7 @@ void DrivetrainController::Run()
 			perf_begin(_control_perf);
 			run_speed_controller();
 			perf_end(_control_perf);
+
 		} else {
 			// No valid setpoint - stop motor
 			_state.setpoint_rad_s = 0.0f;
@@ -198,6 +201,7 @@ bool DrivetrainController::update_speed_setpoint()
 		if (setpoint.emergency_stop) {
 			_state.emergency_stop = true;
 			_state.setpoint_rad_s = 0.0f;
+
 		} else {
 			_state.emergency_stop = false;
 		}
@@ -206,7 +210,7 @@ bool DrivetrainController::update_speed_setpoint()
 	}
 
 	return is_setpoint_valid();
-}void DrivetrainController::update_encoder_feedback()
+} void DrivetrainController::update_encoder_feedback()
 {
 	sensor_quad_encoder_s encoder;
 	uint8_t encoder_instance = static_cast<uint8_t>(_param_encoder_id.get());
@@ -218,10 +222,10 @@ bool DrivetrainController::update_speed_setpoint()
 	}
 
 	if (_encoder_sub[encoder_instance].updated() &&
-		_encoder_sub[encoder_instance].copy(&encoder)) {
+	    _encoder_sub[encoder_instance].copy(&encoder)) {
 		// Verify encoder data is from correct instance and is valid
 		if (encoder.instance == encoder_instance &&
-			encoder.timestamp > _state.last_encoder_us) {
+		    encoder.timestamp > _state.last_encoder_us) {
 			// Convert encoder velocity to rad/s
 			// Note: velocity field should already be in rad/s from quadrature encoder driver
 			float raw_speed = encoder.velocity;
@@ -246,6 +250,7 @@ void DrivetrainController::run_speed_controller()
 
 	// Apply deadband for small setpoints to prevent dither
 	static constexpr float SPEED_DEADBAND = 0.1f; // rad/s
+
 	if (fabsf(_state.setpoint_rad_s) < SPEED_DEADBAND) {
 		_state.pwm_output = 0.0f;
 	}
@@ -275,7 +280,7 @@ void DrivetrainController::update_hbridge_status()
 	}
 
 	if (_hbridge_status_sub[motor_channel].updated() &&
-		_hbridge_status_sub[motor_channel].copy(&status)) {
+	    _hbridge_status_sub[motor_channel].copy(&status)) {
 		// Verify status data is from correct instance
 		if (status.instance == motor_channel) {
 			_state.motor_enabled = status.enabled;
@@ -283,7 +288,7 @@ void DrivetrainController::update_hbridge_status()
 			// Check for limit sensor activation which could indicate obstacles or faults
 			if (status.forward_limit || status.reverse_limit) {
 				PX4_WARN("Motor channel %d limit sensor active - F:%d R:%d",
-					motor_channel, status.forward_limit, status.reverse_limit);
+					 motor_channel, status.forward_limit, status.reverse_limit);
 
 				// Could implement more sophisticated limit handling here
 				// For now, just warn - the H-bridge driver handles the actual limiting
@@ -303,6 +308,7 @@ void DrivetrainController::check_safety_conditions()
 		if (!previous_emergency_state) {
 			PX4_WARN("Setpoint timeout - stopping motor");
 		}
+
 		_state.emergency_stop = true;
 	}
 
@@ -311,6 +317,7 @@ void DrivetrainController::check_safety_conditions()
 		if (!previous_emergency_state) {
 			PX4_WARN("Encoder timeout - stopping motor");
 		}
+
 		_state.emergency_stop = true;
 	}
 
@@ -319,6 +326,7 @@ void DrivetrainController::check_safety_conditions()
 		if (!previous_emergency_state) {
 			PX4_WARN("Motor disabled by H-bridge - stopping control");
 		}
+
 		_state.emergency_stop = true;
 	}
 
@@ -341,14 +349,17 @@ void DrivetrainController::parameters_update()
 	if (p_gain >= 0.0f && i_gain >= 0.0f && d_gain >= 0.0f && i_max > 0.0f) {
 		_speed_controller.setGains(p_gain, i_gain, d_gain);
 		_speed_controller.setIntegralLimit(i_max);
+
 	} else {
 		PX4_ERR("Invalid PID parameters during update - keeping current values");
 	}
 
 	// Validate and update filter frequency
 	float filter_freq = _param_filter_freq.get();
+
 	if (filter_freq > 0.0f && filter_freq <= 100.0f) {
 		_speed_filter.set_cutoff_frequency(CONTROL_DT, filter_freq);
+
 	} else {
 		PX4_ERR("Invalid filter frequency during update - keeping current value");
 	}

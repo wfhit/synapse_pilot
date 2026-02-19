@@ -122,6 +122,7 @@ void TrajFollowerMode::update(float dt)
 		if (_trajectory.hold_last_point) {
 			PX4_DEBUG("Trajectory complete, holding last point");
 			// Continue publishing last setpoint
+
 		} else {
 			PX4_INFO("Trajectory complete, stopping");
 			_has_active_trajectory = false;
@@ -287,6 +288,7 @@ void TrajFollowerMode::decodeEntireTrajectory()
 			_boom_trajectory[i] = boom_target;
 			_tilt_trajectory[i] = tilt_target;
 			_trajectory_timestamps[i] = _trajectory.point_timestamps[i];
+
 		} else {
 			PX4_WARN("Failed to decode trajectory point %d", i);
 			_num_decoded_points = i;
@@ -309,13 +311,13 @@ void TrajFollowerMode::fuseTrajectories()
 	// Only blend the first point
 	if (_num_decoded_points > 0) {
 		_chassis_trajectory[0].x = _current_chassis_state.x * (1.0f - blend_factor) +
-					    _chassis_trajectory[0].x * blend_factor;
+					   _chassis_trajectory[0].x * blend_factor;
 		_chassis_trajectory[0].y = _current_chassis_state.y * (1.0f - blend_factor) +
-					    _chassis_trajectory[0].y * blend_factor;
+					   _chassis_trajectory[0].y * blend_factor;
 		_chassis_trajectory[0].heading = _current_chassis_state.heading * (1.0f - blend_factor) +
-							 _chassis_trajectory[0].heading * blend_factor;
+						 _chassis_trajectory[0].heading * blend_factor;
 		_chassis_trajectory[0].velocity = _current_chassis_state.velocity * (1.0f - blend_factor) +
-							  _chassis_trajectory[0].velocity * blend_factor;
+						  _chassis_trajectory[0].velocity * blend_factor;
 
 		_boom_trajectory[0] = _current_boom_state.position * (1.0f - blend_factor) +
 				      _boom_trajectory[0] * blend_factor;

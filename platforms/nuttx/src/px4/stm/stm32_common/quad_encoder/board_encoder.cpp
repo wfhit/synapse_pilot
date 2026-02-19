@@ -13,6 +13,7 @@ const quad_encoder_config_t *board_get_encoder_config(uint8_t encoder_id)
 	if (encoder_id >= board_get_max_encoders()) {
 		return nullptr;
 	}
+
 	return &g_board_encoder_configs[encoder_id];
 }
 
@@ -26,5 +27,6 @@ const char *board_get_encoder_name(uint8_t encoder_id)
 	if (encoder_id >= board_get_max_encoders()) {
 		return "Unknown";
 	}
+
 	return g_board_encoder_names[encoder_id];
 }

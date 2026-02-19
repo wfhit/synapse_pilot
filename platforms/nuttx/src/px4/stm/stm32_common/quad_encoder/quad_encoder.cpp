@@ -117,6 +117,7 @@ static void process_encoder_interrupt(uint8_t encoder_id)
 	}
 
 	encoder_state_t *encoder = &g_encoders[encoder_id];
+
 	if (!encoder->is_active) {
 		return;
 	}
@@ -156,6 +157,7 @@ static void process_encoder_interrupt(uint8_t encoder_id)
 		if (encoder->config.overflow_count > 0) {
 			if (encoder->counter >= encoder->config.overflow_count) {
 				encoder->counter = 0;
+
 			} else if (encoder->counter < 0) {
 				encoder->counter = encoder->config.overflow_count - 1;
 			}
@@ -214,6 +216,7 @@ int quad_encoder_init(void)
 
 		// Get board configuration for this encoder
 		const quad_encoder_config_t *config = board_get_encoder_config(i);
+
 		if (config != nullptr) {
 			encoder->config = *config;
 			encoder->gpio_a = config->gpio_a;
@@ -249,6 +252,7 @@ int quad_encoder_start(uint8_t encoder_id)
 	}
 
 	encoder_state_t *encoder = &g_encoders[encoder_id];
+
 	if (!encoder->is_initialized) {
 		return -ENOTCONN;
 	}
@@ -269,13 +273,15 @@ int quad_encoder_start(uint8_t encoder_id)
 
 	// Set up interrupts on both edges for both pins
 	int ret = stm32_gpiosetevent(encoder->gpio_a, true, true, true,
-	                             g_isr_wrappers[encoder_id], nullptr);
+				     g_isr_wrappers[encoder_id], nullptr);
+
 	if (ret < 0) {
 		return ret;
 	}
 
 	ret = stm32_gpiosetevent(encoder->gpio_b, true, true, true,
-	                        g_isr_wrappers[encoder_id], nullptr);
+				 g_isr_wrappers[encoder_id], nullptr);
+
 	if (ret < 0) {
 		// Clean up A pin interrupt
 		stm32_gpiosetevent(encoder->gpio_a, false, false, false, nullptr, nullptr);
@@ -296,6 +302,7 @@ int quad_encoder_stop(uint8_t encoder_id)
 	}
 
 	encoder_state_t *encoder = &g_encoders[encoder_id];
+
 	if (!encoder->is_active) {
 		return 0; // Already stopped
 	}
@@ -318,6 +325,7 @@ bool quad_encoder_get_raw_data(uint8_t encoder_id, encoder_raw_data_t *raw_data)
 	}
 
 	encoder_state_t *encoder = &g_encoders[encoder_id];
+
 	if (!encoder->is_active) {
 		return false;
 	}
@@ -346,6 +354,7 @@ int quad_encoder_set_overflow_count(uint8_t encoder_id, uint16_t overflow_count)
 	}
 
 	encoder_state_t *encoder = &g_encoders[encoder_id];
+
 	if (!encoder->is_initialized) {
 		return -ENOTCONN;
 	}
@@ -372,6 +381,7 @@ int quad_encoder_get_overflow_count(uint8_t encoder_id, uint16_t *overflow_count
 	}
 
 	encoder_state_t *encoder = &g_encoders[encoder_id];
+
 	if (!encoder->is_initialized) {
 		return -ENOTCONN;
 	}

@@ -197,20 +197,19 @@ __BEGIN_DECLS
 
 /* Macro to construct I2C address */
 #define WK2132_MAKE_I2C_ADDR(base, channel, is_fifo) \
-    ((base) | (((channel) - 1) << 1) | ((is_fifo) ? WK2132_ADDR_FIFO_ACCESS : WK2132_ADDR_REG_ACCESS))
+	((base) | (((channel) - 1) << 1) | ((is_fifo) ? WK2132_ADDR_FIFO_ACCESS : WK2132_ADDR_REG_ACCESS))
 
 /* Device instance data */
-struct wk2132_dev_s
-{
-  FAR struct i2c_master_s *i2c;     /* I2C interface */
-  uint8_t                  base_addr; /* I2C base address */
-  uint8_t                  port;     /* UART port number (1-4) */
-  uint32_t                 baud;     /* Configured baud rate */
-  uint32_t                 parity;   /* Configured parity */
-  uint32_t                 nbits;    /* Number of bits */
-  bool                     stopbits2; /* Two stop bits */
-  sem_t                    exclsem;  /* Mutual exclusion */
-  bool                     enabled;  /* Port enabled flag */
+struct wk2132_dev_s {
+	FAR struct i2c_master_s *i2c;     /* I2C interface */
+	uint8_t                  base_addr; /* I2C base address */
+	uint8_t                  port;     /* UART port number (1-4) */
+	uint32_t                 baud;     /* Configured baud rate */
+	uint32_t                 parity;   /* Configured parity */
+	uint32_t                 nbits;    /* Number of bits */
+	bool                     stopbits2; /* Two stop bits */
+	sem_t                    exclsem;  /* Mutual exclusion */
+	bool                     enabled;  /* Port enabled flag */
 };
 
 /* Public Functions */
@@ -224,7 +223,7 @@ struct wk2132_dev_s
  * @return           UART device structure or NULL on failure
  */
 FAR struct uart_dev_s *wk2132_uart_init(FAR struct i2c_master_s *i2c,
-                                         uint8_t base_addr, uint8_t port);
+					uint8_t base_addr, uint8_t port);
 
 /**
  * Register WK2132 serial devices as /dev/ttyS* devices
@@ -236,7 +235,7 @@ FAR struct uart_dev_s *wk2132_uart_init(FAR struct i2c_master_s *i2c,
  * @return              OK on success, negative on failure
  */
 int wk2132_register_devices(int i2c_bus, uint8_t i2c_base_addr,
-                            int base_tty, int num_ports);
+			    int base_tty, int num_ports);
 
 /**
  * Board-specific WK2132 initialization

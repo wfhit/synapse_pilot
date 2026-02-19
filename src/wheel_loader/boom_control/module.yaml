@@ -273,7 +273,6 @@ parameters:
           default: 10.0
           min: 1.0
           max: 50.0
-          unit: ""
           decimal: 1
 
         BOOM_DEADZONE:

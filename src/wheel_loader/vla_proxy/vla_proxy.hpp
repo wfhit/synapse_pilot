@@ -71,8 +71,8 @@
 using namespace time_literals;
 
 class VLAProxy : public ModuleBase<VLAProxy>,
-		 public ModuleParams,
-		 public px4::ScheduledWorkItem
+	public ModuleParams,
+	public px4::ScheduledWorkItem
 {
 public:
 	VLAProxy(const char *serial_port = "/dev/ttyS3");
@@ -179,7 +179,7 @@ private:
 	uORB::Subscription _traction_status_sub{ORB_ID(traction_status)};
 	uORB::Subscription _battery_status_sub{ORB_ID(battery_status)};
 	uORB::SubscriptionMultiArray<drivetrain_status_s, 2> _drivetrain_status_subs{ORB_ID::drivetrain_status};  // Front and rear
-	
+
 	uORB::Publication<vla_trajectory_s> _vla_trajectory_pub{ORB_ID(vla_trajectory)};
 
 	// Performance counters

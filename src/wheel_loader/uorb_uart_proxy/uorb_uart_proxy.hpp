@@ -88,8 +88,8 @@ struct ProxyTopicHandler {
 };
 
 class UorbUartProxy : public ModuleBase<UorbUartProxy>,
-		      public ModuleParams,
-		      public px4::ScheduledWorkItem
+	public ModuleParams,
+	public px4::ScheduledWorkItem
 {
 public:
 	UorbUartProxy();

@@ -51,7 +51,6 @@ parameters:
               default: 0.001
               decimal: 6
               increment: 0.000001
-              unit: ""
           QE_0_REVERSE:
               description:
                   short: Encoder 0 direction reverse
@@ -105,7 +104,6 @@ parameters:
               default: 0.001
               decimal: 6
               increment: 0.000001
-              unit: ""
           QE_1_REVERSE:
               description:
                   short: Encoder 1 direction reverse

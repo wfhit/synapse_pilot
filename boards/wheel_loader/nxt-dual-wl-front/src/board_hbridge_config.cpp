@@ -45,27 +45,27 @@
 
 // Channel configurations for front board (boom and bucket)
 hbridge_config_t hbridge_configs[HBRIDGE_MAX_INSTANCES] = {
-    // Channel 0 - Boom control via PWM 0
-    {
-        .instance_id = 0,
-        .name = "bucket_motor",
-        .enabled = true,
-        .pwm_ch = 0,
-        .dir_gpio = GPIO_DRV8701_LEFT_DIR   // PE14 - Bucket direction
-    },
-    // Channel 1 - Bucket control via PWM 1
-    {
-        .instance_id = 1,
-        .name = "front_wheel",
-        .enabled = true,
-        .pwm_ch = 1,
-        .dir_gpio = GPIO_DRV8701_RIGHT_DIR  // PE13 - Front wheel direction
-    }
+	// Channel 0 - Boom control via PWM 0
+	{
+		.instance_id = 0,
+		.name = "bucket_motor",
+		.enabled = true,
+		.pwm_ch = 0,
+		.dir_gpio = GPIO_DRV8701_LEFT_DIR   // PE14 - Bucket direction
+	},
+	// Channel 1 - Bucket control via PWM 1
+	{
+		.instance_id = 1,
+		.name = "front_wheel",
+		.enabled = true,
+		.pwm_ch = 1,
+		.dir_gpio = GPIO_DRV8701_RIGHT_DIR  // PE13 - Front wheel direction
+	}
 };
 
 // Manager configuration for shared resources
 hbridge_manager_config_t hbridge_manager_config = {
-    .enable_gpio = GPIO_DRV8701_ENABLE  // Shared enable GPIO for all channels
+	.enable_gpio = GPIO_DRV8701_ENABLE  // Shared enable GPIO for all channels
 };
 
 #endif // BOARD_HAS_HBRIDGE_CONFIG

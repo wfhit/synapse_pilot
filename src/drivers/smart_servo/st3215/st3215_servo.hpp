@@ -63,8 +63,8 @@
 using namespace time_literals;
 
 class ST3215Servo : public ModuleBase<ST3215Servo>,
-		    public ModuleParams,
-		    public px4::ScheduledWorkItem
+	public ModuleParams,
+	public px4::ScheduledWorkItem
 {
 public:
 	ST3215Servo(const char *serial_port = "/dev/ttyS1");

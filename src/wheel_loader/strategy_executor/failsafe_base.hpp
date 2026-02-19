@@ -96,26 +96,26 @@ enum class FailsafeViolation : uint8_t {
 	// System-level failures (highest priority)
 	EMERGENCY_STOP = 1,        // Emergency stop button/command
 	SYSTEM_PANIC = 2,          // System panic/crash detected
-	
+
 	// Hardware failures
 	CRITICAL_FAULT = 10,       // Critical system fault
 	SENSOR_FAILURE = 11,       // Critical sensor failure
 	ACTUATOR_FAILURE = 12,     // Critical actuator failure
 	POWER_FAILURE = 13,        // Power system failure
-	
+
 	// Communication/connectivity
 	COMMUNICATION_LOSS = 20,   // Lost communication with critical component
 	HEARTBEAT_TIMEOUT = 21,    // Heartbeat timeout
-	
+
 	// State/synchronization
 	DISARMED = 30,             // System disarmed unexpectedly
 	MODE_MISMATCH = 31,        // Operation mode mismatch
 	STATE_INVALID = 32,        // Invalid system state
-	
+
 	// Timing
 	TIMEOUT = 40,              // Strategy execution timeout
 	WATCHDOG = 41,             // Watchdog timeout
-	
+
 	// Custom/strategy-specific
 	CUSTOM = 250               // Custom strategy-specific failsafe
 };
@@ -148,29 +148,33 @@ struct FailsafeResult {
 	hrt_abstime timestamp{0};
 
 	FailsafeResult() = default;
-	FailsafeResult(bool s, FailsafeSeverity sev, FailsafeViolation viol, 
-	               FailsafeAction act, const char *msg) :
-		safe(s), severity(sev), violation(viol), action(act), 
+	FailsafeResult(bool s, FailsafeSeverity sev, FailsafeViolation viol,
+		       FailsafeAction act, const char *msg) :
+		safe(s), severity(sev), violation(viol), action(act),
 		message(msg), timestamp(hrt_absolute_time()) {}
 
 	// Helper constructors
-	static FailsafeResult Safe() {
-		return {true, FailsafeSeverity::NONE, FailsafeViolation::NONE, 
-		        FailsafeAction::NONE, nullptr};
+	static FailsafeResult Safe()
+	{
+		return {true, FailsafeSeverity::NONE, FailsafeViolation::NONE,
+			FailsafeAction::NONE, nullptr};
 	}
 
-	static FailsafeResult Warning(FailsafeViolation viol, const char *msg) {
-		return {true, FailsafeSeverity::WARNING, viol, 
-		        FailsafeAction::LOG_WARNING, msg};
+	static FailsafeResult Warning(FailsafeViolation viol, const char *msg)
+	{
+		return {true, FailsafeSeverity::WARNING, viol,
+			FailsafeAction::LOG_WARNING, msg};
 	}
 
-	static FailsafeResult Critical(FailsafeViolation viol, FailsafeAction action, const char *msg) {
+	static FailsafeResult Critical(FailsafeViolation viol, FailsafeAction action, const char *msg)
+	{
 		return {false, FailsafeSeverity::CRITICAL, viol, action, msg};
 	}
 
-	static FailsafeResult Emergency(FailsafeViolation viol, const char *msg) {
-		return {false, FailsafeSeverity::EMERGENCY, viol, 
-		        FailsafeAction::EMERGENCY_STOP, msg};
+	static FailsafeResult Emergency(FailsafeViolation viol, const char *msg)
+	{
+		return {false, FailsafeSeverity::EMERGENCY, viol,
+			FailsafeAction::EMERGENCY_STOP, msg};
 	}
 };
 
@@ -208,36 +212,42 @@ public:
 		// Execute checks in priority order (highest severity first)
 		// Emergency conditions
 		FailsafeResult result = check_emergency_conditions();
+
 		if (result.severity >= FailsafeSeverity::CRITICAL) {
 			return result;
 		}
 
 		// Hardware health
 		result = check_hardware_health();
+
 		if (result.severity >= FailsafeSeverity::CRITICAL) {
 			return result;
 		}
 
 		// Communication health
 		result = check_communication();
+
 		if (result.severity >= FailsafeSeverity::CRITICAL) {
 			return result;
 		}
 
 		// State synchronization
 		result = check_state_sync();
+
 		if (result.severity >= FailsafeSeverity::CRITICAL) {
 			return result;
 		}
 
 		// Timeout monitoring
 		result = check_timeouts();
+
 		if (result.severity >= FailsafeSeverity::CRITICAL) {
 			return result;
 		}
 
 		// Strategy-specific checks
 		result = check_custom();
+
 		if (result.severity >= FailsafeSeverity::CRITICAL) {
 			return result;
 		}
@@ -289,14 +299,16 @@ protected:
 	{
 		// Check sensor data freshness
 		sensor_combined_s sensors;
+
 		if (_sensor_sub.copy(&sensors)) {
 			hrt_abstime age = hrt_absolute_time() - sensors.timestamp;
+
 			if (age > SENSOR_TIMEOUT) {
 				return FailsafeResult::Critical(
-					FailsafeViolation::SENSOR_FAILURE,
-					FailsafeAction::EMERGENCY_STOP,
-					"Sensor data timeout"
-				);
+					       FailsafeViolation::SENSOR_FAILURE,
+					       FailsafeAction::EMERGENCY_STOP,
+					       "Sensor data timeout"
+				       );
 			}
 		}
 
@@ -310,14 +322,16 @@ protected:
 	virtual FailsafeResult check_communication()
 	{
 		operation_mode_status_s mode_status;
+
 		if (_mode_status_sub.copy(&mode_status)) {
 			hrt_abstime age = hrt_absolute_time() - mode_status.timestamp;
+
 			if (age > COMM_TIMEOUT) {
 				return FailsafeResult::Critical(
-					FailsafeViolation::COMMUNICATION_LOSS,
-					FailsafeAction::SWITCH_TO_HOLD,
-					"Mode status timeout"
-				);
+					       FailsafeViolation::COMMUNICATION_LOSS,
+					       FailsafeAction::SWITCH_TO_HOLD,
+					       "Mode status timeout"
+				       );
 			}
 		}
 
@@ -331,13 +345,14 @@ protected:
 	virtual FailsafeResult check_state_sync()
 	{
 		actuator_armed_s armed;
+
 		if (_armed_sub.copy(&armed)) {
 			if (!armed.armed && !armed.lockdown) {
 				return FailsafeResult::Critical(
-					FailsafeViolation::DISARMED,
-					FailsafeAction::ABORT_STRATEGY,
-					"Unexpected disarm"
-				);
+					       FailsafeViolation::DISARMED,
+					       FailsafeAction::ABORT_STRATEGY,
+					       "Unexpected disarm"
+				       );
 			}
 		}
 
@@ -352,12 +367,13 @@ protected:
 	{
 		if (_timeout_start > 0) {
 			hrt_abstime elapsed = hrt_absolute_time() - _timeout_start;
+
 			if (elapsed > get_strategy_timeout()) {
 				return FailsafeResult::Critical(
-					FailsafeViolation::TIMEOUT,
-					FailsafeAction::ABORT_STRATEGY,
-					"Strategy execution timeout"
-				);
+					       FailsafeViolation::TIMEOUT,
+					       FailsafeAction::ABORT_STRATEGY,
+					       "Strategy execution timeout"
+				       );
 			}
 		}
 

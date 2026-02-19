@@ -100,6 +100,7 @@ void OperationModeManager::check_mode_switch()
 
 			if (switch_to_mode(cmd.target_mode)) {
 				PX4_INFO("Mode switch successful to %s", _current_mode->get_name());
+
 			} else {
 				PX4_WARN("Mode switch failed, staying in %s", _current_mode->get_name());
 			}
@@ -164,6 +165,7 @@ bool OperationModeManager::switch_to_mode(uint8_t target_mode)
 		_mode_switch_count++;
 		_transition_in_progress = false;
 		return true;
+
 	} else {
 		PX4_ERR("Failed to activate mode %s", new_mode->get_name());
 

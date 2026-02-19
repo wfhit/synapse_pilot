@@ -5,4 +5,3 @@ menuconfig DRIVERS_HBRIDGE
 	  Enable support for H-Bridge motor drivers with PWM speed control
 	  and GPIO direction control. Supports multiple instances with
 	  dual channels each.
-

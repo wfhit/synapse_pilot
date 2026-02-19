@@ -117,16 +117,26 @@ bool VLAProxy::configure_port()
 	PX4_INFO("Configuring VLA baudrate: %ld", (long)baudrate);
 
 	speed_t speed;
+
 	switch (baudrate) {
 	case 9600:    speed = B9600; break;
+
 	case 19200:   speed = B19200; break;
+
 	case 38400:   speed = B38400; break;
+
 	case 57600:   speed = B57600; break;
+
 	case 115200:  speed = B115200; break;
+
 	case 230400:  speed = B230400; break;
+
 	case 460800:  speed = B460800; break;
+
 	case 921600:  speed = B921600; break;
+
 	case 1000000: speed = B1000000; break;
+
 	default:
 		PX4_WARN("Unsupported baudrate: %ld, using 115200", (long)baudrate);
 		speed = B115200;
@@ -197,6 +207,7 @@ void VLAProxy::Run()
 			if (_param_debug_level.get() > 0) {
 				PX4_WARN("Failed to configure VLA serial port, will retry later");
 			}
+
 			perf_end(_loop_perf);
 			return;
 		}
@@ -226,7 +237,7 @@ void VLAProxy::Run()
 		    (now - _last_waypoint_received) > static_cast<hrt_abstime>(_param_timeout_ms.get() * 1000)) {
 			if (_vla_active) {
 				PX4_WARN("VLA timeout - no waypoints received for %llu ms",
-				         (now - _last_waypoint_received) / 1000);
+					 (now - _last_waypoint_received) / 1000);
 				_vla_active = false;
 			}
 		}
@@ -251,9 +262,11 @@ void VLAProxy::Run()
 uint8_t VLAProxy::calculate_checksum(const uint8_t *data, size_t length)
 {
 	uint8_t checksum = 0;
+
 	for (size_t i = 0; i < length; i++) {
 		checksum ^= data[i];
 	}
+
 	return checksum;
 }
 
@@ -268,11 +281,13 @@ bool VLAProxy::send_packet(const uint8_t *data, size_t length)
 
 	// Send the packet
 	ssize_t bytes_written = ::write(_uart, data, length);
+
 	if (bytes_written != (ssize_t)length) {
 		if (_param_debug_level.get() > 0) {
 			PX4_ERR("VLA write failed: expected %zu, wrote %zd, error: %s",
-			        length, bytes_written, strerror(errno));
+				length, bytes_written, strerror(errno));
 		}
+
 		perf_count(_comms_error_perf);
 		_consecutive_errors++;
 		return false;
@@ -301,16 +316,20 @@ bool VLAProxy::receive_packet(uint8_t *buffer, size_t buffer_size, uint32_t time
 			if (_param_debug_level.get() > 1) {
 				PX4_WARN("VLA header timeout after %lu ms, got %zu bytes", (unsigned long)timeout_ms, bytes_received);
 			}
+
 			return false;
 		}
 
 		ssize_t bytes_read = ::read(_uart, buffer + bytes_received, buffer_size - bytes_received);
+
 		if (bytes_read > 0) {
 			bytes_received += bytes_read;
+
 		} else if (bytes_read < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
 			if (_param_debug_level.get() > 0) {
 				PX4_ERR("VLA read error: %s", strerror(errno));
 			}
+
 			perf_count(_comms_error_perf);
 			return false;
 		}
@@ -324,6 +343,7 @@ bool VLAProxy::receive_packet(uint8_t *buffer, size_t buffer_size, uint32_t time
 		if (_param_debug_level.get() > 1) {
 			PX4_WARN("VLA insufficient header bytes: got %zu, need %zu", bytes_received, header_size);
 		}
+
 		return false;
 	}
 
@@ -332,6 +352,7 @@ bool VLAProxy::receive_packet(uint8_t *buffer, size_t buffer_size, uint32_t time
 		if (_param_debug_level.get() > 0) {
 			PX4_ERR("VLA invalid header: 0x%02X 0x%02X (expected 0xAA 0x55)", buffer[0], buffer[1]);
 		}
+
 		perf_count(_comms_error_perf);
 		return false;
 	}
@@ -347,6 +368,7 @@ bool VLAProxy::receive_packet(uint8_t *buffer, size_t buffer_size, uint32_t time
 		if (_param_debug_level.get() > 0) {
 			PX4_ERR("VLA packet too large: expected %zu bytes, buffer only %zu", total_expected, buffer_size);
 		}
+
 		return false;
 	}
 
@@ -355,18 +377,22 @@ bool VLAProxy::receive_packet(uint8_t *buffer, size_t buffer_size, uint32_t time
 		if (hrt_elapsed_time(&start_time) > timeout_ms * 1000) {
 			if (_param_debug_level.get() > 1) {
 				PX4_WARN("VLA data timeout after %lu ms, got %zu/%zu bytes",
-				         (unsigned long)timeout_ms, bytes_received, total_expected);
+					 (unsigned long)timeout_ms, bytes_received, total_expected);
 			}
+
 			return false;
 		}
 
 		ssize_t bytes_read = ::read(_uart, buffer + bytes_received, buffer_size - bytes_received);
+
 		if (bytes_read > 0) {
 			bytes_received += bytes_read;
+
 		} else if (bytes_read < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
 			if (_param_debug_level.get() > 0) {
 				PX4_ERR("VLA read error: %s", strerror(errno));
 			}
+
 			perf_count(_comms_error_perf);
 			return false;
 		}
@@ -382,8 +408,9 @@ bool VLAProxy::receive_packet(uint8_t *buffer, size_t buffer_size, uint32_t time
 	if (calculated_checksum != received_checksum) {
 		if (_param_debug_level.get() > 0) {
 			PX4_ERR("VLA checksum mismatch: calc=0x%02X, recv=0x%02X",
-			        calculated_checksum, received_checksum);
+				calculated_checksum, received_checksum);
 		}
+
 		perf_count(_comms_error_perf);
 		_consecutive_errors++;
 		return false;
@@ -398,18 +425,21 @@ void VLAProxy::collect_robot_status(WheelloaderStatus &status)
 
 	// Get arming state from actuator_armed
 	actuator_armed_s actuator_armed;
+
 	if (_actuator_armed_sub.copy(&actuator_armed)) {
 		status.armed = actuator_armed.armed ? 1 : 0;
 	}
 
 	// Get operation mode from operation_mode_status (authoritative source)
 	operation_mode_status_s mode_status;
+
 	if (_operation_mode_status_sub.copy(&mode_status)) {
 		status.operation_mode = mode_status.current_mode;
 	}
 
 	// Get position and velocity
 	vehicle_local_position_s local_pos;
+
 	if (_vehicle_local_position_sub.copy(&local_pos)) {
 		status.position[0] = local_pos.x;
 		status.position[1] = local_pos.y;
@@ -421,6 +451,7 @@ void VLAProxy::collect_robot_status(WheelloaderStatus &status)
 
 	// Get attitude (quaternion)
 	vehicle_attitude_s attitude;
+
 	if (_vehicle_attitude_sub.copy(&attitude)) {
 		status.quaternion[0] = attitude.q[0];
 		status.quaternion[1] = attitude.q[1];
@@ -430,6 +461,7 @@ void VLAProxy::collect_robot_status(WheelloaderStatus &status)
 
 	// Get angular velocity
 	vehicle_angular_velocity_s angular_vel;
+
 	if (_vehicle_angular_velocity_sub.copy(&angular_vel)) {
 		status.angular_velocity[0] = angular_vel.xyz[0];
 		status.angular_velocity[1] = angular_vel.xyz[1];
@@ -438,12 +470,14 @@ void VLAProxy::collect_robot_status(WheelloaderStatus &status)
 
 	// Get boom status
 	boom_status_s boom_status;
+
 	if (_boom_status_sub.copy(&boom_status)) {
 		status.boom_angle = boom_status.angle;
 		status.boom_velocity = boom_status.velocity;
 		status.boom_load = boom_status.load;
 		status.boom_motor_current = boom_status.motor_current;
 		status.boom_state = boom_status.state;
+
 	} else {
 		// Default values if boom status unavailable
 		status.boom_angle = 0.0f;
@@ -455,6 +489,7 @@ void VLAProxy::collect_robot_status(WheelloaderStatus &status)
 
 	// Get bucket status
 	bucket_status_s bucket_status;
+
 	if (_bucket_status_sub.copy(&bucket_status)) {
 		status.bucket_angle = bucket_status.bucket_angle;
 		status.bucket_ground_angle = bucket_status.ground_angle;
@@ -463,6 +498,7 @@ void VLAProxy::collect_robot_status(WheelloaderStatus &status)
 		status.bucket_motor_current = bucket_status.motor_current;
 		status.bucket_state = bucket_status.state;
 		status.estimated_load_kg = bucket_status.estimated_load_kg;
+
 	} else {
 		// Default values if bucket status unavailable
 		status.bucket_angle = 0.0f;
@@ -477,8 +513,10 @@ void VLAProxy::collect_robot_status(WheelloaderStatus &status)
 	// Get drivetrain status (front and rear)
 	for (int i = 0; i < 2; i++) {
 		drivetrain_status_s drivetrain;
+
 		if (_drivetrain_status_subs[i].copy(&drivetrain)) {
 			status.drivetrain_speeds[i] = drivetrain.current_speed_rpm;
+
 		} else {
 			status.drivetrain_speeds[i] = 0.0f;
 		}
@@ -486,10 +524,12 @@ void VLAProxy::collect_robot_status(WheelloaderStatus &status)
 
 	// Get steering status
 	steering_status_s steering;
+
 	if (_steering_status_sub.copy(&steering)) {
 		status.chassis_steering_angle = steering.steering_angle_deg;
 		status.chassis_state = steering.control_mode;
 		status.chassis_health = steering.is_healthy ? 1 : 0;
+
 	} else {
 		status.chassis_steering_angle = 0.0f;
 		status.chassis_state = 0;
@@ -498,24 +538,29 @@ void VLAProxy::collect_robot_status(WheelloaderStatus &status)
 
 	// Get traction status
 	traction_status_s traction;
+
 	if (_traction_status_sub.copy(&traction)) {
 		status.chassis_traction_mu = traction.overall_traction_quality;
 		status.chassis_mode = traction.intervention_level;
+
 	} else {
 		status.chassis_traction_mu = 0.0f;
 		status.chassis_mode = 0;
 	}
 
 	// Calculate linear velocity (already have local_pos from earlier)
-	status.chassis_linear_velocity = sqrtf(status.velocity[0] * status.velocity[0] + status.velocity[1] * status.velocity[1]);
+	status.chassis_linear_velocity = sqrtf(status.velocity[0] * status.velocity[0] + status.velocity[1] *
+					       status.velocity[1]);
 
 	// Chassis angular velocity is the yaw rate (already fetched earlier in angular_velocity[2])
 	status.chassis_angular_velocity = status.angular_velocity[2];
 
 	// Get battery voltage from battery_status topic
 	battery_status_s battery;
+
 	if (_battery_status_sub.copy(&battery)) {
 		status.battery_voltage = battery.voltage_v;
+
 	} else {
 		status.battery_voltage = 0.0f;
 	}
@@ -564,17 +609,19 @@ bool VLAProxy::receive_trajectory_commands()
 		if (_param_debug_level.get() > 0) {
 			PX4_WARN("Unsupported VLA message type: 0x%02X", msg_type);
 		}
+
 		return false;
 	}
 
 	// Calculate number of waypoints in this batch
 	size_t num_waypoints = msg_length / sizeof(VLAWaypoint);
-	
+
 	if (msg_length % sizeof(VLAWaypoint) != 0) {
 		if (_param_debug_level.get() > 0) {
 			PX4_ERR("VLA batch size invalid: %d bytes is not multiple of waypoint size %zu",
-			        msg_length, sizeof(VLAWaypoint));
+				msg_length, sizeof(VLAWaypoint));
 		}
+
 		return false;
 	}
 
@@ -582,6 +629,7 @@ bool VLAProxy::receive_trajectory_commands()
 		if (_param_debug_level.get() > 0) {
 			PX4_WARN("VLA batch too large: %zu waypoints, max %zu", num_waypoints, WAYPOINT_BUFFER_SIZE);
 		}
+
 		num_waypoints = WAYPOINT_BUFFER_SIZE;  // Truncate to buffer size
 	}
 
@@ -597,6 +645,7 @@ bool VLAProxy::receive_trajectory_commands()
 			if (_param_debug_level.get() > 0) {
 				PX4_WARN("VLA waypoint %zu validation failed, skipping", i);
 			}
+
 			continue;
 		}
 
@@ -609,6 +658,7 @@ bool VLAProxy::receive_trajectory_commands()
 		if (_param_debug_level.get() > 1) {
 			PX4_INFO("VLA batch received: %zu waypoints buffered", _waypoint_buffer_count);
 		}
+
 	} else {
 		if (_param_debug_level.get() > 0) {
 			PX4_WARN("VLA batch contained no valid waypoints");
@@ -630,9 +680,11 @@ bool VLAProxy::validate_waypoint(const VLAWaypoint &waypoint)
 		if (!std::isfinite(waypoint.position[i]) || fabsf(waypoint.position[i]) > 1000.0f) {
 			return false;
 		}
+
 		if (!std::isfinite(waypoint.velocity[i]) || fabsf(waypoint.velocity[i]) > 100.0f) {
 			return false;
 		}
+
 		if (!std::isfinite(waypoint.acceleration[i]) || fabsf(waypoint.acceleration[i]) > 100.0f) {
 			return false;
 		}
@@ -643,9 +695,11 @@ bool VLAProxy::validate_waypoint(const VLAWaypoint &waypoint)
 		if (!std::isfinite(waypoint.orientation[i]) || fabsf(waypoint.orientation[i]) > 2.0f * static_cast<float>(M_PI)) {
 			return false;
 		}
+
 		if (!std::isfinite(waypoint.angular_velocity[i]) || fabsf(waypoint.angular_velocity[i]) > 10.0f) {
 			return false;
 		}
+
 		if (!std::isfinite(waypoint.angular_acceleration[i]) || fabsf(waypoint.angular_acceleration[i]) > 100.0f) {
 			return false;
 		}
@@ -715,9 +769,9 @@ int VLAProxy::print_status()
 	PX4_INFO("  Consecutive Errors: %d", _consecutive_errors);
 	PX4_INFO("  Waypoint Buffer Count: %zu", _waypoint_buffer_count);
 	PX4_INFO("  Last Status Sent: %llu ms ago",
-	         (_last_status_sent > 0) ? (hrt_absolute_time() - _last_status_sent) / 1000 : 0);
+		 (_last_status_sent > 0) ? (hrt_absolute_time() - _last_status_sent) / 1000 : 0);
 	PX4_INFO("  Last Waypoint Received: %llu ms ago",
-	         (_last_waypoint_received > 0) ? (hrt_absolute_time() - _last_waypoint_received) / 1000 : 0);
+		 (_last_waypoint_received > 0) ? (hrt_absolute_time() - _last_waypoint_received) / 1000 : 0);
 
 	// Print only essential performance counters
 	perf_print_counter(_loop_perf);
@@ -739,9 +793,11 @@ int VLAProxy::task_spawn(int argc, char *argv[])
 		case 'd':
 			serial_port = myoptarg;
 			break;
+
 		case '?':
 			print_usage("Unknown option");
 			return -1;
+
 		default:
 			break;
 		}
@@ -756,6 +812,7 @@ int VLAProxy::task_spawn(int argc, char *argv[])
 		if (instance->init()) {
 			return PX4_OK;
 		}
+
 	} else {
 		PX4_ERR("VLA Proxy alloc failed");
 	}

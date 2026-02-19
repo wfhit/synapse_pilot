@@ -136,7 +136,7 @@ private:
 	hrt_abstime _last_command_time{0};             // Timestamp of last received command
 
 	// uORB interface (using modern uORB::Publication/Subscription classes)
-		// Subscriptions
+	// Subscriptions
 	uORB::Subscription _boom_control_setpoint_sub{ORB_ID(boom_control_setpoint)}; // Control setpoint input
 	uORB::Subscription _parameter_update_sub{ORB_ID(parameter_update)};   // Parameter updates
 	uORB::Publication<boom_status_s> _boom_status_pub{ORB_ID(boom_status)}; // Outgoing status telemetry

@@ -132,6 +132,7 @@ public:
 		// Create failsafe monitor if needed
 		if (_failsafe == nullptr) {
 			_failsafe = create_failsafe();
+
 			if (_failsafe == nullptr) {
 				return StrategyResult::Failure("Failed to create failsafe");
 			}
@@ -359,35 +360,44 @@ private:
 	StrategyResult run_precheck()
 	{
 		StrategyResult result = precheck();
+
 		if (result.success) {
 			_state = strategy_status_s::STATE_INIT;
+
 		} else {
 			_state = strategy_status_s::STATE_IDLE;
 		}
+
 		return result;
 	}
 
 	StrategyResult run_init()
 	{
 		StrategyResult result = init();
+
 		if (result.success) {
 			_state = strategy_status_s::STATE_RUNNING;
+
 			// Start failsafe timeout
 			if (_failsafe != nullptr) {
 				_failsafe->reset_timeout();
 			}
+
 		} else {
 			_state = strategy_status_s::STATE_IDLE;
 		}
+
 		return result;
 	}
 
 	StrategyResult run_update()
 	{
 		StrategyResult result = update();
+
 		if (!result.success) {
 			_state = strategy_status_s::STATE_IDLE;
 		}
+
 		return result;
 	}
 };

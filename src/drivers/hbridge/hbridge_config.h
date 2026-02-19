@@ -15,18 +15,18 @@
  * Each instance controls one H-bridge channel
  */
 struct hbridge_config_t {
-    uint8_t instance_id;        ///< Instance identifier (0, 1, etc.)
-    const char *name;           ///< Human readable name
-    bool enabled;               ///< Whether this channel is enabled
-    int pwm_ch;                 ///< PWM channel number
-    uint32_t dir_gpio;          ///< Direction control GPIO
+	uint8_t instance_id;        ///< Instance identifier (0, 1, etc.)
+	const char *name;           ///< Human readable name
+	bool enabled;               ///< Whether this channel is enabled
+	int pwm_ch;                 ///< PWM channel number
+	uint32_t dir_gpio;          ///< Direction control GPIO
 };
 
 /**
  * @brief Manager configuration for shared resources
  */
 struct hbridge_manager_config_t {
-    uint32_t enable_gpio;       ///< Shared enable GPIO (0 = not used)
+	uint32_t enable_gpio;       ///< Shared enable GPIO (0 = not used)
 };
 
 // Board-specific configurations (defined in board files)
