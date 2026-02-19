@@ -115,8 +115,8 @@ struct TopicHandler {
 };
 
 class UorbUartBridge : public ModuleBase<UorbUartBridge>,
-		       public ModuleParams,
-		       public px4::ScheduledWorkItem
+	public ModuleParams,
+	public px4::ScheduledWorkItem
 {
 public:
 	UorbUartBridge();

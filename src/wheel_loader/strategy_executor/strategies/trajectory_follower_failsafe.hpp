@@ -75,6 +75,7 @@ protected:
 	{
 		// Verify we're still in trajectory mode (if expected)
 		operation_mode_status_s mode_status;
+
 		if (_mode_status_sub.copy(&mode_status)) {
 			// Mode status is healthy, no additional checks needed
 			// Mode mismatch will be detected by strategy itself

@@ -69,18 +69,21 @@ void OperatorInterface::Run()
 
 	// Update arming state
 	arm_status_s arm_status;
+
 	if (_arm_status_sub.copy(&arm_status)) {
 		_armed = arm_status.armed;
 	}
 
 	// Update safety faults state
 	safety_status_s safety_status;
+
 	if (_safety_status_sub.copy(&safety_status)) {
 		_safety_faults_present = !safety_status.safety_ok;
 	}
 
 	// Get connection status from health monitor
 	health_monitor_status_s health_status;
+
 	if (_health_status_sub.copy(&health_status)) {
 		_command_status.mavlink_connected = health_status.mavlink_connected;
 		_command_status.rc_connected = health_status.rc_connected;
@@ -106,10 +109,13 @@ void OperatorInterface::Run()
 	// Determine command authority
 	if (_command_status.mavlink_connected && _command_status.rc_connected) {
 		_command_status.command_authority = command_status_s::AUTHORITY_BOTH;
+
 	} else if (_command_status.mavlink_connected) {
 		_command_status.command_authority = command_status_s::AUTHORITY_MAVLINK;
+
 	} else if (_command_status.rc_connected) {
 		_command_status.command_authority = command_status_s::AUTHORITY_RC;
+
 	} else {
 		_command_status.command_authority = command_status_s::AUTHORITY_NONE;
 	}
@@ -151,7 +157,7 @@ void OperatorInterface::process_mavlink_commands()
 
 				} else {
 					bool arm = (cmd.param1 > 0.5f);
-						send_arm_command(arm, arm_cmd_s::SOURCE_GCS);
+					send_arm_command(arm, arm_cmd_s::SOURCE_GCS);
 					_command_status.last_command_type = arm ? command_status_s::LAST_CMD_ARM : command_status_s::LAST_CMD_DISARM;
 					_command_status.last_command_timestamp = hrt_absolute_time();
 					result = vehicle_command_ack_s::VEHICLE_CMD_RESULT_ACCEPTED;
@@ -167,7 +173,7 @@ void OperatorInterface::process_mavlink_commands()
 				uint8_t mode = static_cast<uint8_t>(cmd.param1);
 
 				if (mode <= 7) {  // Valid mode range
-						send_mode_command(mode, operation_mode_cmd_s::SOURCE_GCS);
+					send_mode_command(mode, operation_mode_cmd_s::SOURCE_GCS);
 					_command_status.last_command_type = command_status_s::LAST_CMD_MODE_CHANGE;
 					_command_status.last_command_timestamp = hrt_absolute_time();
 					result = vehicle_command_ack_s::VEHICLE_CMD_RESULT_ACCEPTED;
@@ -348,6 +354,7 @@ void OperatorInterface::process_rc_inputs()
 		}
 
 		_prev_rc_task_trigger = rc_task;
+
 	} else if (rc_task == 0 && _prev_rc_task_trigger != 0) {
 		_prev_rc_task_trigger = 0;
 	}
@@ -380,29 +387,33 @@ void OperatorInterface::send_task_command(uint8_t task_id, uint8_t action, uint8
 	// Tasks are now handled through operation modes
 	// Convert task_id to appropriate operation mode
 	uint8_t operation_mode = 0xFF;
-	
+
 	switch (task_id) {
 	case 1: // Load material task
 	case 2: // Dump material task
 	case 3: // Travel to point task
 		operation_mode = operation_mode_cmd_s::MODE_WL_TRAJ_FOLLOWER;
 		break;
+
 	case 4: // Emergency stop
 		operation_mode = operation_mode_cmd_s::MODE_WL_SAFETY_STOP;
 		break;
+
 	case 5: // Steering calibration
 	case 6: // Encoder calibration
 	case 7: // Actuator calibration
 		operation_mode = operation_mode_cmd_s::MODE_WL_CALIBRATION;
 		break;
+
 	default:
 		PX4_WARN("Unknown task_id: %d", task_id);
 		return;
 	}
-	
+
 	if (action == 1) { // START action
 		send_mode_command(operation_mode, source);
 		PX4_INFO("Task %d started via mode %d", task_id, operation_mode);
+
 	} else { // STOP action - return to hold mode
 		send_mode_command(operation_mode_cmd_s::MODE_WL_HOLD, source);
 		PX4_INFO("Task %d stopped, returning to hold mode", task_id);
@@ -459,11 +470,17 @@ uint8_t OperatorInterface::map_rc_mode(uint8_t rc_value)
 	// Map RC switch position (0-7) to operation mode
 	switch (rc_value) {
 	case 0: return operation_mode_cmd_s::MODE_WL_MANUAL_DIRECT;
+
 	case 1: return operation_mode_cmd_s::MODE_WL_MANUAL_BUCKET;
+
 	case 2: return operation_mode_cmd_s::MODE_WL_TRAJ_FOLLOWER;
+
 	case 3: return operation_mode_cmd_s::MODE_WL_HOLD;
+
 	case 4: return operation_mode_cmd_s::MODE_WL_SAFETY_STOP;
+
 	case 5: return operation_mode_cmd_s::MODE_WL_LOITER;
+
 	default: return operation_mode_cmd_s::MODE_WL_HOLD;
 	}
 }
@@ -474,15 +491,18 @@ uint8_t OperatorInterface::map_rc_task(uint8_t rc_value)
 	// Tasks are now integrated into operation modes
 	switch (rc_value) {
 	case 1: // Load material
-	case 2: // Dump material  
+	case 2: // Dump material
 	case 3: // Travel to point
 		return operation_mode_cmd_s::MODE_WL_TRAJ_FOLLOWER;
+
 	case 4: // Emergency stop
 		return operation_mode_cmd_s::MODE_WL_SAFETY_STOP;
+
 	case 5: // Steering calibration
 	case 6: // Encoder calibration
 	case 7: // Actuator calibration
 		return operation_mode_cmd_s::MODE_WL_CALIBRATION;
+
 	default:
 		return 0xFF; // Invalid
 	}

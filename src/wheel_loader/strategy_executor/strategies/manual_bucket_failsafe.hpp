@@ -60,13 +60,14 @@ protected:
 	{
 		// ========== 1. CONTROL INPUT VALIDITY ==========
 		manual_control_setpoint_s manual_control;
+
 		if (_manual_control_sub.copy(&manual_control)) {
 			hrt_abstime now = hrt_absolute_time();
 
 			// Check for stale control data
 			if (now - manual_control.timestamp > 2000000) {  // 2 seconds in microseconds
 				PX4_ERR("ManualBucketFailsafe: Control input timeout - data stale for %.1fs",
-				        (double)((now - manual_control.timestamp) / 1e6));
+					(double)((now - manual_control.timestamp) / 1e6));
 				return FailsafeResult::Emergency(FailsafeViolation::HEARTBEAT_TIMEOUT, "Control input lost");
 			}
 

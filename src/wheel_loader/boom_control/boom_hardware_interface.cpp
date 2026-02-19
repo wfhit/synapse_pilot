@@ -99,6 +99,7 @@ bool BoomHardwareInterface::send_command(const HbridgeSetpoint &command)
 	// Check limit switches and block movement if necessary
 	if (limited_command.enable && fabsf(limited_command.duty_cycle) > 0.1f) {
 		bool direction_up = limited_command.duty_cycle > 0.0f;
+
 		if (is_movement_blocked_by_limits(direction_up)) {
 			PX4_WARN("Movement blocked by limit switch, setting duty cycle to 0");
 			limited_command.duty_cycle = 0.0f;
@@ -129,6 +130,7 @@ bool BoomHardwareInterface::update_status(HbridgeStatus &status)
 	// Select H-bridge instance if not done yet
 	if (_hbridge_selected < 0) {
 		_hbridge_selected = select_hbridge_instance();
+
 		if (_hbridge_selected < 0) {
 			return false;
 		}
@@ -151,6 +153,7 @@ bool BoomHardwareInterface::update_status(HbridgeStatus &status)
 
 	// Check for timeout
 	hrt_abstime now = hrt_absolute_time();
+
 	if (now - _last_status_time > STATUS_TIMEOUT_US) {
 		_actuator_healthy = false;
 	}
@@ -228,6 +231,7 @@ int BoomHardwareInterface::select_hbridge_instance()
 	// Find H-bridge instance matching our motor index
 	for (uint8_t i = 0; i < _hbridge_status_sub.size(); i++) {
 		hbridge_status_s status;
+
 		if (_hbridge_status_sub[i].copy(&status)) {
 			// Check if this instance matches our configuration
 			// Note: hbridge_status_s doesn't have device_id, use instance field instead
@@ -264,6 +268,7 @@ bool BoomHardwareInterface::validate_sensor_data(const SensorData &data) const
 {
 	// Check timestamp freshness
 	hrt_abstime now = hrt_absolute_time();
+
 	if (now - data.timestamp > SENSOR_TIMEOUT_US) {
 		return false;
 	}
@@ -292,7 +297,8 @@ bool BoomHardwareInterface::is_timestamp_valid(hrt_abstime timestamp, hrt_abstim
 	return (now - timestamp) <= timeout_us;
 }
 
-BoomHardwareInterface::HbridgeSetpoint BoomHardwareInterface::apply_current_limit(const HbridgeSetpoint &command, float current) const
+BoomHardwareInterface::HbridgeSetpoint BoomHardwareInterface::apply_current_limit(const HbridgeSetpoint &command,
+		float current) const
 {
 	HbridgeSetpoint limited_command = command;
 	float current_limit = _param_current_limit.get();
@@ -320,6 +326,7 @@ bool BoomHardwareInterface::select_limit_sensor_instances()
 
 		for (uint8_t i = 0; i < _limit_sensor_sub.size(); i++) {
 			sensor_limit_switch_s limit_msg;
+
 			if (_limit_sensor_sub[i].copy(&limit_msg)) {
 				// Check if this instance matches our up limit configuration
 				if (static_cast<int>(limit_msg.instance) == _limit_up_instance) {
@@ -327,6 +334,7 @@ bool BoomHardwareInterface::select_limit_sensor_instances()
 					up_found = true;
 					PX4_INFO("Selected limit up instance %d (instance: %u)", i, limit_msg.instance);
 				}
+
 				// Check if this instance matches our down limit configuration
 				if (static_cast<int>(limit_msg.instance) == _limit_down_instance) {
 					_limit_down_selected = i;
@@ -339,6 +347,7 @@ bool BoomHardwareInterface::select_limit_sensor_instances()
 		if (!up_found) {
 			PX4_WARN("No matching limit up sensor found for device ID %d", _limit_up_instance);
 		}
+
 		if (!down_found) {
 			PX4_WARN("No matching limit down sensor found for device ID %d", _limit_down_instance);
 		}
@@ -362,6 +371,7 @@ bool BoomHardwareInterface::update_encoder_data(SensorData &data)
 
 		// Validate magnetic encoder readings (following bucket control pattern)
 		bool magnet_valid = (encoder_msg.magnet_detected == 1); // Check magnet detect flag
+
 		if (!magnet_valid) {
 			PX4_DEBUG("Boom encoder: No magnet detected");
 			data.is_valid = false;
@@ -374,8 +384,8 @@ bool BoomHardwareInterface::update_encoder_data(SensorData &data)
 		data.magnet_detected = magnet_valid;
 		// Construct status from available flags (magnet_detected is bit 0)
 		data.status_flags = (encoder_msg.magnet_detected ? 0x01 : 0x00) |
-		                   (encoder_msg.magnet_too_strong ? 0x02 : 0x00) |
-		                   (encoder_msg.magnet_too_weak ? 0x04 : 0x00);
+				    (encoder_msg.magnet_too_strong ? 0x02 : 0x00) |
+				    (encoder_msg.magnet_too_weak ? 0x04 : 0x00);
 		data.is_valid = (encoder_msg.error_count == 0);
 
 		// Update encoder timestamp tracking
@@ -415,6 +425,7 @@ bool BoomHardwareInterface::update_limit_switches(SensorData &data)
 	// Read up limit switch
 	if (_limit_up_selected >= 0) {
 		sensor_limit_switch_s limit_up_msg;
+
 		if (_limit_sensor_sub[_limit_up_selected].copy(&limit_up_msg)) {
 			data.limit_up_active = limit_up_msg.state;
 			up_updated = true;
@@ -424,6 +435,7 @@ bool BoomHardwareInterface::update_limit_switches(SensorData &data)
 	// Read down limit switch
 	if (_limit_down_selected >= 0) {
 		sensor_limit_switch_s limit_down_msg;
+
 		if (_limit_sensor_sub[_limit_down_selected].copy(&limit_down_msg)) {
 			data.limit_down_active = limit_down_msg.state;
 			down_updated = true;
@@ -432,12 +444,15 @@ bool BoomHardwareInterface::update_limit_switches(SensorData &data)
 
 	// Update validity and health status
 	data.limits_valid = up_updated && down_updated;
+
 	if (data.limits_valid) {
 		_last_limit_update = hrt_absolute_time();
 		_limits_healthy = true;
+
 	} else {
 		// Check for timeout
 		hrt_abstime now = hrt_absolute_time();
+
 		if (now - _last_limit_update > SENSOR_TIMEOUT_US) {
 			_limits_healthy = false;
 		}

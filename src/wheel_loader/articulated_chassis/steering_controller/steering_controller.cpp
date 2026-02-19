@@ -188,14 +188,18 @@ void SteeringController::process_limit_sensors()
 
 	// Check left limit sensor for this instance
 	uint8_t left_limit_id = get_left_limit();
-	if (left_limit_id != 255 && _limit_sensor_sub[left_limit_id].updated() && _limit_sensor_sub[left_limit_id].copy(&limit_msg)) {
+
+	if (left_limit_id != 255 && _limit_sensor_sub[left_limit_id].updated()
+	    && _limit_sensor_sub[left_limit_id].copy(&limit_msg)) {
 		_left_limit_active = limit_msg.state;
 		_limit_sensors_healthy = !limit_msg.redundancy_fault;
 	}
 
 	// Check right limit sensor for this instance
 	uint8_t right_limit_id = get_right_limit();
-	if (right_limit_id != 255 && _limit_sensor_sub[right_limit_id].updated() && _limit_sensor_sub[right_limit_id].copy(&limit_msg)) {
+
+	if (right_limit_id != 255 && _limit_sensor_sub[right_limit_id].updated()
+	    && _limit_sensor_sub[right_limit_id].copy(&limit_msg)) {
 		_right_limit_active = limit_msg.state;
 		_limit_sensors_healthy = !limit_msg.redundancy_fault;
 	}
@@ -292,12 +296,14 @@ void SteeringController::publish_steering_status()
 
 	if (prev_timestamp > 0) {
 		const float dt = (status.timestamp - prev_timestamp) / 1e6f; // Convert to seconds
+
 		if (dt > 0.001f) { // Avoid division by very small numbers
 			const float rate_rad_s = (_current_angle_rad - prev_angle_rad) / dt;
 			status.steering_rate_deg_s = math::degrees(rate_rad_s);
 			status.actual_rate_rad_s = rate_rad_s;
 		}
 	}
+
 	prev_angle_rad = _current_angle_rad;
 	prev_timestamp = status.timestamp;
 

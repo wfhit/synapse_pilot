@@ -59,19 +59,19 @@ void TiltKinematicsDrive::update_configuration()
 }
 
 void TiltKinematicsDrive::set_triangle_angles(float bellcrank_boom_alignment_offset,
-                                                float coupler_to_pivot_angle)
+		float coupler_to_pivot_angle)
 {
 	_config.bellcrank_boom_alignment_offset = bellcrank_boom_alignment_offset;
 	_config.coupler_to_pivot_angle = coupler_to_pivot_angle;
 
 	// Log the angles for debugging
 	PX4_INFO("Drive: Set boom_alignment_offset = %.3f rad (%.1f deg)",
-	         (double)_config.bellcrank_boom_alignment_offset,
-	         (double)(_config.bellcrank_boom_alignment_offset * 180.0f / PI));
+		 (double)_config.bellcrank_boom_alignment_offset,
+		 (double)(_config.bellcrank_boom_alignment_offset * 180.0f / PI));
 
 	PX4_INFO("Drive: Set coupler_to_pivot_angle = %.3f rad (%.1f deg)",
-	         (double)_config.coupler_to_pivot_angle,
-	         (double)(_config.coupler_to_pivot_angle * 180.0f / PI));
+		 (double)_config.coupler_to_pivot_angle,
+		 (double)(_config.coupler_to_pivot_angle * 180.0f / PI));
 }
 
 // =========================
@@ -105,6 +105,7 @@ float TiltKinematicsDrive::compute_inverse_kinematics(
 {
 	// Inverse Stage 1: Find required AB length for bellcrank angle
 	float required_actuator_length = solve_inverse_trigonometric(bellcrank_angle, boom_angle);
+
 	if (required_actuator_length < 0.0f) {
 		PX4_DEBUG("Drive Stage 1 inverse failed for bellcrank angle: %.3f rad", (double)bellcrank_angle);
 		return -1.0f;
@@ -114,9 +115,9 @@ float TiltKinematicsDrive::compute_inverse_kinematics(
 	if (required_actuator_length < _config.actuator_min_length ||
 	    required_actuator_length > _config.actuator_max_length) {
 		PX4_DEBUG("Drive required AB length %.2f mm outside limits [%.2f, %.2f]",
-		          (double)required_actuator_length,
-		          (double)_config.actuator_min_length,
-		          (double)_config.actuator_max_length);
+			  (double)required_actuator_length,
+			  (double)_config.actuator_min_length,
+			  (double)_config.actuator_max_length);
 		return -1.0f;
 	}
 
@@ -127,7 +128,7 @@ float TiltKinematicsDrive::compute_inverse_kinematics(
 // TRIGONOMETRIC SOLUTION METHODS
 // =========================
 
-bool TiltKinematicsDrive::solve_trigonometric(float actuator_length, float boom_angle, DriveState& state) const
+bool TiltKinematicsDrive::solve_trigonometric(float actuator_length, float boom_angle, DriveState &state) const
 {
 	// Direct trigonometric approach using law of cosines
 	// Given: AB (actuator_length), BC (drive_bellcrank_length), boom_angle
@@ -156,6 +157,7 @@ bool TiltKinematicsDrive::solve_trigonometric(float actuator_length, float boom_
 
 	// Step 6: Calculate angle ACB using law of cosines
 	float angle_ACB = law_of_cosines_angle(length_AC, length_BC, length_AB);
+
 	if (!std::isfinite(angle_ACB)) {
 		return false;  // Invalid triangle
 	}
@@ -242,7 +244,7 @@ matrix::Vector2f TiltKinematicsDrive::calculate_bellcrank_joint_position(float b
 	return matrix::Vector2f{cosf(effective_boom_angle), sinf(effective_boom_angle)} * _config.crank_joint_to_pivot_length;
 }
 
-float TiltKinematicsDrive::calculate_angle_OCA(const matrix::Vector2f& point_C, const matrix::Vector2f& point_A) const
+float TiltKinematicsDrive::calculate_angle_OCA(const matrix::Vector2f &point_C, const matrix::Vector2f &point_A) const
 {
 	// Calculate angle OCA (angle at point C between OC and CA)
 	matrix::Vector2f CO_vector = -point_C;  // Vector from C to O (origin)
@@ -285,7 +287,7 @@ bool TiltKinematicsDrive::check_mechanical_limits(const DriveState &state) const
 	return true;
 }
 
-float TiltKinematicsDrive::compute_condition_number(const DriveState& state) const
+float TiltKinematicsDrive::compute_condition_number(const DriveState &state) const
 {
 	// Compute linkage condition number based on Jacobian
 	matrix::Matrix<float, 2, 2> jacobian = compute_jacobian(state);
@@ -299,11 +301,13 @@ float TiltKinematicsDrive::compute_condition_number(const DriveState& state) con
 
 	// Calculate Frobenius norm
 	float norm = 0.0f;
+
 	for (int i = 0; i < 2; i++) {
 		for (int j = 0; j < 2; j++) {
 			norm += jacobian(i, j) * jacobian(i, j);
 		}
 	}
+
 	norm = sqrtf(norm);
 
 	return norm / fabsf(det);
@@ -329,6 +333,7 @@ matrix::Matrix<float, 2, 2> TiltKinematicsDrive::compute_jacobian(const DriveSta
 	if (state_plus.is_valid && state_minus.is_valid) {
 		jacobian(0, 0) = (state_plus.bellcrank_angle - state_minus.bellcrank_angle) / (2.0f * h);
 		jacobian(1, 0) = (state_plus.actuator_length - state_minus.actuator_length) / (2.0f * h);
+
 	} else {
 		jacobian(0, 0) = 0.0f;
 		jacobian(1, 0) = 0.0f;
@@ -341,6 +346,7 @@ matrix::Matrix<float, 2, 2> TiltKinematicsDrive::compute_jacobian(const DriveSta
 	if (state_plus.is_valid && state_minus.is_valid) {
 		jacobian(0, 1) = (state_plus.bellcrank_angle - state_minus.bellcrank_angle) / (2.0f * h);
 		jacobian(1, 1) = (state_plus.actuator_length - state_minus.actuator_length) / (2.0f * h);
+
 	} else {
 		jacobian(0, 1) = 0.0f;
 		jacobian(1, 1) = 0.0f;
@@ -373,6 +379,7 @@ bool TiltKinematicsDrive::validate_configuration() const
 
 	for (float test_length : test_lengths) {
 		DriveState state = compute_forward_kinematics(test_length, 0.0f);
+
 		if (!state.is_valid) {
 			PX4_ERR("Drive forward kinematics failed");
 			return false;
@@ -380,6 +387,7 @@ bool TiltKinematicsDrive::validate_configuration() const
 
 		// Test inverse kinematics round-trip
 		float inverse_length = compute_inverse_kinematics(state.bellcrank_angle, 0.0f);
+
 		if (inverse_length < 0.0f) {
 			PX4_ERR("Drive inverse kinematics failed");
 			return false;
@@ -387,6 +395,7 @@ bool TiltKinematicsDrive::validate_configuration() const
 
 		// Check round-trip accuracy
 		float length_error = fabsf(inverse_length - test_length);
+
 		if (length_error > 1.0f) {  // 1mm tolerance
 			PX4_ERR("Drive round-trip error too large");
 			return false;

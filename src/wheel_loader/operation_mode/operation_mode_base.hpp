@@ -82,7 +82,7 @@ public:
 	 * Get the mode name
 	 * @return const char* mode name
 	 */
-	const char* get_name() const { return _mode_name; }
+	const char *get_name() const { return _mode_name; }
 
 	/**
 	 * Check if mode is currently active

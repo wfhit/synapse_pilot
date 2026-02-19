@@ -34,4 +34,3 @@ echo "Initializing rear wheel motor control"
 # Start quadrature encoder for rear wheel motor
 echo "Starting quadrature encoder for rear wheel"
 quadrature_encoder start
-

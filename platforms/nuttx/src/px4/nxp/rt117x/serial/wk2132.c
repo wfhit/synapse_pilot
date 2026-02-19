@@ -102,13 +102,13 @@ static bool wk2132_txready(FAR struct uart_dev_s *dev);
 static bool wk2132_txempty(FAR struct uart_dev_s *dev);
 
 static int  wk2132_i2c_write_global(FAR struct wk2132_dev_s *priv, uint8_t reg,
-                                     uint8_t value);
+				    uint8_t value);
 static int  wk2132_i2c_read_global(FAR struct wk2132_dev_s *priv, uint8_t reg,
-                                    FAR uint8_t *value);
+				   FAR uint8_t *value);
 static int  wk2132_i2c_write_reg(FAR struct wk2132_dev_s *priv, uint8_t reg,
-                                  uint8_t value);
+				 uint8_t value);
 static int  wk2132_i2c_read_reg(FAR struct wk2132_dev_s *priv, uint8_t reg,
-                                 FAR uint8_t *value);
+				FAR uint8_t *value);
 
 static int  wk2132_i2c_write_fifo(FAR struct wk2132_dev_s *priv, uint8_t value);
 static int  wk2132_i2c_read_fifo(FAR struct wk2132_dev_s *priv, FAR uint8_t *value);
@@ -122,20 +122,19 @@ static void wk2132_poll_worker(FAR void *arg);
  ****************************************************************************/
 
 /* UART operations */
-static const struct uart_ops_s g_wk2132_uart_ops =
-{
-  .setup          = wk2132_setup,
-  .shutdown       = wk2132_shutdown,
-  .attach         = wk2132_attach,
-  .detach         = wk2132_detach,
-  .ioctl          = wk2132_ioctl,
-  .receive        = wk2132_receive,
-  .rxint          = wk2132_rxint,
-  .rxavailable    = wk2132_rxavailable,
-  .send           = wk2132_send,
-  .txint          = wk2132_txint,
-  .txready        = wk2132_txready,
-  .txempty        = wk2132_txempty,
+static const struct uart_ops_s g_wk2132_uart_ops = {
+	.setup          = wk2132_setup,
+	.shutdown       = wk2132_shutdown,
+	.attach         = wk2132_attach,
+	.detach         = wk2132_detach,
+	.ioctl          = wk2132_ioctl,
+	.receive        = wk2132_receive,
+	.rxint          = wk2132_rxint,
+	.rxavailable    = wk2132_rxavailable,
+	.send           = wk2132_send,
+	.txint          = wk2132_txint,
+	.txready        = wk2132_txready,
+	.txempty        = wk2132_txempty,
 };
 
 /* Work queue for polling */
@@ -160,36 +159,37 @@ static sem_t g_wk2132_poll_sem = SEM_INITIALIZER(1); /* Protect polling state */
  * - WK2132_GIFR (Global IRQ Flag Register)
  */
 static int wk2132_i2c_write_global(FAR struct wk2132_dev_s *priv, uint8_t reg,
-                                    uint8_t value)
+				   uint8_t value)
 {
-  struct i2c_msg_s msg;
-  uint8_t buffer[2];
-  uint8_t i2c_addr;
-  int ret;
+	struct i2c_msg_s msg;
+	uint8_t buffer[2];
+	uint8_t i2c_addr;
+	int ret;
 
-  /* Construct I2C address for global register:
-   * Extract C1,C0 bits from register address (bits 5-4) and combine with base_addr */
-  uint8_t c1c0_bits = (reg >> 4) & 0x03;  /* Extract C1,C0 from register */
-  i2c_addr = priv->base_addr | (c1c0_bits << 1) | WK2132_ADDR_REG_ACCESS;
+	/* Construct I2C address for global register:
+	 * Extract C1,C0 bits from register address (bits 5-4) and combine with base_addr */
+	uint8_t c1c0_bits = (reg >> 4) & 0x03;  /* Extract C1,C0 from register */
+	i2c_addr = priv->base_addr | (c1c0_bits << 1) | WK2132_ADDR_REG_ACCESS;
 
-  /* Setup data buffer */
-  buffer[0] = reg & 0x0F;  /* Use lower 4 bits as actual register address */
-  buffer[1] = value;
+	/* Setup data buffer */
+	buffer[0] = reg & 0x0F;  /* Use lower 4 bits as actual register address */
+	buffer[1] = value;
 
-  /* Setup I2C message */
-  msg.frequency = WK2132_I2C_FREQUENCY;
-  msg.addr      = i2c_addr;
-  msg.flags     = 0;
-  msg.buffer    = buffer;
-  msg.length    = 2;
+	/* Setup I2C message */
+	msg.frequency = WK2132_I2C_FREQUENCY;
+	msg.addr      = i2c_addr;
+	msg.flags     = 0;
+	msg.buffer    = buffer;
+	msg.length    = 2;
 
-  /* Perform the transfer */
-  ret = I2C_TRANSFER(priv->i2c, &msg, 1);
-  if (ret < 0)
-    {
-      syslog(LOG_ERR, "WK2132: Global write failed - reg=0x%02x, ret=%d\n", reg, ret);
-    }
-  return (ret >= 0) ? OK : ret;
+	/* Perform the transfer */
+	ret = I2C_TRANSFER(priv->i2c, &msg, 1);
+
+	if (ret < 0) {
+		syslog(LOG_ERR, "WK2132: Global write failed - reg=0x%02x, ret=%d\n", reg, ret);
+	}
+
+	return (ret >= 0) ? OK : ret;
 }
 
 /**
@@ -203,39 +203,40 @@ static int wk2132_i2c_write_global(FAR struct wk2132_dev_s *priv, uint8_t reg,
  * - WK2132_GIFR (Global IRQ Flag Register)
  */
 static int wk2132_i2c_read_global(FAR struct wk2132_dev_s *priv, uint8_t reg,
-                                   FAR uint8_t *value)
+				  FAR uint8_t *value)
 {
-  struct i2c_msg_s msgs[2];
-  uint8_t i2c_addr;
-  int ret;
+	struct i2c_msg_s msgs[2];
+	uint8_t i2c_addr;
+	int ret;
 
-  /* Construct I2C address for global register:
-   * Extract C1,C0 bits from register address (bits 5-4) and combine with base_addr */
-  uint8_t c1c0_bits = (reg >> 4) & 0x03;  /* Extract C1,C0 from register */
-  uint8_t reg_addr = reg & 0x0F;          /* Use lower 4 bits as actual register address */
-  i2c_addr = priv->base_addr | (c1c0_bits << 1) | WK2132_ADDR_REG_ACCESS;
+	/* Construct I2C address for global register:
+	 * Extract C1,C0 bits from register address (bits 5-4) and combine with base_addr */
+	uint8_t c1c0_bits = (reg >> 4) & 0x03;  /* Extract C1,C0 from register */
+	uint8_t reg_addr = reg & 0x0F;          /* Use lower 4 bits as actual register address */
+	i2c_addr = priv->base_addr | (c1c0_bits << 1) | WK2132_ADDR_REG_ACCESS;
 
-  /* Setup I2C write message for register address */
-  msgs[0].frequency = WK2132_I2C_FREQUENCY;
-  msgs[0].addr      = i2c_addr;
-  msgs[0].flags     = 0;
-  msgs[0].buffer    = &reg_addr;
-  msgs[0].length    = 1;
+	/* Setup I2C write message for register address */
+	msgs[0].frequency = WK2132_I2C_FREQUENCY;
+	msgs[0].addr      = i2c_addr;
+	msgs[0].flags     = 0;
+	msgs[0].buffer    = &reg_addr;
+	msgs[0].length    = 1;
 
-  /* Setup I2C read message for data */
-  msgs[1].frequency = WK2132_I2C_FREQUENCY;
-  msgs[1].addr      = i2c_addr;
-  msgs[1].flags     = I2C_M_READ;
-  msgs[1].buffer    = value;
-  msgs[1].length    = 1;
+	/* Setup I2C read message for data */
+	msgs[1].frequency = WK2132_I2C_FREQUENCY;
+	msgs[1].addr      = i2c_addr;
+	msgs[1].flags     = I2C_M_READ;
+	msgs[1].buffer    = value;
+	msgs[1].length    = 1;
 
-  /* Perform the transfer */
-  ret = I2C_TRANSFER(priv->i2c, msgs, 2);
-  if (ret < 0)
-    {
-      syslog(LOG_ERR, "WK2132: Global read failed - reg=0x%02x, ret=%d\n", reg, ret);
-    }
-  return (ret >= 0) ? OK : ret;
+	/* Perform the transfer */
+	ret = I2C_TRANSFER(priv->i2c, msgs, 2);
+
+	if (ret < 0) {
+		syslog(LOG_ERR, "WK2132: Global read failed - reg=0x%02x, ret=%d\n", reg, ret);
+	}
+
+	return (ret >= 0) ? OK : ret;
 }
 
 /**
@@ -253,30 +254,30 @@ static int wk2132_i2c_read_global(FAR struct wk2132_dev_s *priv, uint8_t reg,
  * - And baud rate registers (BAUD1, BAUD0, PRES) in sub-page 1
  */
 static int wk2132_i2c_write_reg(FAR struct wk2132_dev_s *priv, uint8_t reg,
-                                 uint8_t value)
+				uint8_t value)
 {
-  struct i2c_msg_s msg;
-  uint8_t buffer[2];
-  uint8_t i2c_addr;
-  int ret;
+	struct i2c_msg_s msg;
+	uint8_t buffer[2];
+	uint8_t i2c_addr;
+	int ret;
 
-  /* Construct I2C address: base_addr in bits 6-3, channel in bits 2-1, reg access in bit 0 */
-  i2c_addr = WK2132_MAKE_I2C_ADDR(priv->base_addr, priv->port, false);
+	/* Construct I2C address: base_addr in bits 6-3, channel in bits 2-1, reg access in bit 0 */
+	i2c_addr = WK2132_MAKE_I2C_ADDR(priv->base_addr, priv->port, false);
 
-  /* Setup data buffer */
-  buffer[0] = reg;
-  buffer[1] = value;
+	/* Setup data buffer */
+	buffer[0] = reg;
+	buffer[1] = value;
 
-  /* Setup I2C message */
-  msg.frequency = WK2132_I2C_FREQUENCY;
-  msg.addr      = i2c_addr;
-  msg.flags     = 0;
-  msg.buffer    = buffer;
-  msg.length    = 2;
+	/* Setup I2C message */
+	msg.frequency = WK2132_I2C_FREQUENCY;
+	msg.addr      = i2c_addr;
+	msg.flags     = 0;
+	msg.buffer    = buffer;
+	msg.length    = 2;
 
-  /* Perform the transfer */
-  ret = I2C_TRANSFER(priv->i2c, &msg, 1);
-  return (ret >= 0) ? OK : ret;
+	/* Perform the transfer */
+	ret = I2C_TRANSFER(priv->i2c, &msg, 1);
+	return (ret >= 0) ? OK : ret;
 }
 
 /**
@@ -294,32 +295,32 @@ static int wk2132_i2c_write_reg(FAR struct wk2132_dev_s *priv, uint8_t reg,
  * - And baud rate registers (BAUD1, BAUD0, PRES) in sub-page 1
  */
 static int wk2132_i2c_read_reg(FAR struct wk2132_dev_s *priv, uint8_t reg,
-                                FAR uint8_t *value)
+			       FAR uint8_t *value)
 {
-  struct i2c_msg_s msgs[2];
-  uint8_t i2c_addr;
-  int ret;
+	struct i2c_msg_s msgs[2];
+	uint8_t i2c_addr;
+	int ret;
 
-  /* Construct I2C address: base_addr in bits 6-3, channel in bits 2-1, reg access in bit 0 */
-  i2c_addr = WK2132_MAKE_I2C_ADDR(priv->base_addr, priv->port, false);
+	/* Construct I2C address: base_addr in bits 6-3, channel in bits 2-1, reg access in bit 0 */
+	i2c_addr = WK2132_MAKE_I2C_ADDR(priv->base_addr, priv->port, false);
 
-  /* Setup I2C write message for register address */
-  msgs[0].frequency = WK2132_I2C_FREQUENCY;
-  msgs[0].addr      = i2c_addr;
-  msgs[0].flags     = 0;
-  msgs[0].buffer    = &reg;
-  msgs[0].length    = 1;
+	/* Setup I2C write message for register address */
+	msgs[0].frequency = WK2132_I2C_FREQUENCY;
+	msgs[0].addr      = i2c_addr;
+	msgs[0].flags     = 0;
+	msgs[0].buffer    = &reg;
+	msgs[0].length    = 1;
 
-  /* Setup I2C read message for data */
-  msgs[1].frequency = WK2132_I2C_FREQUENCY;
-  msgs[1].addr      = i2c_addr;
-  msgs[1].flags     = I2C_M_READ;
-  msgs[1].buffer    = value;
-  msgs[1].length    = 1;
+	/* Setup I2C read message for data */
+	msgs[1].frequency = WK2132_I2C_FREQUENCY;
+	msgs[1].addr      = i2c_addr;
+	msgs[1].flags     = I2C_M_READ;
+	msgs[1].buffer    = value;
+	msgs[1].length    = 1;
 
-  /* Perform the transfer */
-  ret = I2C_TRANSFER(priv->i2c, msgs, 2);
-  return (ret >= 0) ? OK : ret;
+	/* Perform the transfer */
+	ret = I2C_TRANSFER(priv->i2c, msgs, 2);
+	return (ret >= 0) ? OK : ret;
 }
 
 /**
@@ -330,23 +331,23 @@ static int wk2132_i2c_read_reg(FAR struct wk2132_dev_s *priv, uint8_t reg,
  */
 static int wk2132_i2c_write_fifo(FAR struct wk2132_dev_s *priv, uint8_t value)
 {
-  struct i2c_msg_s msg;
-  uint8_t i2c_addr;
-  int ret;
+	struct i2c_msg_s msg;
+	uint8_t i2c_addr;
+	int ret;
 
-  /* Construct I2C address: base_addr in bits 6-3, channel in bits 2-1, FIFO access in bit 0 */
-  i2c_addr = WK2132_MAKE_I2C_ADDR(priv->base_addr, priv->port, true);
+	/* Construct I2C address: base_addr in bits 6-3, channel in bits 2-1, FIFO access in bit 0 */
+	i2c_addr = WK2132_MAKE_I2C_ADDR(priv->base_addr, priv->port, true);
 
-  /* Setup I2C message - direct data write to FIFO as per timing diagram */
-  msg.frequency = WK2132_I2C_FREQUENCY;
-  msg.addr      = i2c_addr;
-  msg.flags     = 0;
-  msg.buffer    = &value;
-  msg.length    = 1;
+	/* Setup I2C message - direct data write to FIFO as per timing diagram */
+	msg.frequency = WK2132_I2C_FREQUENCY;
+	msg.addr      = i2c_addr;
+	msg.flags     = 0;
+	msg.buffer    = &value;
+	msg.length    = 1;
 
-  /* Perform the transfer */
-  ret = I2C_TRANSFER(priv->i2c, &msg, 1);
-  return (ret >= 0) ? OK : ret;
+	/* Perform the transfer */
+	ret = I2C_TRANSFER(priv->i2c, &msg, 1);
+	return (ret >= 0) ? OK : ret;
 }
 
 /**
@@ -357,23 +358,23 @@ static int wk2132_i2c_write_fifo(FAR struct wk2132_dev_s *priv, uint8_t value)
  */
 static int wk2132_i2c_read_fifo(FAR struct wk2132_dev_s *priv, FAR uint8_t *value)
 {
-  struct i2c_msg_s msg;
-  uint8_t i2c_addr;
-  int ret;
+	struct i2c_msg_s msg;
+	uint8_t i2c_addr;
+	int ret;
 
-  /* Construct I2C address: base_addr in bits 6-3, channel in bits 2-1, FIFO access in bit 0 */
-  i2c_addr = WK2132_MAKE_I2C_ADDR(priv->base_addr, priv->port, true);
+	/* Construct I2C address: base_addr in bits 6-3, channel in bits 2-1, FIFO access in bit 0 */
+	i2c_addr = WK2132_MAKE_I2C_ADDR(priv->base_addr, priv->port, true);
 
-  /* Setup I2C read message - direct data read from FIFO as per timing diagram */
-  msg.frequency = WK2132_I2C_FREQUENCY;
-  msg.addr      = i2c_addr;
-  msg.flags     = I2C_M_READ;
-  msg.buffer    = value;
-  msg.length    = 1;
+	/* Setup I2C read message - direct data read from FIFO as per timing diagram */
+	msg.frequency = WK2132_I2C_FREQUENCY;
+	msg.addr      = i2c_addr;
+	msg.flags     = I2C_M_READ;
+	msg.buffer    = value;
+	msg.length    = 1;
 
-  /* Perform the transfer */
-  ret = I2C_TRANSFER(priv->i2c, &msg, 1);
-  return (ret >= 0) ? OK : ret;
+	/* Perform the transfer */
+	ret = I2C_TRANSFER(priv->i2c, &msg, 1);
+	return (ret >= 0) ? OK : ret;
 }
 
 /**
@@ -382,88 +383,88 @@ static int wk2132_i2c_read_fifo(FAR struct wk2132_dev_s *priv, FAR uint8_t *valu
  */
 static int wk2132_set_baud(FAR struct wk2132_dev_s *priv, uint32_t baud)
 {
-  uint16_t val_integer, val_decimal;
-  uint8_t baud1, baud0, pres;
-  int ret;
+	uint16_t val_integer, val_decimal;
+	uint8_t baud1, baud0, pres;
+	int ret;
 
-  syslog(LOG_DEBUG, "WK2132: Setting baud rate to %lu\n", (unsigned long)baud);
+	syslog(LOG_DEBUG, "WK2132: Setting baud rate to %lu\n", (unsigned long)baud);
 
-  /* DFRobot algorithm:
-   * val_integer = FOSC/(baud * 16) - 1
-   * val_decimal = (FOSC%(baud * 16))/(baud * 16) * 10 (for prescaler calculation)
-   * Prescaler is calculated from decimal part
-   */
-  val_integer = (WK2132_CRYSTAL_FREQ / (baud * 16)) - 1;
-  /* Calculate decimal part more accurately by scaling */
-  uint32_t remainder = WK2132_CRYSTAL_FREQ % (baud * 16);
-  val_decimal = (remainder * 10) / (baud * 16);
+	/* DFRobot algorithm:
+	 * val_integer = FOSC/(baud * 16) - 1
+	 * val_decimal = (FOSC%(baud * 16))/(baud * 16) * 10 (for prescaler calculation)
+	 * Prescaler is calculated from decimal part
+	 */
+	val_integer = (WK2132_CRYSTAL_FREQ / (baud * 16)) - 1;
+	/* Calculate decimal part more accurately by scaling */
+	uint32_t remainder = WK2132_CRYSTAL_FREQ % (baud * 16);
+	val_decimal = (remainder * 10) / (baud * 16);
 
-  /* Extract high and low bytes */
-  baud1 = (uint8_t)(val_integer >> 8);
-  baud0 = (uint8_t)(val_integer & 0x00FF);
+	/* Extract high and low bytes */
+	baud1 = (uint8_t)(val_integer >> 8);
+	baud0 = (uint8_t)(val_integer & 0x00FF);
 
-  /* Calculate prescaler from decimal part */
-  while (val_decimal > 0x0A)
-    {
-      val_decimal /= 0x0A;
-    }
-  pres = (uint8_t)val_decimal;
+	/* Calculate prescaler from decimal part */
+	while (val_decimal > 0x0A) {
+		val_decimal /= 0x0A;
+	}
 
-  /* Select sub-page 1 for baud rate configuration */
-  ret = wk2132_i2c_write_reg(priv, WK2132_SPAGE, 1);
-  if (ret < 0)
-    {
-      syslog(LOG_ERR, "WK2132: Failed to switch to sub-page 1 for port %d: %d\n", priv->port, ret);
-      return ret;
-    }
+	pres = (uint8_t)val_decimal;
 
-  /* Set baud rate registers */
-  ret = wk2132_i2c_write_reg(priv, WK2132_BAUD1, baud1);
-  if (ret < 0)
-    {
-      syslog(LOG_ERR, "WK2132: Failed to write BAUD1 register for port %d: %d\n", priv->port, ret);
-      return ret;
-    }
+	/* Select sub-page 1 for baud rate configuration */
+	ret = wk2132_i2c_write_reg(priv, WK2132_SPAGE, 1);
 
-  ret = wk2132_i2c_write_reg(priv, WK2132_BAUD0, baud0);
-  if (ret < 0)
-    {
-      syslog(LOG_ERR, "WK2132: Failed to write BAUD0 register for port %d: %d\n", priv->port, ret);
-      return ret;
-    }
+	if (ret < 0) {
+		syslog(LOG_ERR, "WK2132: Failed to switch to sub-page 1 for port %d: %d\n", priv->port, ret);
+		return ret;
+	}
 
-  ret = wk2132_i2c_write_reg(priv, WK2132_PRES, pres);
-  if (ret < 0)
-    {
-      syslog(LOG_ERR, "WK2132: Failed to write PRES register for port %d: %d\n", priv->port, ret);
-      return ret;
-    }
+	/* Set baud rate registers */
+	ret = wk2132_i2c_write_reg(priv, WK2132_BAUD1, baud1);
 
-  /* Read back the baud rate registers for verification */
-  uint8_t verify_reg;
-  /* Simple verification - just check if we can read back any register to ensure I2C communication is working */
-  ret = wk2132_i2c_read_reg(priv, WK2132_BAUD1, &verify_reg);
-  if (ret < 0)
-    {
-      syslog(LOG_ERR, "WK2132: Failed to verify baud rate registers for port %d: %d\n", priv->port, ret);
-      goto errout;
-    }
+	if (ret < 0) {
+		syslog(LOG_ERR, "WK2132: Failed to write BAUD1 register for port %d: %d\n", priv->port, ret);
+		return ret;
+	}
 
-  /* Return to sub-page 0 */
-  ret = wk2132_i2c_write_reg(priv, WK2132_SPAGE, 0);
-  if (ret < 0)
-    {
-      return ret;
-    }
+	ret = wk2132_i2c_write_reg(priv, WK2132_BAUD0, baud0);
 
-  syslog(LOG_DEBUG, "WK2132: Baud rate %lu set successfully\n", (unsigned long)baud);
+	if (ret < 0) {
+		syslog(LOG_ERR, "WK2132: Failed to write BAUD0 register for port %d: %d\n", priv->port, ret);
+		return ret;
+	}
 
-  return OK;
+	ret = wk2132_i2c_write_reg(priv, WK2132_PRES, pres);
+
+	if (ret < 0) {
+		syslog(LOG_ERR, "WK2132: Failed to write PRES register for port %d: %d\n", priv->port, ret);
+		return ret;
+	}
+
+	/* Read back the baud rate registers for verification */
+	uint8_t verify_reg;
+	/* Simple verification - just check if we can read back any register to ensure I2C communication is working */
+	ret = wk2132_i2c_read_reg(priv, WK2132_BAUD1, &verify_reg);
+
+	if (ret < 0) {
+		syslog(LOG_ERR, "WK2132: Failed to verify baud rate registers for port %d: %d\n", priv->port, ret);
+		goto errout;
+	}
+
+	/* Return to sub-page 0 */
+	ret = wk2132_i2c_write_reg(priv, WK2132_SPAGE, 0);
+
+	if (ret < 0) {
+		return ret;
+	}
+
+	syslog(LOG_DEBUG, "WK2132: Baud rate %lu set successfully\n", (unsigned long)baud);
+
+	return OK;
 
 errout:
-  /* Try to restore state on error */
-  wk2132_i2c_write_reg(priv, WK2132_SPAGE, 0);  /* Return to page 0 */
-  return ret;
+	/* Try to restore state on error */
+	wk2132_i2c_write_reg(priv, WK2132_SPAGE, 0);  /* Return to page 0 */
+	return ret;
 }
 
 /**
@@ -472,83 +473,85 @@ errout:
  */
 static int wk2132_reconfigure(FAR struct uart_dev_s *dev)
 {
-  FAR struct wk2132_dev_s *priv = (FAR struct wk2132_dev_s *)dev->priv;
-  uint8_t lcr = 0;
-  int ret;
-  bool was_enabled;
+	FAR struct wk2132_dev_s *priv = (FAR struct wk2132_dev_s *)dev->priv;
+	uint8_t lcr = 0;
+	int ret;
+	bool was_enabled;
 
-  syslog(LOG_INFO, "WK2132: Reconfiguring port %d\n", priv->port);
+	syslog(LOG_INFO, "WK2132: Reconfiguring port %d\n", priv->port);
 
-  /* Take exclusive access */
-  ret = nxsem_wait(&priv->exclsem);
-  if (ret < 0)
-    {
-      syslog(LOG_ERR, "WK2132: Failed to get exclusive access for port %d\n", priv->port);
-      return ret;
-    }
+	/* Take exclusive access */
+	ret = nxsem_wait(&priv->exclsem);
 
-  /* Save and temporarily disable port to prevent data loss during reconfiguration */
-  was_enabled = priv->enabled;
-  priv->enabled = false;
+	if (ret < 0) {
+		syslog(LOG_ERR, "WK2132: Failed to get exclusive access for port %d\n", priv->port);
+		return ret;
+	}
 
-  /* Configure LCR based on new settings */
-  if (priv->stopbits2)
-    {
-      lcr |= WK2132_LCR_STB;  /* 2 stop bits */
-    }
+	/* Save and temporarily disable port to prevent data loss during reconfiguration */
+	was_enabled = priv->enabled;
+	priv->enabled = false;
 
-  /* Configure parity according to datasheet and termios standards */
-  switch (priv->parity)
-    {
-    case 0:  /* No parity */
-      /* PAEN=0, no parity bits needed */
-      break;
-    case 1:  /* Odd parity */
-      lcr |= WK2132_LCR_PAEN | WK2132_LCR_PAM0;  /* Enable parity, PAM1=0,PAM0=1 for odd */
-      break;
-    case 2:  /* Even parity */
-      lcr |= WK2132_LCR_PAEN | WK2132_LCR_PAM1;  /* Enable parity, PAM1=1,PAM0=0 for even */
-      break;
-    default:
-      syslog(LOG_WARNING, "WK2132: Invalid parity mode %lu, using no parity\n", (unsigned long)priv->parity);
-      break;
-    }
+	/* Configure LCR based on new settings */
+	if (priv->stopbits2) {
+		lcr |= WK2132_LCR_STB;  /* 2 stop bits */
+	}
 
-  ret = wk2132_i2c_write_reg(priv, WK2132_LCR, lcr);
-  if (ret < 0)
-    {
-      syslog(LOG_ERR, "WK2132: Failed to write LCR register for port %d\n", priv->port);
-      goto errout;
-    }
+	/* Configure parity according to datasheet and termios standards */
+	switch (priv->parity) {
+	case 0:  /* No parity */
+		/* PAEN=0, no parity bits needed */
+		break;
 
-  syslog(LOG_DEBUG, "WK2132: Set LCR=0x%02x for port %d\n", lcr, priv->port);
+	case 1:  /* Odd parity */
+		lcr |= WK2132_LCR_PAEN | WK2132_LCR_PAM0;  /* Enable parity, PAM1=0,PAM0=1 for odd */
+		break;
 
-  /* Set baud rate */
-  ret = wk2132_set_baud(priv, priv->baud);
-  if (ret < 0)
-    {
-      syslog(LOG_ERR, "WK2132: Failed to set baud rate %lu for port %d\n", (unsigned long)priv->baud, priv->port);
-      goto errout;
-    }
+	case 2:  /* Even parity */
+		lcr |= WK2132_LCR_PAEN | WK2132_LCR_PAM1;  /* Enable parity, PAM1=1,PAM0=0 for even */
+		break;
 
-  syslog(LOG_DEBUG, "WK2132: Set baud rate %lu for port %d\n", (unsigned long)priv->baud, priv->port);
+	default:
+		syslog(LOG_WARNING, "WK2132: Invalid parity mode %lu, using no parity\n", (unsigned long)priv->parity);
+		break;
+	}
 
-  /* Allow configuration to settle */
-  usleep(10000);  /* 10ms delay */
+	ret = wk2132_i2c_write_reg(priv, WK2132_LCR, lcr);
 
-  syslog(LOG_INFO, "WK2132: Reconfiguration completed successfully for port %d\n", priv->port);
+	if (ret < 0) {
+		syslog(LOG_ERR, "WK2132: Failed to write LCR register for port %d\n", priv->port);
+		goto errout;
+	}
 
-  /* Restore enabled state */
-  priv->enabled = was_enabled;
+	syslog(LOG_DEBUG, "WK2132: Set LCR=0x%02x for port %d\n", lcr, priv->port);
+
+	/* Set baud rate */
+	ret = wk2132_set_baud(priv, priv->baud);
+
+	if (ret < 0) {
+		syslog(LOG_ERR, "WK2132: Failed to set baud rate %lu for port %d\n", (unsigned long)priv->baud, priv->port);
+		goto errout;
+	}
+
+	syslog(LOG_DEBUG, "WK2132: Set baud rate %lu for port %d\n", (unsigned long)priv->baud, priv->port);
+
+	/* Allow configuration to settle */
+	usleep(10000);  /* 10ms delay */
+
+	syslog(LOG_INFO, "WK2132: Reconfiguration completed successfully for port %d\n", priv->port);
+
+	/* Restore enabled state */
+	priv->enabled = was_enabled;
 
 errout:
-  /* Restore enabled state on error too */
-  if (ret < 0)
-    {
-      priv->enabled = was_enabled;
-    }
-  nxsem_post(&priv->exclsem);
-  return ret;
+
+	/* Restore enabled state on error too */
+	if (ret < 0) {
+		priv->enabled = was_enabled;
+	}
+
+	nxsem_post(&priv->exclsem);
+	return ret;
 }
 
 /**
@@ -556,52 +559,47 @@ errout:
  */
 static void wk2132_poll_worker(FAR void *arg)
 {
-  int i;
-  int device_count;
-  bool should_continue;
+	int i;
+	int device_count;
+	bool should_continue;
 
-  /* Snapshot device count under lock to avoid racing with setup */
-  nxsem_wait(&g_wk2132_poll_sem);
-  device_count = g_wk2132_device_count;
-  nxsem_post(&g_wk2132_poll_sem);
+	/* Snapshot device count under lock to avoid racing with setup */
+	nxsem_wait(&g_wk2132_poll_sem);
+	device_count = g_wk2132_device_count;
+	nxsem_post(&g_wk2132_poll_sem);
 
-  /* Poll all registered devices */
-  for (i = 0; i < device_count; i++)
-    {
-      FAR struct uart_dev_s *dev = g_wk2132_devices[i];
-      if (dev != NULL)
-        {
-          FAR struct wk2132_dev_s *priv = (FAR struct wk2132_dev_s *)dev->priv;
+	/* Poll all registered devices */
+	for (i = 0; i < device_count; i++) {
+		FAR struct uart_dev_s *dev = g_wk2132_devices[i];
 
-          /* Only poll enabled devices */
-          if (priv->enabled)
-            {
-              /* Check for received data */
-              if (wk2132_rxavailable(dev))
-                {
-                  uart_recvchars(dev);
-                }
+		if (dev != NULL) {
+			FAR struct wk2132_dev_s *priv = (FAR struct wk2132_dev_s *)dev->priv;
 
-              /* Check for transmit ready */
-              if (dev->xmit.head != dev->xmit.tail && wk2132_txready(dev))
-                {
-                  uart_xmitchars(dev);
-                }
-            }
-        }
-    }
+			/* Only poll enabled devices */
+			if (priv->enabled) {
+				/* Check for received data */
+				if (wk2132_rxavailable(dev)) {
+					uart_recvchars(dev);
+				}
 
-  /* Check if we should continue polling (with proper synchronization) */
-  nxsem_wait(&g_wk2132_poll_sem);
-  should_continue = g_wk2132_poll_started;
-  nxsem_post(&g_wk2132_poll_sem);
+				/* Check for transmit ready */
+				if (dev->xmit.head != dev->xmit.tail && wk2132_txready(dev)) {
+					uart_xmitchars(dev);
+				}
+			}
+		}
+	}
 
-  /* Schedule next poll - reduced frequency to lower I2C burden */
-  if (should_continue)
-    {
-      work_queue(LPWORK, &g_wk2132_poll_work, wk2132_poll_worker, NULL,
-                 MSEC2TICK(5));  /* Poll every 5ms instead of 1ms to reduce I2C burden */
-    }
+	/* Check if we should continue polling (with proper synchronization) */
+	nxsem_wait(&g_wk2132_poll_sem);
+	should_continue = g_wk2132_poll_started;
+	nxsem_post(&g_wk2132_poll_sem);
+
+	/* Schedule next poll - reduced frequency to lower I2C burden */
+	if (should_continue) {
+		work_queue(LPWORK, &g_wk2132_poll_work, wk2132_poll_worker, NULL,
+			   MSEC2TICK(5));  /* Poll every 5ms instead of 1ms to reduce I2C burden */
+	}
 }
 
 /**
@@ -610,79 +608,79 @@ static void wk2132_poll_worker(FAR void *arg)
  */
 static int wk2132_setup(FAR struct uart_dev_s *dev)
 {
-  FAR struct wk2132_dev_s *priv = (FAR struct wk2132_dev_s *)dev->priv;
-  uint8_t lcr = 0;
-  uint8_t gena, grst;
-  int ret;
+	FAR struct wk2132_dev_s *priv = (FAR struct wk2132_dev_s *)dev->priv;
+	uint8_t lcr = 0;
+	uint8_t gena, grst;
+	int ret;
 
-  syslog(LOG_INFO, "WK2132: Setting up port %d\n", priv->port);
+	syslog(LOG_INFO, "WK2132: Setting up port %d\n", priv->port);
 
-  /* Take exclusive access */
-  ret = nxsem_wait(&priv->exclsem);
-  if (ret < 0)
-    {
-      syslog(LOG_ERR, "WK2132: Failed to get exclusive access for port %d\n", priv->port);
-      return ret;
-    }
+	/* Take exclusive access */
+	ret = nxsem_wait(&priv->exclsem);
 
-  /* Step 1: Sub UART clock enable (DFRobot: subSerialGlobalRegEnable(subUartChannel, clock)) */
-  syslog(LOG_DEBUG, "WK2132: Sub UART clock enable for port %d\n", priv->port);
+	if (ret < 0) {
+		syslog(LOG_ERR, "WK2132: Failed to get exclusive access for port %d\n", priv->port);
+		return ret;
+	}
 
-  /* Acquire global semaphore to protect GENA read-modify-write */
-  nxsem_wait(&g_wk2132_poll_sem);
-  ret = wk2132_i2c_read_global(priv, WK2132_GENA, &gena);
-  if (ret < 0)
-    {
-      syslog(LOG_ERR, "WK2132: Failed to read GENA register for port %d\n", priv->port);
-      nxsem_post(&g_wk2132_poll_sem);
-      goto errout;
-    }
+	/* Step 1: Sub UART clock enable (DFRobot: subSerialGlobalRegEnable(subUartChannel, clock)) */
+	syslog(LOG_DEBUG, "WK2132: Sub UART clock enable for port %d\n", priv->port);
 
-  syslog(LOG_DEBUG, "WK2132: Current GENA=0x%02x for port %d\n", gena, priv->port);
+	/* Acquire global semaphore to protect GENA read-modify-write */
+	nxsem_wait(&g_wk2132_poll_sem);
+	ret = wk2132_i2c_read_global(priv, WK2132_GENA, &gena);
 
-  /* Enable the UART port in global register */
-  uint8_t gena_bit = 1 << (priv->port - 1);
-  gena |= gena_bit;
-  ret = wk2132_i2c_write_global(priv, WK2132_GENA, gena);
-  nxsem_post(&g_wk2132_poll_sem);
-  if (ret < 0)
-    {
-      syslog(LOG_ERR, "WK2132: Failed to write GENA register for port %d\n", priv->port);
-      goto errout;
-    }
+	if (ret < 0) {
+		syslog(LOG_ERR, "WK2132: Failed to read GENA register for port %d\n", priv->port);
+		nxsem_post(&g_wk2132_poll_sem);
+		goto errout;
+	}
 
-  syslog(LOG_DEBUG, "WK2132: Enabled clock for port %d in GENA, new value=0x%02x\n", priv->port, gena);
+	syslog(LOG_DEBUG, "WK2132: Current GENA=0x%02x for port %d\n", gena, priv->port);
 
-  /* Allow clock to stabilize */
-  usleep(50000);  /* 50ms delay */
+	/* Enable the UART port in global register */
+	uint8_t gena_bit = 1 << (priv->port - 1);
+	gena |= gena_bit;
+	ret = wk2132_i2c_write_global(priv, WK2132_GENA, gena);
+	nxsem_post(&g_wk2132_poll_sem);
 
-  /* Step 2: Software reset sub UART (DFRobot: subSerialGlobalRegEnable(subUartChannel, rst)) */
-  syslog(LOG_DEBUG, "WK2132: Software reset sub UART for port %d\n", priv->port);
+	if (ret < 0) {
+		syslog(LOG_ERR, "WK2132: Failed to write GENA register for port %d\n", priv->port);
+		goto errout;
+	}
 
-  /* Acquire global semaphore to protect GRST read-modify-write */
-  nxsem_wait(&g_wk2132_poll_sem);
-  ret = wk2132_i2c_read_global(priv, WK2132_GRST, &grst);
-  if (ret < 0)
-    {
-      syslog(LOG_ERR, "WK2132: Failed to read GRST register for port %d\n", priv->port);
-      nxsem_post(&g_wk2132_poll_sem);
-      goto errout;
-    }
+	syslog(LOG_DEBUG, "WK2132: Enabled clock for port %d in GENA, new value=0x%02x\n", priv->port, gena);
 
-  uint8_t grst_bit = 1 << (priv->port - 1);
-  grst |= grst_bit;
-  ret = wk2132_i2c_write_global(priv, WK2132_GRST, grst);
-  nxsem_post(&g_wk2132_poll_sem);
-  if (ret < 0)
-    {
-      syslog(LOG_ERR, "WK2132: Failed to write GRST register for port %d\n", priv->port);
-      goto errout;
-    }
+	/* Allow clock to stabilize */
+	usleep(50000);  /* 50ms delay */
 
-  syslog(LOG_DEBUG, "WK2132: Reset completed for port %d, GRST=0x%02x\n", priv->port, grst);
+	/* Step 2: Software reset sub UART (DFRobot: subSerialGlobalRegEnable(subUartChannel, rst)) */
+	syslog(LOG_DEBUG, "WK2132: Software reset sub UART for port %d\n", priv->port);
 
-  /* Allow reset to complete */
-  usleep(100000);  /* 100ms delay after reset */
+	/* Acquire global semaphore to protect GRST read-modify-write */
+	nxsem_wait(&g_wk2132_poll_sem);
+	ret = wk2132_i2c_read_global(priv, WK2132_GRST, &grst);
+
+	if (ret < 0) {
+		syslog(LOG_ERR, "WK2132: Failed to read GRST register for port %d\n", priv->port);
+		nxsem_post(&g_wk2132_poll_sem);
+		goto errout;
+	}
+
+	uint8_t grst_bit = 1 << (priv->port - 1);
+	grst |= grst_bit;
+	ret = wk2132_i2c_write_global(priv, WK2132_GRST, grst);
+	nxsem_post(&g_wk2132_poll_sem);
+
+	if (ret < 0) {
+		syslog(LOG_ERR, "WK2132: Failed to write GRST register for port %d\n", priv->port);
+		goto errout;
+	}
+
+	syslog(LOG_DEBUG, "WK2132: Reset completed for port %d, GRST=0x%02x\n", priv->port, grst);
+
+	/* Allow reset to complete */
+	usleep(100000);  /* 100ms delay after reset */
 
 //  /* Step 3: Sub UART global interrupt enable (DFRobot: subSerialGlobalRegEnable(subUartChannel, intrpt)) */
 //  syslog(LOG_DEBUG, "WK2132: Sub UART global interrupt enable for port %d\n", priv->port);
@@ -707,14 +705,14 @@ static int wk2132_setup(FAR struct uart_dev_s *dev)
 //  /* Allow interrupt configuration to settle */
 //  usleep(25000);  /* 25ms delay */
 
-  /* Step 4: Sub UART page register setting (default PAGE0) */
-  syslog(LOG_DEBUG, "WK2132: Sub UART page register setting (default PAGE0) for port %d\n", priv->port);
-  ret = wk2132_i2c_write_reg(priv, WK2132_SPAGE, 0);
-  if (ret < 0)
-    {
-      syslog(LOG_ERR, "WK2132: Failed to set page 0 for port %d\n", priv->port);
-      goto errout;
-    }
+	/* Step 4: Sub UART page register setting (default PAGE0) */
+	syslog(LOG_DEBUG, "WK2132: Sub UART page register setting (default PAGE0) for port %d\n", priv->port);
+	ret = wk2132_i2c_write_reg(priv, WK2132_SPAGE, 0);
+
+	if (ret < 0) {
+		syslog(LOG_ERR, "WK2132: Failed to set page 0 for port %d\n", priv->port);
+		goto errout;
+	}
 
 //  /* Step 5: Sub interrupt setting - Enable multiple interrupt sources like DFRobot */
 //  syslog(LOG_DEBUG, "WK2132: Sub interrupt setting for port %d\n", priv->port);
@@ -733,150 +731,154 @@ static int wk2132_setup(FAR struct uart_dev_s *dev)
 //
 //  syslog(LOG_DEBUG, "WK2132: Set SIER=0x%02x for port %d\n", sier, priv->port);
 
-  /* Step 6: Enable transmit/receive FIFO with reset (DFRobot style) */
-  syslog(LOG_DEBUG, "WK2132: Enable transmit/receive FIFO for port %d\n", priv->port);
+	/* Step 6: Enable transmit/receive FIFO with reset (DFRobot style) */
+	syslog(LOG_DEBUG, "WK2132: Enable transmit/receive FIFO for port %d\n", priv->port);
 
-  /* DFRobot FCR configuration: {.rfRst = 0x01, .tfRst = 0x00, .rfEn = 0x01, .tfEn = 0x01, .rfTrig = 0x00, .tfTrig = 0x00} */
-  uint8_t fcr_current = 0;
+	/* DFRobot FCR configuration: {.rfRst = 0x01, .tfRst = 0x00, .rfEn = 0x01, .tfEn = 0x01, .rfTrig = 0x00, .tfTrig = 0x00} */
+	uint8_t fcr_current = 0;
 
-  /* Read current FCR value first (DFRobot subSerialRegConfig pattern) */
-  ret = wk2132_i2c_read_reg(priv, WK2132_FCR, &fcr_current);
-  if (ret < 0)
-    {
-      syslog(LOG_ERR, "WK2132: Failed to read FCR register for port %d\n", priv->port);
-      goto errout;
-    }
+	/* Read current FCR value first (DFRobot subSerialRegConfig pattern) */
+	ret = wk2132_i2c_read_reg(priv, WK2132_FCR, &fcr_current);
 
-  syslog(LOG_DEBUG, "WK2132: Current FCR=0x%02x for port %d\n", fcr_current, priv->port);
+	if (ret < 0) {
+		syslog(LOG_ERR, "WK2132: Failed to read FCR register for port %d\n", priv->port);
+		goto errout;
+	}
 
-  /* Apply DFRobot FCR settings using OR operation like subSerialRegConfig */
-  uint8_t fcr_settings = WK2132_FCR_RFRST |     /* Reset RX FIFO (rfRst = 1) */
-                         WK2132_FCR_TFRST |     /* Reset TX FIFO (tfRst = 1) */
-                         WK2132_FCR_RFEN |      /* Enable RX FIFO (rfEn = 1) */
-                         WK2132_FCR_TFEN;       /* Enable TX FIFO (tfEn = 1) */
-                         /* Trigger levels default to 0 (rfTrig = 0, tfTrig = 0) */
+	syslog(LOG_DEBUG, "WK2132: Current FCR=0x%02x for port %d\n", fcr_current, priv->port);
 
-  ret = wk2132_i2c_write_reg(priv, WK2132_FCR, fcr_settings);
-  if (ret < 0)
-    {
-      syslog(LOG_ERR, "WK2132: Failed to write FCR register for port %d\n", priv->port);
-      goto errout;
-    }
+	/* Apply DFRobot FCR settings using OR operation like subSerialRegConfig */
+	uint8_t fcr_settings = WK2132_FCR_RFRST |     /* Reset RX FIFO (rfRst = 1) */
+			       WK2132_FCR_TFRST |     /* Reset TX FIFO (tfRst = 1) */
+			       WK2132_FCR_RFEN |      /* Enable RX FIFO (rfEn = 1) */
+			       WK2132_FCR_TFEN;       /* Enable TX FIFO (tfEn = 1) */
+	/* Trigger levels default to 0 (rfTrig = 0, tfTrig = 0) */
 
-  /* Read back for verification */
-  uint8_t fcr_verify = 0;
-  ret = wk2132_i2c_read_reg(priv, WK2132_FCR, &fcr_verify);
-  if (ret < 0)
-    {
-      syslog(LOG_ERR, "WK2132: Failed to verify FCR register for port %d\n", priv->port);
-      goto errout;
-    }
-  syslog(LOG_DEBUG, "WK2132: Set FCR=0x%02x (was 0x%02x) for port %d\n",
-         fcr_verify, fcr_current, priv->port);
+	ret = wk2132_i2c_write_reg(priv, WK2132_FCR, fcr_settings);
 
-  /* Allow FIFO configuration to settle */
-  usleep(25000);  /* 25ms delay */
+	if (ret < 0) {
+		syslog(LOG_ERR, "WK2132: Failed to write FCR register for port %d\n", priv->port);
+		goto errout;
+	}
 
-  /* Step 7: Sub UART LCR configuration */
-  /* Configure LCR based on settings according to datasheet */
-  /* Note: WK2132 supports only 8-bit data length (fixed) */
-  /* LCR Register bits from datasheet image:
-   * Bit 6: Reserved (0)
-   * Bit 5: BREAK - Line Break output enable
-   * Bit 4: IREN - IR mode enable
-   * Bit 3: PAEN - Parity enable
-   * Bit 2-1: PAM1-0 - Parity mode (10=Even, 01=Odd, 00=Reserved, 11=Mark/Space)
-   * Bit 0: STB - Stop bits (0=1bit, 1=2bits)
-   */
+	/* Read back for verification */
+	uint8_t fcr_verify = 0;
+	ret = wk2132_i2c_read_reg(priv, WK2132_FCR, &fcr_verify);
 
-  /* Configure stop bits */
-  if (priv->stopbits2)
-    {
-      lcr |= WK2132_LCR_STB;  /* 2 stop bits */
-    }
+	if (ret < 0) {
+		syslog(LOG_ERR, "WK2132: Failed to verify FCR register for port %d\n", priv->port);
+		goto errout;
+	}
 
-  /* Configure parity according to datasheet and termios standards */
-  switch (priv->parity)
-    {
-    case 0:  /* No parity */
-      /* PAEN=0, no parity bits needed */
-      break;
-    case 1:  /* Odd parity */
-      lcr |= WK2132_LCR_PAEN | WK2132_LCR_PAM0;  /* Enable parity, PAM1=0,PAM0=1 for odd */
-      break;
-    case 2:  /* Even parity */
-      lcr |= WK2132_LCR_PAEN | WK2132_LCR_PAM1;  /* Enable parity, PAM1=1,PAM0=0 for even */
-      break;
-    default:
-      syslog(LOG_WARNING, "WK2132: Invalid parity mode %lu, using no parity\n", (unsigned long)priv->parity);
-      break;
-    }
+	syslog(LOG_DEBUG, "WK2132: Set FCR=0x%02x (was 0x%02x) for port %d\n",
+	       fcr_verify, fcr_current, priv->port);
 
-  ret = wk2132_i2c_write_reg(priv, WK2132_LCR, lcr);
-  if (ret < 0)
-    {
-      syslog(LOG_ERR, "WK2132: Failed to write LCR register for port %d\n", priv->port);
-      goto errout;
-    }
+	/* Allow FIFO configuration to settle */
+	usleep(25000);  /* 25ms delay */
 
-  syslog(LOG_DEBUG, "WK2132: Set LCR=0x%02x for port %d\n", lcr, priv->port);
+	/* Step 7: Sub UART LCR configuration */
+	/* Configure LCR based on settings according to datasheet */
+	/* Note: WK2132 supports only 8-bit data length (fixed) */
+	/* LCR Register bits from datasheet image:
+	 * Bit 6: Reserved (0)
+	 * Bit 5: BREAK - Line Break output enable
+	 * Bit 4: IREN - IR mode enable
+	 * Bit 3: PAEN - Parity enable
+	 * Bit 2-1: PAM1-0 - Parity mode (10=Even, 01=Odd, 00=Reserved, 11=Mark/Space)
+	 * Bit 0: STB - Stop bits (0=1bit, 1=2bits)
+	 */
 
-  /* Step 8: Sub UART baud rate configuration */
-  /* Set baud rate */
-  ret = wk2132_set_baud(priv, priv->baud);
-  if (ret < 0)
-    {
-      syslog(LOG_ERR, "WK2132: Failed to set baud rate %lu for port %d\n", (unsigned long)priv->baud, priv->port);
-      goto errout;
-    }
+	/* Configure stop bits */
+	if (priv->stopbits2) {
+		lcr |= WK2132_LCR_STB;  /* 2 stop bits */
+	}
 
-  syslog(LOG_DEBUG, "WK2132: Set baud rate %lu for port %d\n", (unsigned long)priv->baud, priv->port);
+	/* Configure parity according to datasheet and termios standards */
+	switch (priv->parity) {
+	case 0:  /* No parity */
+		/* PAEN=0, no parity bits needed */
+		break;
 
-  /* Allow baud rate configuration to settle */
-  usleep(50000);  /* 50ms delay */
+	case 1:  /* Odd parity */
+		lcr |= WK2132_LCR_PAEN | WK2132_LCR_PAM0;  /* Enable parity, PAM1=0,PAM0=1 for odd */
+		break;
 
-  /* Step 9: Sub UART receive/transmit enable (DFRobot: sScrReg_t scr = {.rxEn = 0x01, .txEn = 0x01, .sleepEn = 0x00, .rsv = 0x00}) */
-  syslog(LOG_DEBUG, "WK2132: Sub UART receive/transmit enable for port %d\n", priv->port);
-  uint8_t scr = WK2132_SCR_RXEN | WK2132_SCR_TXEN;  /* Enable RX and TX, disable sleep mode */
+	case 2:  /* Even parity */
+		lcr |= WK2132_LCR_PAEN | WK2132_LCR_PAM1;  /* Enable parity, PAM1=1,PAM0=0 for even */
+		break;
 
-  ret = wk2132_i2c_write_reg(priv, WK2132_SCR, scr);
-  if (ret < 0)
-    {
-      syslog(LOG_ERR, "WK2132: Failed to write SCR register for port %d\n", priv->port);
-      goto errout;
-    }
+	default:
+		syslog(LOG_WARNING, "WK2132: Invalid parity mode %lu, using no parity\n", (unsigned long)priv->parity);
+		break;
+	}
 
-  syslog(LOG_DEBUG, "WK2132: Set SCR=0x%02x for port %d (RX/TX enabled)\n", scr, priv->port);
+	ret = wk2132_i2c_write_reg(priv, WK2132_LCR, lcr);
 
-  /* Allow final configuration to settle */
-  usleep(50000);  /* 50ms delay */
+	if (ret < 0) {
+		syslog(LOG_ERR, "WK2132: Failed to write LCR register for port %d\n", priv->port);
+		goto errout;
+	}
 
-  syslog(LOG_INFO, "WK2132: Setup completed successfully for port %d\n", priv->port);
+	syslog(LOG_DEBUG, "WK2132: Set LCR=0x%02x for port %d\n", lcr, priv->port);
 
-  /* Step 10: Enable polling for this port */
-  /* Start polling if not already started (with proper synchronization) */
-  nxsem_wait(&g_wk2132_poll_sem);
-  if (!g_wk2132_poll_started)
-    {
-      g_wk2132_poll_started = true;
-      ret = work_queue(LPWORK, &g_wk2132_poll_work, wk2132_poll_worker, NULL, 0);
-      if (ret < 0)
-        {
-          syslog(LOG_ERR, "WK2132: Failed to start polling worker: %d\n", ret);
-          g_wk2132_poll_started = false;  /* Reset on failure */
-          nxsem_post(&g_wk2132_poll_sem);
-          goto errout;
-        }
-      syslog(LOG_INFO, "WK2132: Started global polling\n");
-    }
-  nxsem_post(&g_wk2132_poll_sem);
+	/* Step 8: Sub UART baud rate configuration */
+	/* Set baud rate */
+	ret = wk2132_set_baud(priv, priv->baud);
 
-  /* Mark device as enabled only after everything succeeds */
-  priv->enabled = true;
+	if (ret < 0) {
+		syslog(LOG_ERR, "WK2132: Failed to set baud rate %lu for port %d\n", (unsigned long)priv->baud, priv->port);
+		goto errout;
+	}
+
+	syslog(LOG_DEBUG, "WK2132: Set baud rate %lu for port %d\n", (unsigned long)priv->baud, priv->port);
+
+	/* Allow baud rate configuration to settle */
+	usleep(50000);  /* 50ms delay */
+
+	/* Step 9: Sub UART receive/transmit enable (DFRobot: sScrReg_t scr = {.rxEn = 0x01, .txEn = 0x01, .sleepEn = 0x00, .rsv = 0x00}) */
+	syslog(LOG_DEBUG, "WK2132: Sub UART receive/transmit enable for port %d\n", priv->port);
+	uint8_t scr = WK2132_SCR_RXEN | WK2132_SCR_TXEN;  /* Enable RX and TX, disable sleep mode */
+
+	ret = wk2132_i2c_write_reg(priv, WK2132_SCR, scr);
+
+	if (ret < 0) {
+		syslog(LOG_ERR, "WK2132: Failed to write SCR register for port %d\n", priv->port);
+		goto errout;
+	}
+
+	syslog(LOG_DEBUG, "WK2132: Set SCR=0x%02x for port %d (RX/TX enabled)\n", scr, priv->port);
+
+	/* Allow final configuration to settle */
+	usleep(50000);  /* 50ms delay */
+
+	syslog(LOG_INFO, "WK2132: Setup completed successfully for port %d\n", priv->port);
+
+	/* Step 10: Enable polling for this port */
+	/* Start polling if not already started (with proper synchronization) */
+	nxsem_wait(&g_wk2132_poll_sem);
+
+	if (!g_wk2132_poll_started) {
+		g_wk2132_poll_started = true;
+		ret = work_queue(LPWORK, &g_wk2132_poll_work, wk2132_poll_worker, NULL, 0);
+
+		if (ret < 0) {
+			syslog(LOG_ERR, "WK2132: Failed to start polling worker: %d\n", ret);
+			g_wk2132_poll_started = false;  /* Reset on failure */
+			nxsem_post(&g_wk2132_poll_sem);
+			goto errout;
+		}
+
+		syslog(LOG_INFO, "WK2132: Started global polling\n");
+	}
+
+	nxsem_post(&g_wk2132_poll_sem);
+
+	/* Mark device as enabled only after everything succeeds */
+	priv->enabled = true;
 
 errout:
-  nxsem_post(&priv->exclsem);
-  return ret;
+	nxsem_post(&priv->exclsem);
+	return ret;
 }
 
 /**
@@ -884,51 +886,51 @@ errout:
  */
 static void wk2132_shutdown(FAR struct uart_dev_s *dev)
 {
-  FAR struct wk2132_dev_s *priv = (FAR struct wk2132_dev_s *)dev->priv;
-  uint8_t gena;
-  int i;
-  bool any_enabled = false;
+	FAR struct wk2132_dev_s *priv = (FAR struct wk2132_dev_s *)dev->priv;
+	uint8_t gena;
+	int i;
+	bool any_enabled = false;
 
-  /* Mark device as disabled first */
-  priv->enabled = false;
+	/* Mark device as disabled first */
+	priv->enabled = false;
 
-  /* Disable all interrupts */
-  wk2132_i2c_write_reg(priv, WK2132_SIER, 0x00);
+	/* Disable all interrupts */
+	wk2132_i2c_write_reg(priv, WK2132_SIER, 0x00);
 
-  /* Disable the UART port in global register (protected by global sem) */
-  nxsem_wait(&g_wk2132_poll_sem);
-  if (wk2132_i2c_read_global(priv, WK2132_GENA, &gena) >= 0)
-    {
-      uint8_t gena_bit = 1 << (priv->port - 1);
-      gena &= ~gena_bit;
-      wk2132_i2c_write_global(priv, WK2132_GENA, gena);
-    }
-  nxsem_post(&g_wk2132_poll_sem);
+	/* Disable the UART port in global register (protected by global sem) */
+	nxsem_wait(&g_wk2132_poll_sem);
 
-  /* Check if any devices are still enabled */
-  nxsem_wait(&g_wk2132_poll_sem);
-  for (i = 0; i < g_wk2132_device_count; i++)
-    {
-      if (g_wk2132_devices[i] != NULL)
-        {
-          FAR struct wk2132_dev_s *check_priv =
-            (FAR struct wk2132_dev_s *)g_wk2132_devices[i]->priv;
-          if (check_priv->enabled)
-            {
-              any_enabled = true;
-              break;
-            }
-        }
-    }
+	if (wk2132_i2c_read_global(priv, WK2132_GENA, &gena) >= 0) {
+		uint8_t gena_bit = 1 << (priv->port - 1);
+		gena &= ~gena_bit;
+		wk2132_i2c_write_global(priv, WK2132_GENA, gena);
+	}
 
-  /* If no devices are enabled, stop polling */
-  if (!any_enabled && g_wk2132_poll_started)
-    {
-      g_wk2132_poll_started = false;
-      work_cancel(LPWORK, &g_wk2132_poll_work);
-      syslog(LOG_INFO, "WK2132: Stopped global polling - no devices enabled\n");
-    }
-  nxsem_post(&g_wk2132_poll_sem);
+	nxsem_post(&g_wk2132_poll_sem);
+
+	/* Check if any devices are still enabled */
+	nxsem_wait(&g_wk2132_poll_sem);
+
+	for (i = 0; i < g_wk2132_device_count; i++) {
+		if (g_wk2132_devices[i] != NULL) {
+			FAR struct wk2132_dev_s *check_priv =
+				(FAR struct wk2132_dev_s *)g_wk2132_devices[i]->priv;
+
+			if (check_priv->enabled) {
+				any_enabled = true;
+				break;
+			}
+		}
+	}
+
+	/* If no devices are enabled, stop polling */
+	if (!any_enabled && g_wk2132_poll_started) {
+		g_wk2132_poll_started = false;
+		work_cancel(LPWORK, &g_wk2132_poll_work);
+		syslog(LOG_INFO, "WK2132: Stopped global polling - no devices enabled\n");
+	}
+
+	nxsem_post(&g_wk2132_poll_sem);
 }
 
 /**
@@ -936,7 +938,7 @@ static void wk2132_shutdown(FAR struct uart_dev_s *dev)
  */
 static int wk2132_attach(FAR struct uart_dev_s *dev)
 {
-  return OK;
+	return OK;
 }
 
 /**
@@ -944,7 +946,7 @@ static int wk2132_attach(FAR struct uart_dev_s *dev)
  */
 static void wk2132_detach(FAR struct uart_dev_s *dev)
 {
-  /* Nothing to do */
+	/* Nothing to do */
 }
 
 /**
@@ -952,92 +954,82 @@ static void wk2132_detach(FAR struct uart_dev_s *dev)
  */
 static int wk2132_ioctl(FAR struct file *filep, int cmd, unsigned long arg)
 {
-  FAR struct inode *inode = filep->f_inode;
-  FAR struct uart_dev_s *dev = inode->i_private;
-  FAR struct wk2132_dev_s *priv = (FAR struct wk2132_dev_s *)dev->priv;
-  int ret = OK;
+	FAR struct inode *inode = filep->f_inode;
+	FAR struct uart_dev_s *dev = inode->i_private;
+	FAR struct wk2132_dev_s *priv = (FAR struct wk2132_dev_s *)dev->priv;
+	int ret = OK;
 
-  switch (cmd)
-    {
-    case TCGETS:
-      {
-        FAR struct termios *termiosp = (FAR struct termios *)arg;
+	switch (cmd) {
+	case TCGETS: {
+			FAR struct termios *termiosp = (FAR struct termios *)arg;
 
-        if (!termiosp)
-          {
-            ret = -EINVAL;
-            break;
-          }
+			if (!termiosp) {
+				ret = -EINVAL;
+				break;
+			}
 
-        /* Return current settings */
-        termiosp->c_cflag = 0;
+			/* Return current settings */
+			termiosp->c_cflag = 0;
 
-        /* WK2132 only supports 8-bit data according to datasheet */
-        termiosp->c_cflag |= CS8;
+			/* WK2132 only supports 8-bit data according to datasheet */
+			termiosp->c_cflag |= CS8;
 
-        if (priv->stopbits2)
-          {
-            termiosp->c_cflag |= CSTOPB;
-          }
+			if (priv->stopbits2) {
+				termiosp->c_cflag |= CSTOPB;
+			}
 
-        if (priv->parity == 1)
-          {
-            termiosp->c_cflag |= PARENB | PARODD;
-          }
-        else if (priv->parity == 2)
-          {
-            termiosp->c_cflag |= PARENB;
-          }
+			if (priv->parity == 1) {
+				termiosp->c_cflag |= PARENB | PARODD;
 
-        /* Set baud rate */
-        cfsetispeed(termiosp, priv->baud);
-        cfsetospeed(termiosp, priv->baud);
-      }
-      break;
+			} else if (priv->parity == 2) {
+				termiosp->c_cflag |= PARENB;
+			}
 
-    case TCSETS:
-      {
-        FAR struct termios *termiosp = (FAR struct termios *)arg;
+			/* Set baud rate */
+			cfsetispeed(termiosp, priv->baud);
+			cfsetospeed(termiosp, priv->baud);
+		}
+		break;
 
-        if (!termiosp)
-          {
-            ret = -EINVAL;
-            break;
-          }
+	case TCSETS: {
+			FAR struct termios *termiosp = (FAR struct termios *)arg;
 
-        /* Extract new settings */
-        priv->baud = cfgetispeed(termiosp);
+			if (!termiosp) {
+				ret = -EINVAL;
+				break;
+			}
 
-        /* WK2132 only supports 8-bit data according to datasheet */
-        priv->nbits = 8;
+			/* Extract new settings */
+			priv->baud = cfgetispeed(termiosp);
 
-        priv->stopbits2 = (termiosp->c_cflag & CSTOPB) != 0;
+			/* WK2132 only supports 8-bit data according to datasheet */
+			priv->nbits = 8;
 
-        if (termiosp->c_cflag & PARENB)
-          {
-            priv->parity = (termiosp->c_cflag & PARODD) ? 1 : 2;
-          }
-        else
-          {
-            priv->parity = 0;
-          }
+			priv->stopbits2 = (termiosp->c_cflag & CSTOPB) != 0;
 
-        /* Reconfigure the UART safely without disrupting polling */
-        ret = wk2132_reconfigure(dev);
-        if (ret < 0)
-          {
-            syslog(LOG_ERR, "WK2132: Failed to reconfigure UART port %d: %d\n", priv->port, ret);
-            /* On reconfigure failure, we should still return the error but the device remains usable with old settings */
-          }
-      }
-      break;
+			if (termiosp->c_cflag & PARENB) {
+				priv->parity = (termiosp->c_cflag & PARODD) ? 1 : 2;
 
-    default:
-      ret = -ENOTTY;
-      break;
-    }
+			} else {
+				priv->parity = 0;
+			}
 
-  return ret;
+			/* Reconfigure the UART safely without disrupting polling */
+			ret = wk2132_reconfigure(dev);
+
+			if (ret < 0) {
+				syslog(LOG_ERR, "WK2132: Failed to reconfigure UART port %d: %d\n", priv->port, ret);
+				/* On reconfigure failure, we should still return the error but the device remains usable with old settings */
+			}
+		}
+		break;
+
+	default:
+		ret = -ENOTTY;
+		break;
+	}
+
+	return ret;
 }
 
 /**
@@ -1045,55 +1037,53 @@ static int wk2132_ioctl(FAR struct file *filep, int cmd, unsigned long arg)
  */
 static int wk2132_receive(FAR struct uart_dev_s *dev, unsigned int *status)
 {
-  FAR struct wk2132_dev_s *priv = (FAR struct wk2132_dev_s *)dev->priv;
-  uint8_t fsr;
-  uint8_t lsr;
-  uint8_t rxdata;
-  int ret;
+	FAR struct wk2132_dev_s *priv = (FAR struct wk2132_dev_s *)dev->priv;
+	uint8_t fsr;
+	uint8_t lsr;
+	uint8_t rxdata;
+	int ret;
 
-  /* Check if device is enabled */
-  if (!priv->enabled)
-    {
-      *status = 0;
-      return -EIO;
-    }
+	/* Check if device is enabled */
+	if (!priv->enabled) {
+		*status = 0;
+		return -EIO;
+	}
 
-  /* Get FIFO status */
-  ret = wk2132_i2c_read_reg(priv, WK2132_FSR, &fsr);
-  if (ret < 0)
-    {
-      syslog(LOG_WARNING, "WK2132: Failed to read FSR for port %d: %d\n", priv->port, ret);
-      *status = 0;
-      return -EIO;
-    }
+	/* Get FIFO status */
+	ret = wk2132_i2c_read_reg(priv, WK2132_FSR, &fsr);
 
-  /* Check if data is actually available before reading */
-  if ((fsr & WK2132_FSR_RDAT) == 0)
-    {
-      *status = fsr << 8;
-      return -EAGAIN;  /* No data available */
-    }
+	if (ret < 0) {
+		syslog(LOG_WARNING, "WK2132: Failed to read FSR for port %d: %d\n", priv->port, ret);
+		*status = 0;
+		return -EIO;
+	}
 
-  /* Get line status */
-  ret = wk2132_i2c_read_reg(priv, WK2132_LSR, &lsr);
-  if (ret < 0)
-    {
-      syslog(LOG_WARNING, "WK2132: Failed to read LSR for port %d: %d\n", priv->port, ret);
-      *status = fsr << 8;
-      return -EIO;
-    }
+	/* Check if data is actually available before reading */
+	if ((fsr & WK2132_FSR_RDAT) == 0) {
+		*status = fsr << 8;
+		return -EAGAIN;  /* No data available */
+	}
 
-  *status = (fsr << 8) | lsr;
+	/* Get line status */
+	ret = wk2132_i2c_read_reg(priv, WK2132_LSR, &lsr);
 
-  /* Read data from FIFO */
-  ret = wk2132_i2c_read_fifo(priv, &rxdata);
-  if (ret < 0)
-    {
-      syslog(LOG_WARNING, "WK2132: Failed to read RX FIFO for port %d: %d\n", priv->port, ret);
-      return -EIO;
-    }
+	if (ret < 0) {
+		syslog(LOG_WARNING, "WK2132: Failed to read LSR for port %d: %d\n", priv->port, ret);
+		*status = fsr << 8;
+		return -EIO;
+	}
 
-  return rxdata;
+	*status = (fsr << 8) | lsr;
+
+	/* Read data from FIFO */
+	ret = wk2132_i2c_read_fifo(priv, &rxdata);
+
+	if (ret < 0) {
+		syslog(LOG_WARNING, "WK2132: Failed to read RX FIFO for port %d: %d\n", priv->port, ret);
+		return -EIO;
+	}
+
+	return rxdata;
 }
 
 /**
@@ -1101,39 +1091,36 @@ static int wk2132_receive(FAR struct uart_dev_s *dev, unsigned int *status)
  */
 static void wk2132_rxint(FAR struct uart_dev_s *dev, bool enable)
 {
-  FAR struct wk2132_dev_s *priv = (FAR struct wk2132_dev_s *)dev->priv;
-  uint8_t sier;
-  int ret;
+	FAR struct wk2132_dev_s *priv = (FAR struct wk2132_dev_s *)dev->priv;
+	uint8_t sier;
+	int ret;
 
-  /* Check if device is enabled */
-  if (!priv->enabled)
-    {
-      return;
-    }
+	/* Check if device is enabled */
+	if (!priv->enabled) {
+		return;
+	}
 
-  /* Read current interrupt enable register */
-  ret = wk2132_i2c_read_reg(priv, WK2132_SIER, &sier);
-  if (ret < 0)
-    {
-      syslog(LOG_WARNING, "WK2132: Failed to read SIER for port %d: %d\n", priv->port, ret);
-      return;
-    }
+	/* Read current interrupt enable register */
+	ret = wk2132_i2c_read_reg(priv, WK2132_SIER, &sier);
 
-  /* Enable/disable RX interrupt */
-  if (enable)
-    {
-      sier |= WK2132_SIER_RFTRIG_IEN;
-    }
-  else
-    {
-      sier &= ~WK2132_SIER_RFTRIG_IEN;
-    }
+	if (ret < 0) {
+		syslog(LOG_WARNING, "WK2132: Failed to read SIER for port %d: %d\n", priv->port, ret);
+		return;
+	}
 
-  ret = wk2132_i2c_write_reg(priv, WK2132_SIER, sier);
-  if (ret < 0)
-    {
-      syslog(LOG_WARNING, "WK2132: Failed to write SIER for port %d: %d\n", priv->port, ret);
-    }
+	/* Enable/disable RX interrupt */
+	if (enable) {
+		sier |= WK2132_SIER_RFTRIG_IEN;
+
+	} else {
+		sier &= ~WK2132_SIER_RFTRIG_IEN;
+	}
+
+	ret = wk2132_i2c_write_reg(priv, WK2132_SIER, sier);
+
+	if (ret < 0) {
+		syslog(LOG_WARNING, "WK2132: Failed to write SIER for port %d: %d\n", priv->port, ret);
+	}
 }
 
 /**
@@ -1141,21 +1128,19 @@ static void wk2132_rxint(FAR struct uart_dev_s *dev, bool enable)
  */
 static bool wk2132_rxavailable(FAR struct uart_dev_s *dev)
 {
-  FAR struct wk2132_dev_s *priv = (FAR struct wk2132_dev_s *)dev->priv;
-  uint8_t fsr;
+	FAR struct wk2132_dev_s *priv = (FAR struct wk2132_dev_s *)dev->priv;
+	uint8_t fsr;
 
-  if (!priv->enabled)
-    {
-      return false;
-    }
+	if (!priv->enabled) {
+		return false;
+	}
 
-  /* Check FIFO status register for available data */
-  if (wk2132_i2c_read_reg(priv, WK2132_FSR, &fsr) < 0)
-    {
-      return false;
-    }
+	/* Check FIFO status register for available data */
+	if (wk2132_i2c_read_reg(priv, WK2132_FSR, &fsr) < 0) {
+		return false;
+	}
 
-  return (fsr & WK2132_FSR_RDAT) != 0;
+	return (fsr & WK2132_FSR_RDAT) != 0;
 }
 
 /**
@@ -1163,22 +1148,21 @@ static bool wk2132_rxavailable(FAR struct uart_dev_s *dev)
  */
 static void wk2132_send(FAR struct uart_dev_s *dev, int ch)
 {
-  FAR struct wk2132_dev_s *priv = (FAR struct wk2132_dev_s *)dev->priv;
-  int ret;
+	FAR struct wk2132_dev_s *priv = (FAR struct wk2132_dev_s *)dev->priv;
+	int ret;
 
-  /* Check if device is enabled */
-  if (!priv->enabled)
-    {
-      return;
-    }
+	/* Check if device is enabled */
+	if (!priv->enabled) {
+		return;
+	}
 
-  /* Write data to FIFO */
-  ret = wk2132_i2c_write_fifo(priv, (uint8_t)ch);
-  if (ret < 0)
-    {
-      syslog(LOG_WARNING, "WK2132: Failed to send character 0x%02x to port %d: %d\n",
-             (uint8_t)ch, priv->port, ret);
-    }
+	/* Write data to FIFO */
+	ret = wk2132_i2c_write_fifo(priv, (uint8_t)ch);
+
+	if (ret < 0) {
+		syslog(LOG_WARNING, "WK2132: Failed to send character 0x%02x to port %d: %d\n",
+		       (uint8_t)ch, priv->port, ret);
+	}
 }
 
 /**
@@ -1186,39 +1170,36 @@ static void wk2132_send(FAR struct uart_dev_s *dev, int ch)
  */
 static void wk2132_txint(FAR struct uart_dev_s *dev, bool enable)
 {
-  FAR struct wk2132_dev_s *priv = (FAR struct wk2132_dev_s *)dev->priv;
-  uint8_t sier;
-  int ret;
+	FAR struct wk2132_dev_s *priv = (FAR struct wk2132_dev_s *)dev->priv;
+	uint8_t sier;
+	int ret;
 
-  /* Check if device is enabled */
-  if (!priv->enabled)
-    {
-      return;
-    }
+	/* Check if device is enabled */
+	if (!priv->enabled) {
+		return;
+	}
 
-  /* Read current interrupt enable register */
-  ret = wk2132_i2c_read_reg(priv, WK2132_SIER, &sier);
-  if (ret < 0)
-    {
-      syslog(LOG_WARNING, "WK2132: Failed to read SIER for port %d: %d\n", priv->port, ret);
-      return;
-    }
+	/* Read current interrupt enable register */
+	ret = wk2132_i2c_read_reg(priv, WK2132_SIER, &sier);
 
-  /* Enable/disable TX interrupt */
-  if (enable)
-    {
-      sier |= WK2132_SIER_TFTRIG_IEN;
-    }
-  else
-    {
-      sier &= ~WK2132_SIER_TFTRIG_IEN;
-    }
+	if (ret < 0) {
+		syslog(LOG_WARNING, "WK2132: Failed to read SIER for port %d: %d\n", priv->port, ret);
+		return;
+	}
 
-  ret = wk2132_i2c_write_reg(priv, WK2132_SIER, sier);
-  if (ret < 0)
-    {
-      syslog(LOG_WARNING, "WK2132: Failed to write SIER for port %d: %d\n", priv->port, ret);
-    }
+	/* Enable/disable TX interrupt */
+	if (enable) {
+		sier |= WK2132_SIER_TFTRIG_IEN;
+
+	} else {
+		sier &= ~WK2132_SIER_TFTRIG_IEN;
+	}
+
+	ret = wk2132_i2c_write_reg(priv, WK2132_SIER, sier);
+
+	if (ret < 0) {
+		syslog(LOG_WARNING, "WK2132: Failed to write SIER for port %d: %d\n", priv->port, ret);
+	}
 }
 
 /**
@@ -1226,22 +1207,20 @@ static void wk2132_txint(FAR struct uart_dev_s *dev, bool enable)
  */
 static bool wk2132_txready(FAR struct uart_dev_s *dev)
 {
-  FAR struct wk2132_dev_s *priv = (FAR struct wk2132_dev_s *)dev->priv;
-  uint8_t fsr;
+	FAR struct wk2132_dev_s *priv = (FAR struct wk2132_dev_s *)dev->priv;
+	uint8_t fsr;
 
-  if (!priv->enabled)
-    {
-      return false;
-    }
+	if (!priv->enabled) {
+		return false;
+	}
 
-  /* Check FIFO status register */
-  if (wk2132_i2c_read_reg(priv, WK2132_FSR, &fsr) < 0)
-    {
-      return false;
-    }
+	/* Check FIFO status register */
+	if (wk2132_i2c_read_reg(priv, WK2132_FSR, &fsr) < 0) {
+		return false;
+	}
 
-  /* Return true if TX FIFO is not full */
-  return (fsr & WK2132_FSR_TFULL) == 0;
+	/* Return true if TX FIFO is not full */
+	return (fsr & WK2132_FSR_TFULL) == 0;
 }
 
 /**
@@ -1249,22 +1228,20 @@ static bool wk2132_txready(FAR struct uart_dev_s *dev)
  */
 static bool wk2132_txempty(FAR struct uart_dev_s *dev)
 {
-  FAR struct wk2132_dev_s *priv = (FAR struct wk2132_dev_s *)dev->priv;
-  uint8_t fsr;
+	FAR struct wk2132_dev_s *priv = (FAR struct wk2132_dev_s *)dev->priv;
+	uint8_t fsr;
 
-  if (!priv->enabled)
-    {
-      return true;
-    }
+	if (!priv->enabled) {
+		return true;
+	}
 
-  /* Check FIFO status register */
-  if (wk2132_i2c_read_reg(priv, WK2132_FSR, &fsr) < 0)
-    {
-      return false;
-    }
+	/* Check FIFO status register */
+	if (wk2132_i2c_read_reg(priv, WK2132_FSR, &fsr) < 0) {
+		return false;
+	}
 
-  /* Return true if TX is not busy and no data available */
-  return ((fsr & WK2132_FSR_TBUSY) == 0) && ((fsr & WK2132_FSR_TDAT) == 0);
+	/* Return true if TX is not busy and no data available */
+	return ((fsr & WK2132_FSR_TBUSY) == 0) && ((fsr & WK2132_FSR_TDAT) == 0);
 }
 
 /****************************************************************************
@@ -1275,223 +1252,218 @@ static bool wk2132_txempty(FAR struct uart_dev_s *dev)
  * @brief Initialize a WK2132 UART port
  */
 FAR struct uart_dev_s *wk2132_uart_init(FAR struct i2c_master_s *i2c,
-                                         uint8_t base_addr, uint8_t port)
+					uint8_t base_addr, uint8_t port)
 {
-  FAR struct wk2132_dev_s *priv;
-  FAR struct uart_dev_s *dev;
-  int ret;
+	FAR struct wk2132_dev_s *priv;
+	FAR struct uart_dev_s *dev;
+	int ret;
 
-  /* Enable debug logging for WK2132 driver */
-  setlogmask(LOG_UPTO(LOG_DEBUG));
+	/* Enable debug logging for WK2132 driver */
+	setlogmask(LOG_UPTO(LOG_DEBUG));
 
-  syslog(LOG_INFO, "WK2132: Initializing port %d with base_addr 0x%02x\n", port, base_addr);
+	syslog(LOG_INFO, "WK2132: Initializing port %d with base_addr 0x%02x\n", port, base_addr);
 
-  /* Validate parameters */
-  if (!i2c || port < 1 || port > WK2132_MAX_PORTS)
-    {
-      syslog(LOG_ERR, "WK2132: Invalid parameters - i2c=%p, port=%d (valid range 1-%d)\n",
-             i2c, port, WK2132_MAX_PORTS);
-      return NULL;
-    }
+	/* Validate parameters */
+	if (!i2c || port < 1 || port > WK2132_MAX_PORTS) {
+		syslog(LOG_ERR, "WK2132: Invalid parameters - i2c=%p, port=%d (valid range 1-%d)\n",
+		       i2c, port, WK2132_MAX_PORTS);
+		return NULL;
+	}
 
-  /* Allocate device structures */
-  priv = (FAR struct wk2132_dev_s *)kmm_zalloc(sizeof(struct wk2132_dev_s));
-  if (priv == NULL)
-    {
-      syslog(LOG_ERR, "WK2132: Failed to allocate private structure for port %d\n", port);
-      return NULL;
-    }
+	/* Allocate device structures */
+	priv = (FAR struct wk2132_dev_s *)kmm_zalloc(sizeof(struct wk2132_dev_s));
 
-  syslog(LOG_DEBUG, "WK2132: Allocated private structure for port %d\n", port);
+	if (priv == NULL) {
+		syslog(LOG_ERR, "WK2132: Failed to allocate private structure for port %d\n", port);
+		return NULL;
+	}
 
-  dev = (FAR struct uart_dev_s *)kmm_zalloc(sizeof(struct uart_dev_s));
-  if (dev == NULL)
-    {
-      syslog(LOG_ERR, "WK2132: Failed to allocate uart_dev_s structure for port %d\n", port);
-      kmm_free(priv);
-      return NULL;
-    }
+	syslog(LOG_DEBUG, "WK2132: Allocated private structure for port %d\n", port);
 
-  syslog(LOG_DEBUG, "WK2132: Allocated uart_dev_s structure for port %d\n", port);
+	dev = (FAR struct uart_dev_s *)kmm_zalloc(sizeof(struct uart_dev_s));
 
-  /* Initialize private structure */
-  priv->i2c       = i2c;
-  priv->base_addr = base_addr;
-  priv->port      = port;
-  priv->baud      = 115200;  /* Default baud rate */
-  priv->parity    = 0;       /* No parity */
-  priv->nbits     = 8;       /* 8 data bits */
-  priv->stopbits2 = false;   /* 1 stop bit */
-  priv->enabled   = false;
+	if (dev == NULL) {
+		syslog(LOG_ERR, "WK2132: Failed to allocate uart_dev_s structure for port %d\n", port);
+		kmm_free(priv);
+		return NULL;
+	}
 
-  nxsem_init(&priv->exclsem, 0, 1);
+	syslog(LOG_DEBUG, "WK2132: Allocated uart_dev_s structure for port %d\n", port);
 
-  syslog(LOG_DEBUG, "WK2132: Initialized private structure - port=%d, baud=%lu, bits=%lu\n",
-         priv->port, (unsigned long)priv->baud, priv->nbits);
+	/* Initialize private structure */
+	priv->i2c       = i2c;
+	priv->base_addr = base_addr;
+	priv->port      = port;
+	priv->baud      = 115200;  /* Default baud rate */
+	priv->parity    = 0;       /* No parity */
+	priv->nbits     = 8;       /* 8 data bits */
+	priv->stopbits2 = false;   /* 1 stop bit */
+	priv->enabled   = false;
 
-  /* Initialize public structure */
-  dev->ops      = &g_wk2132_uart_ops;
-  dev->priv     = priv;
-  dev->isconsole = false;
+	nxsem_init(&priv->exclsem, 0, 1);
 
-  /* Allocate RX/TX buffers - increased to 512 bytes for better performance */
-  dev->xmit.size   = 512;
-  dev->xmit.buffer = (FAR char *)kmm_malloc(dev->xmit.size);
-  if (dev->xmit.buffer == NULL)
-    {
-      syslog(LOG_ERR, "WK2132: Failed to allocate TX buffer for port %d\n", port);
-      goto errout;
-    }
+	syslog(LOG_DEBUG, "WK2132: Initialized private structure - port=%d, baud=%lu, bits=%lu\n",
+	       priv->port, (unsigned long)priv->baud, priv->nbits);
 
-  dev->recv.size   = 512;
-  dev->recv.buffer = (FAR char *)kmm_malloc(dev->recv.size);
-  if (dev->recv.buffer == NULL)
-    {
-      syslog(LOG_ERR, "WK2132: Failed to allocate RX buffer for port %d\n", port);
-      goto errout;
-    }
+	/* Initialize public structure */
+	dev->ops      = &g_wk2132_uart_ops;
+	dev->priv     = priv;
+	dev->isconsole = false;
 
-  syslog(LOG_DEBUG, "WK2132: Allocated TX/RX buffers (512 bytes each) for port %d\n", port);
+	/* Allocate RX/TX buffers - increased to 512 bytes for better performance */
+	dev->xmit.size   = 512;
+	dev->xmit.buffer = (FAR char *)kmm_malloc(dev->xmit.size);
 
-  /* Test if device is present by reading a global register */
-  uint8_t test;
-  syslog(LOG_DEBUG, "WK2132: Testing device presence at base_addr 0x%02x\n", base_addr);
-  ret = wk2132_i2c_read_global(priv, WK2132_GENA, &test);
-  if (ret < 0)
-    {
-      syslog(LOG_ERR, "WK2132: Failed to detect device at base_addr 0x%02x (error=%d)\n", base_addr, ret);
-      goto errout;
-    }
+	if (dev->xmit.buffer == NULL) {
+		syslog(LOG_ERR, "WK2132: Failed to allocate TX buffer for port %d\n", port);
+		goto errout;
+	}
 
-  syslog(LOG_INFO, "WK2132: Device detected at base_addr 0x%02x, GENA=0x%02x\n", base_addr, test);
+	dev->recv.size   = 512;
+	dev->recv.buffer = (FAR char *)kmm_malloc(dev->recv.size);
 
-  /* Add to device list for polling */
-  if (g_wk2132_device_count < WK2132_MAX_PORTS)
-    {
-      g_wk2132_devices[g_wk2132_device_count++] = dev;
-      syslog(LOG_DEBUG, "WK2132: Added device to polling list, count=%d\n", g_wk2132_device_count);
-    }
-  else
-    {
-      syslog(LOG_WARNING, "WK2132: Maximum device count reached, polling may not work for port %d\n", port);
-    }
+	if (dev->recv.buffer == NULL) {
+		syslog(LOG_ERR, "WK2132: Failed to allocate RX buffer for port %d\n", port);
+		goto errout;
+	}
 
-  syslog(LOG_INFO, "WK2132: Initialized port %d with base_addr 0x%02x\n", port, base_addr);
-  return dev;
+	syslog(LOG_DEBUG, "WK2132: Allocated TX/RX buffers (512 bytes each) for port %d\n", port);
+
+	/* Test if device is present by reading a global register */
+	uint8_t test;
+	syslog(LOG_DEBUG, "WK2132: Testing device presence at base_addr 0x%02x\n", base_addr);
+	ret = wk2132_i2c_read_global(priv, WK2132_GENA, &test);
+
+	if (ret < 0) {
+		syslog(LOG_ERR, "WK2132: Failed to detect device at base_addr 0x%02x (error=%d)\n", base_addr, ret);
+		goto errout;
+	}
+
+	syslog(LOG_INFO, "WK2132: Device detected at base_addr 0x%02x, GENA=0x%02x\n", base_addr, test);
+
+	/* Add to device list for polling */
+	if (g_wk2132_device_count < WK2132_MAX_PORTS) {
+		g_wk2132_devices[g_wk2132_device_count++] = dev;
+		syslog(LOG_DEBUG, "WK2132: Added device to polling list, count=%d\n", g_wk2132_device_count);
+
+	} else {
+		syslog(LOG_WARNING, "WK2132: Maximum device count reached, polling may not work for port %d\n", port);
+	}
+
+	syslog(LOG_INFO, "WK2132: Initialized port %d with base_addr 0x%02x\n", port, base_addr);
+	return dev;
 
 errout:
-  if (dev->xmit.buffer)
-    {
-      kmm_free(dev->xmit.buffer);
-    }
-  if (dev->recv.buffer)
-    {
-      kmm_free(dev->recv.buffer);
-    }
-  kmm_free(dev);
-  kmm_free(priv);
-  return NULL;
+
+	if (dev->xmit.buffer) {
+		kmm_free(dev->xmit.buffer);
+	}
+
+	if (dev->recv.buffer) {
+		kmm_free(dev->recv.buffer);
+	}
+
+	kmm_free(dev);
+	kmm_free(priv);
+	return NULL;
 }
 
 /**
  * @brief Register WK2132 serial devices
  */
 int wk2132_register_devices(int i2c_bus, uint8_t i2c_base_addr,
-                            int base_tty, int num_ports)
+			    int base_tty, int num_ports)
 {
-  FAR struct i2c_master_s *i2c;
-  FAR struct uart_dev_s *devs[WK2132_MAX_PORTS];
-  char devpath[16];
-  int i;
-  int ret;
+	FAR struct i2c_master_s *i2c;
+	FAR struct uart_dev_s *devs[WK2132_MAX_PORTS];
+	char devpath[16];
+	int i;
+	int ret;
 
-  syslog(LOG_INFO, "WK2132: Registering %d devices on I2C%d, base_addr=0x%02x, base_tty=%d\n",
-         num_ports, i2c_bus, i2c_base_addr, base_tty);
+	syslog(LOG_INFO, "WK2132: Registering %d devices on I2C%d, base_addr=0x%02x, base_tty=%d\n",
+	       num_ports, i2c_bus, i2c_base_addr, base_tty);
 
-  /* Validate parameters */
-  if (num_ports < 1 || num_ports > WK2132_MAX_PORTS)
-    {
-      syslog(LOG_ERR, "WK2132: Invalid num_ports=%d (valid range 1-%d)\n", num_ports, WK2132_MAX_PORTS);
-      return -EINVAL;
-    }
+	/* Validate parameters */
+	if (num_ports < 1 || num_ports > WK2132_MAX_PORTS) {
+		syslog(LOG_ERR, "WK2132: Invalid num_ports=%d (valid range 1-%d)\n", num_ports, WK2132_MAX_PORTS);
+		return -EINVAL;
+	}
 
-  /* Get I2C bus instance */
-  syslog(LOG_DEBUG, "WK2132: Initializing I2C%d bus\n", i2c_bus);
+	/* Get I2C bus instance */
+	syslog(LOG_DEBUG, "WK2132: Initializing I2C%d bus\n", i2c_bus);
 #if defined(CONFIG_ARCH_CHIP_STM32H7) || defined(CONFIG_ARCH_CHIP_STM32F7) || \
     defined(CONFIG_ARCH_CHIP_STM32F4) || defined(CONFIG_ARCH_CHIP_STM32F3) || \
     defined(CONFIG_ARCH_CHIP_STM32F1)
-  i2c = stm32_i2cbus_initialize(i2c_bus);
+	i2c = stm32_i2cbus_initialize(i2c_bus);
 #elif defined(CONFIG_ARCH_CHIP_IMXRT)
-  i2c = imxrt_i2cbus_initialize(i2c_bus);
+	i2c = imxrt_i2cbus_initialize(i2c_bus);
 #else
 #error "WK2132: Unsupported platform"
 #endif
-  if (i2c == NULL)
-    {
-      syslog(LOG_ERR, "WK2132: Failed to get I2C%d\n", i2c_bus);
-      return -ENODEV;
-    }
 
-  syslog(LOG_DEBUG, "WK2132: I2C%d bus initialized successfully\n", i2c_bus);
+	if (i2c == NULL) {
+		syslog(LOG_ERR, "WK2132: Failed to get I2C%d\n", i2c_bus);
+		return -ENODEV;
+	}
 
-  /* Initialize UART ports */
-  for (i = 0; i < num_ports; i++)
-    {
-      syslog(LOG_DEBUG, "WK2132: Initializing UART port %d\n", i + 1);
-      devs[i] = wk2132_uart_init(i2c, i2c_base_addr, i + 1);
-      if (devs[i] == NULL)
-        {
-          syslog(LOG_ERR, "WK2132: Failed to initialize port %d\n", i + 1);
-          ret = -ENODEV;
-          goto cleanup;
-        }
-      syslog(LOG_DEBUG, "WK2132: Successfully initialized UART port %d\n", i + 1);
-    }
+	syslog(LOG_DEBUG, "WK2132: I2C%d bus initialized successfully\n", i2c_bus);
 
-  /* Register UART devices */
-  for (i = 0; i < num_ports; i++)
-    {
-      snprintf(devpath, sizeof(devpath), "/dev/ttyS%d", base_tty + i);
-      syslog(LOG_DEBUG, "WK2132: Registering device %s for port %d\n", devpath, i + 1);
-      ret = uart_register(devpath, devs[i]);
-      if (ret < 0)
-        {
-          syslog(LOG_ERR, "WK2132: Failed to register %s (error=%d)\n", devpath, ret);
-          goto cleanup;
-        }
+	/* Initialize UART ports */
+	for (i = 0; i < num_ports; i++) {
+		syslog(LOG_DEBUG, "WK2132: Initializing UART port %d\n", i + 1);
+		devs[i] = wk2132_uart_init(i2c, i2c_base_addr, i + 1);
 
-      syslog(LOG_INFO, "WK2132: Registered %s for port %d\n", devpath, i + 1);
-    }
+		if (devs[i] == NULL) {
+			syslog(LOG_ERR, "WK2132: Failed to initialize port %d\n", i + 1);
+			ret = -ENODEV;
+			goto cleanup;
+		}
 
-  syslog(LOG_INFO, "WK2132: Successfully registered all %d devices\n", num_ports);
-  return OK;
+		syslog(LOG_DEBUG, "WK2132: Successfully initialized UART port %d\n", i + 1);
+	}
+
+	/* Register UART devices */
+	for (i = 0; i < num_ports; i++) {
+		snprintf(devpath, sizeof(devpath), "/dev/ttyS%d", base_tty + i);
+		syslog(LOG_DEBUG, "WK2132: Registering device %s for port %d\n", devpath, i + 1);
+		ret = uart_register(devpath, devs[i]);
+
+		if (ret < 0) {
+			syslog(LOG_ERR, "WK2132: Failed to register %s (error=%d)\n", devpath, ret);
+			goto cleanup;
+		}
+
+		syslog(LOG_INFO, "WK2132: Registered %s for port %d\n", devpath, i + 1);
+	}
+
+	syslog(LOG_INFO, "WK2132: Successfully registered all %d devices\n", num_ports);
+	return OK;
 
 cleanup:
-  /* Cleanup on failure */
-  syslog(LOG_WARNING, "WK2132: Cleaning up %d partially initialized devices\n", i);
-  for (int j = 0; j < i; j++)
-    {
-      if (devs[j])
-        {
-          /* Note: uart_unregister would be called here if it existed */
-          /* For now, we'll just free the memory */
-          if (devs[j]->xmit.buffer)
-            {
-              kmm_free(devs[j]->xmit.buffer);
-            }
-          if (devs[j]->recv.buffer)
-            {
-              kmm_free(devs[j]->recv.buffer);
-            }
-          if (devs[j]->priv)
-            {
-              nxsem_destroy(&((FAR struct wk2132_dev_s *)devs[j]->priv)->exclsem);
-              kmm_free(devs[j]->priv);
-            }
-          kmm_free(devs[j]);
-          devs[j] = NULL;
-        }
-    }
+	/* Cleanup on failure */
+	syslog(LOG_WARNING, "WK2132: Cleaning up %d partially initialized devices\n", i);
 
-  return ret;
+	for (int j = 0; j < i; j++) {
+		if (devs[j]) {
+			/* Note: uart_unregister would be called here if it existed */
+			/* For now, we'll just free the memory */
+			if (devs[j]->xmit.buffer) {
+				kmm_free(devs[j]->xmit.buffer);
+			}
+
+			if (devs[j]->recv.buffer) {
+				kmm_free(devs[j]->recv.buffer);
+			}
+
+			if (devs[j]->priv) {
+				nxsem_destroy(&((FAR struct wk2132_dev_s *)devs[j]->priv)->exclsem);
+				kmm_free(devs[j]->priv);
+			}
+
+			kmm_free(devs[j]);
+			devs[j] = NULL;
+		}
+	}
+
+	return ret;
 }

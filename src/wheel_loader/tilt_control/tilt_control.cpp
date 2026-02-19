@@ -88,6 +88,7 @@ bool TiltControl::init()
 
 	// Validate and update kinematic configuration
 	_kinematics->update_configuration();
+
 	if (!_kinematics->validate_configuration()) {
 		PX4_ERR("Invalid kinematic configuration");
 		return false;
@@ -138,6 +139,7 @@ void TiltControl::update_sensor_data()
 {
 	// Check for parameter updates
 	parameter_update_s param_update;
+
 	if (_parameter_update_sub.update(&param_update)) {
 		update_parameters();
 		_kinematics->update_configuration();
@@ -152,6 +154,7 @@ void TiltControl::update_sensor_data()
 
 	// Check for command timeout
 	bool command_timeout = false;
+
 	if (_last_command_time != 0) {
 		command_timeout = (hrt_elapsed_time(&_last_command_time) > COMMAND_TIMEOUT_US);
 	}
@@ -212,8 +215,8 @@ void TiltControl::process_commands()
 	);
 
 	PX4_DEBUG("Tilt position command: %.2f° (%.3f rad)",
-		 (double)math::degrees(_target_tilt_angle_chassis),
-		 (double)_target_tilt_angle_chassis);
+		  (double)math::degrees(_target_tilt_angle_chassis),
+		  (double)_target_tilt_angle_chassis);
 }
 
 void TiltControl::execute_control()
@@ -228,6 +231,7 @@ void TiltControl::execute_control()
 
 	// Get current sensor data
 	TiltHardwareInterface::SensorData sensor_data;
+
 	if (!_hardware_interface->update_sensors(sensor_data)) {
 		PX4_DEBUG("No valid sensor data for control");
 		return;
@@ -235,6 +239,7 @@ void TiltControl::execute_control()
 
 	// Determine target position based on current state
 	float target_actuator_position = 0.0f;
+
 	if (!determine_target_position(state_info, sensor_data, target_actuator_position)) {
 		send_zero_command();
 		return;
@@ -258,6 +263,7 @@ void TiltControl::publish_telemetry()
 
 	// Calculate boom angle from sensor angle using triangle geometry
 	float boom_angle = 0.0f;
+
 	if (sensors_valid && sensor_data.sensor_angle_valid) {
 		boom_angle = _kinematics->encoder_angle_to_boom_angle(sensor_data.sensor_angle);
 	}
@@ -265,9 +271,9 @@ void TiltControl::publish_telemetry()
 	if (sensors_valid) {
 		// Compute current bucket angle using forward kinematics
 		auto linkage_state = _kinematics->compute_forward_kinematics(
-			sensor_data.hbridge_position,
-			boom_angle
-		);
+					     sensor_data.hbridge_position,
+					     boom_angle
+				     );
 
 		// Populate sensor data fields
 		status.bucket_angle = linkage_state.bucket_angle;
@@ -290,6 +296,7 @@ void TiltControl::publish_telemetry()
 
 	// Hardware status
 	bool motor_enabled, encoder_valid, limits_valid;
+
 	if (_hardware_interface->get_hardware_status(motor_enabled, encoder_valid, limits_valid)) {
 		status.motor_enabled = motor_enabled;
 		status.encoder_valid = encoder_valid;
@@ -318,7 +325,7 @@ void TiltControl::update_parameters()
 	// Update the scheduling interval (will take effect on next schedule)
 	ScheduleOnInterval(new_interval_us);
 	PX4_DEBUG("Control rate set to %.1f Hz (interval: %u us)",
-		(double)(1000000.0f / new_interval_us), new_interval_us);
+		  (double)(1000000.0f / new_interval_us), new_interval_us);
 
 	// Update kinematic configuration
 	if (_kinematics) {
@@ -353,12 +360,13 @@ void TiltControl::update_parameters()
 }
 
 bool TiltControl::determine_target_position(
-	const TiltStateManager::StateInfo& state_info,
-	const TiltHardwareInterface::SensorData& sensor_data,
-	float& target_actuator_position)
+	const TiltStateManager::StateInfo &state_info,
+	const TiltHardwareInterface::SensorData &sensor_data,
+	float &target_actuator_position)
 {
 	// Calculate boom angle from sensor angle using triangle geometry
 	float boom_angle = 0.0f;
+
 	if (sensor_data.sensor_angle_valid) {
 		boom_angle = _kinematics->encoder_angle_to_boom_angle(sensor_data.sensor_angle);
 	}
@@ -367,6 +375,7 @@ bool TiltControl::determine_target_position(
 	if (state_info.state == TiltStateManager::OperationalState::CALIBRATING) {
 		// Use calibration command
 		float cal_pos, cal_vel;
+
 		if (_state_manager->get_calibration_command(cal_pos, cal_vel)) {
 			target_actuator_position = cal_pos;
 			return true;
@@ -379,13 +388,14 @@ bool TiltControl::determine_target_position(
 			// Convert chassis-relative to ground-absolute for kinematics
 			float target_ground_angle = _target_tilt_angle_chassis + boom_angle;
 			auto target_linkage = _kinematics->compute_inverse_kinematics(
-				target_ground_angle,
-				boom_angle
-			);
+						      target_ground_angle,
+						      boom_angle
+					      );
 
 			if (target_linkage.is_valid) {
 				target_actuator_position = target_linkage.actuator_length;
 				return true;
+
 			} else {
 				PX4_WARN("Cannot compute target actuator position for tilt angle");
 				return false;
@@ -417,23 +427,23 @@ void TiltControl::send_zero_command()
 
 void TiltControl::execute_motion_control(
 	float target_actuator_position,
-	const TiltHardwareInterface::SensorData& sensor_data)
+	const TiltHardwareInterface::SensorData &sensor_data)
 {
 	// Plan smooth trajectory
 	const float dt = static_cast<float>(CONTROL_INTERVAL_US) * MICROSECONDS_TO_SECONDS;
 	auto motion_setpoint = _motion_controller->plan_trajectory(
-		sensor_data.hbridge_position,
-		target_actuator_position,
-		dt
-	);
+				       sensor_data.hbridge_position,
+				       target_actuator_position,
+				       dt
+			       );
 
 	// Compute control output
 	auto control_output = _motion_controller->compute_control(
-		motion_setpoint,
-		sensor_data.hbridge_position,
-		sensor_data.hbridge_velocity,
-		dt
-	);
+				      motion_setpoint,
+				      sensor_data.hbridge_position,
+				      sensor_data.hbridge_velocity,
+				      dt
+			      );
 
 	// Send command to hardware
 	TiltHardwareInterface::HbridgeSetpoint hbridge_cmd{};;
@@ -455,6 +465,7 @@ int TiltControl::task_spawn(int argc, char *argv[])
 		if (instance->init()) {
 			return PX4_OK;
 		}
+
 	} else {
 		PX4_ERR("alloc failed");
 	}
@@ -490,6 +501,7 @@ int TiltControl::custom_command(int argc, char *argv[])
 			// Clear emergency stop
 			if (get_instance()->_state_manager->clear_emergency_stop()) {
 				return PX4_OK;
+
 			} else {
 				return PX4_ERROR;
 			}
@@ -555,7 +567,7 @@ Check status:
 $ tilt_control status
 )DESCR_STR");
 
-	PRINT_MODULE_USAGE_NAME("tilt_control", "actuator");
+	PRINT_MODULE_USAGE_NAME("tilt_control", "controller");
 	PRINT_MODULE_USAGE_COMMAND("start");
 	PRINT_MODULE_USAGE_COMMAND("stop");
 	PRINT_MODULE_USAGE_COMMAND("calibrate");

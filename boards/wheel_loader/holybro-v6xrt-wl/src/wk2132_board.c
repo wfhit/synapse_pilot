@@ -75,29 +75,28 @@
  */
 int wk2132_board_init(void)
 {
-    int ret;
+	int ret;
 
-    syslog(LOG_INFO, "WK2132: Initializing I2C-UART bridge on bus %d", BOARD_WK2132_I2C_BUS);
-    syslog(LOG_INFO, "WK2132: J1 jumper config IA1=%d, IA0=%d -> I2C addr 0x%02x",
-           WK2132_J1_IA1, WK2132_J1_IA0, BOARD_WK2132_I2C_BASE_ADDR);
+	syslog(LOG_INFO, "WK2132: Initializing I2C-UART bridge on bus %d", BOARD_WK2132_I2C_BUS);
+	syslog(LOG_INFO, "WK2132: J1 jumper config IA1=%d, IA0=%d -> I2C addr 0x%02x",
+	       WK2132_J1_IA1, WK2132_J1_IA0, BOARD_WK2132_I2C_BASE_ADDR);
 
-    /* Register WK2132 serial devices */
-    ret = wk2132_register_devices(BOARD_WK2132_I2C_BUS,
-                                  BOARD_WK2132_I2C_BASE_ADDR,
-                                  BOARD_WK2132_BASE_TTY,
-                                  BOARD_WK2132_NUM_PORTS);
+	/* Register WK2132 serial devices */
+	ret = wk2132_register_devices(BOARD_WK2132_I2C_BUS,
+				      BOARD_WK2132_I2C_BASE_ADDR,
+				      BOARD_WK2132_BASE_TTY,
+				      BOARD_WK2132_NUM_PORTS);
 
-    if (ret < 0)
-    {
-        syslog(LOG_ERR, "WK2132: Failed to initialize (%d)", ret);
-        syslog(LOG_ERR, "WK2132: Check J1 jumper setting and I2C connections");
-        return ret;
-    }
+	if (ret < 0) {
+		syslog(LOG_ERR, "WK2132: Failed to initialize (%d)", ret);
+		syslog(LOG_ERR, "WK2132: Check J1 jumper setting and I2C connections");
+		return ret;
+	}
 
-    syslog(LOG_INFO, "WK2132: Successfully initialized %d ports starting at /dev/ttyS%d",
-           BOARD_WK2132_NUM_PORTS, BOARD_WK2132_BASE_TTY);
+	syslog(LOG_INFO, "WK2132: Successfully initialized %d ports starting at /dev/ttyS%d",
+	       BOARD_WK2132_NUM_PORTS, BOARD_WK2132_BASE_TTY);
 
-    return OK;
+	return OK;
 }
 
 /**
@@ -110,13 +109,12 @@ int wk2132_board_init(void)
  */
 int wk2132_get_device_path(int port_num, char *path, size_t path_len)
 {
-    if (port_num < 0 || port_num >= BOARD_WK2132_NUM_PORTS)
-    {
-        return -EINVAL;
-    }
+	if (port_num < 0 || port_num >= BOARD_WK2132_NUM_PORTS) {
+		return -EINVAL;
+	}
 
-    snprintf(path, path_len, "/dev/ttyS%d", BOARD_WK2132_BASE_TTY + port_num);
-    return OK;
+	snprintf(path, path_len, "/dev/ttyS%d", BOARD_WK2132_BASE_TTY + port_num);
+	return OK;
 }
 
 #endif /* BOARD_HAS_WK2132 */

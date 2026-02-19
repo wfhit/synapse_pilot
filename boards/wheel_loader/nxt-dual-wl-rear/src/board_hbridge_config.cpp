@@ -45,27 +45,27 @@
 
 // Channel configurations for rear board (left and right wheels)
 hbridge_config_t hbridge_configs[HBRIDGE_MAX_INSTANCES] = {
-    // Channel 0 - Left wheel control via PWM 2
-    {
-        .instance_id = 0,
-        .name = "boom_motor",
-        .enabled = true,
-        .pwm_ch = 0,
-        .dir_gpio = DRV8701_LEFT_DIR_GPIO   // PE14 - Rear wheel direction
-    },
-    // Channel 1 - Right wheel control via PWM 3
-    {
-        .instance_id = 1,
-        .name = "rear_wheel",
-        .enabled = true,
-        .pwm_ch = 1,
-        .dir_gpio = DRV8701_RIGHT_DIR_GPIO  // PE13 - Boom direction
-    }
+	// Channel 0 - Left wheel control via PWM 2
+	{
+		.instance_id = 0,
+		.name = "boom_motor",
+		.enabled = true,
+		.pwm_ch = 0,
+		.dir_gpio = DRV8701_LEFT_DIR_GPIO   // PE14 - Rear wheel direction
+	},
+	// Channel 1 - Right wheel control via PWM 3
+	{
+		.instance_id = 1,
+		.name = "rear_wheel",
+		.enabled = true,
+		.pwm_ch = 1,
+		.dir_gpio = DRV8701_RIGHT_DIR_GPIO  // PE13 - Boom direction
+	}
 };
 
 // Manager configuration for shared resources
 hbridge_manager_config_t hbridge_manager_config = {
-    .enable_gpio = DRV8701_ENABLE_GPIO  // PE7 - Shared enable GPIO for all channels
+	.enable_gpio = DRV8701_ENABLE_GPIO  // PE7 - Shared enable GPIO for all channels
 };
 
 #endif // BOARD_HAS_HBRIDGE_CONFIG

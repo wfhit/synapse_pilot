@@ -208,13 +208,16 @@ __EXPORT int board_app_initialize(uintptr_t arg)
 	px4_platform_configure();
 
 #ifdef CONFIG_DRIVERS_QUADRATURE_ENCODER
+
 	// Initialize encoder hardware layer
 	if (quad_encoder_init() != 0) {
 		syslog(LOG_ERR, "[boot] Encoder hardware initialization FAILED\n");
 		led_on(LED_RED);
+
 	} else {
 		syslog(LOG_INFO, "[boot] Encoder hardware initialized successfully\n");
 	}
+
 #endif
 
 	return OK;

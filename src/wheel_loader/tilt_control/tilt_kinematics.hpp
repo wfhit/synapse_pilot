@@ -112,7 +112,7 @@ public:
 	 * @param state Current linkage state
 	 * @return 2x2 Jacobian [dangle/dlength, dangle/dboom]
 	 */
-	matrix::Matrix<float, 2, 2> compute_jacobian(const LinkageState& state) const;
+	matrix::Matrix<float, 2, 2> compute_jacobian(const LinkageState &state) const;
 
 	/**
 	 * @brief Update configuration from parameters
@@ -122,12 +122,12 @@ public:
 	/**
 	 * @brief Get access to drive kinematics component
 	 */
-	const TiltKinematicsDrive& get_drive_kinematics() const { return _drive_kinematics; }
+	const TiltKinematicsDrive &get_drive_kinematics() const { return _drive_kinematics; }
 
 	/**
 	 * @brief Get access to tilt kinematics component
 	 */
-	const TiltKinematicsTilt& get_tilt_kinematics() const { return _tilt_kinematics; }
+	const TiltKinematicsTilt &get_tilt_kinematics() const { return _tilt_kinematics; }
 
 	/**
 	 * @brief Calculate bellcrank boom alignment offset (angle BAC in boom triangle)
@@ -161,14 +161,19 @@ private:
 
 	DEFINE_PARAMETERS(
 		// Boom pivot triangle parameters (coordinates in machine body frame)
-		(ParamFloat<px4::params::BCT_BOOM_LENGTH>) _param_boom_length,                            // Boom length from pivot to bucket (mm)
-		(ParamFloat<px4::params::BCT_BOOM_PIV_CRK>) _param_boom_pivot_to_crank_joint_distance, // Distance from boom pivot to crank joint (mm)
-		(ParamFloat<px4::params::BCT_BCK_CRK_DIST>) _param_bucket_to_crank_joint_distance,    // Distance from bucket base to crank joint (mm)
+		(ParamFloat<px4::params::BCT_BOOM_LENGTH>)
+		_param_boom_length,                            // Boom length from pivot to bucket (mm)
+		(ParamFloat<px4::params::BCT_BOOM_PIV_CRK>)
+		_param_boom_pivot_to_crank_joint_distance, // Distance from boom pivot to crank joint (mm)
+		(ParamFloat<px4::params::BCT_BCK_CRK_DIST>)
+		_param_bucket_to_crank_joint_distance,    // Distance from bucket base to crank joint (mm)
 
 		// Bellcrank triangle parameters (coordinates in bellcrank frame)
 		(ParamFloat<px4::params::BCT_CRK_ARM_LEN>) _param_bellcrank_arm_length,                 // Length of bellcrank arm (mm)
-		(ParamFloat<px4::params::BCT_CRK_COUPLER>) _param_bellcrank_to_coupler_distance,        // Distance from bellcrank to coupler joint (mm)
-		(ParamFloat<px4::params::BCT_CRK_ACT_DIST>) _param_bellcrank_to_actuator_distance  // Distance from bellcrank to actuator joint (mm)
+		(ParamFloat<px4::params::BCT_CRK_COUPLER>)
+		_param_bellcrank_to_coupler_distance,        // Distance from bellcrank to coupler joint (mm)
+		(ParamFloat<px4::params::BCT_CRK_ACT_DIST>)
+		_param_bellcrank_to_actuator_distance  // Distance from bellcrank to actuator joint (mm)
 	);
 
 	/**
@@ -177,8 +182,8 @@ private:
 	 * @param tilt_state Tilt linkage state
 	 * @return Combined linkage state
 	 */
-	LinkageState combine_states(const TiltKinematicsDrive::DriveState& drive_state,
-				      const TiltKinematicsTilt::TiltState& tilt_state) const;
+	LinkageState combine_states(const TiltKinematicsDrive::DriveState &drive_state,
+				    const TiltKinematicsTilt::TiltState &tilt_state) const;
 
 	/**
 	 * @brief Calculate angle using law of cosines: cos(C) = (a²+b²-c²)/(2ab)

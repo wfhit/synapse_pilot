@@ -101,14 +101,14 @@ public:
 	 * @param data Output sensor data structure
 	 * @return True if data is valid and fresh
 	 */
-	bool update_sensors(SensorData& data);
+	bool update_sensors(SensorData &data);
 
 	/**
 	 * @brief Send command to hbridge motor
 	 * @param command Hbridge command to send
 	 * @return True if command sent successfully
 	 */
-	bool send_hbridge_setpoint(const HbridgeSetpoint& command);
+	bool send_hbridge_setpoint(const HbridgeSetpoint &command);
 
 	/**
 	 * @brief Perform hardware self-test
@@ -140,7 +140,7 @@ public:
 	 * @param limits_valid Output: limit switches validity
 	 * @return True if status retrieved successfully
 	 */
-	bool get_hardware_status(bool& motor_enabled, bool& encoder_valid, bool& limits_valid) const;
+	bool get_hardware_status(bool &motor_enabled, bool &encoder_valid, bool &limits_valid) const;
 
 	/**
 	 * @brief Update hardware interface parameters from parameter system
@@ -208,35 +208,35 @@ private:
 	 * @param dump_instance Output: dump limit instance
 	 * @return True if both instances found
 	 */
-	bool select_limit_sensor_instances(int& load_instance, int& dump_instance);
+	bool select_limit_sensor_instances(int &load_instance, int &dump_instance);
 
 	/**
 	 * @brief Update encoder data from selected instance
 	 * @param data Output sensor data
 	 * @return True if encoder data updated
 	 */
-	bool update_encoder_data(SensorData& data);
+	bool update_encoder_data(SensorData &data);
 
 	/**
 	 * @brief Update boom angle from magnetic encoder
 	 * @param data Output sensor data
 	 * @return True if boom angle updated
 	 */
-	bool update_boom_angle(SensorData& data);
+	bool update_boom_angle(SensorData &data);
 
 	/**
 	 * @brief Update limit switch states
 	 * @param data Output sensor data
 	 * @return True if limit switches updated
 	 */
-	bool update_limit_switches(SensorData& data);
+	bool update_limit_switches(SensorData &data);
 
 	/**
 	 * @brief Update motor status from hbridge
 	 * @param data Output sensor data
 	 * @return True if motor status updated
 	 */
-	bool update_motor_status(SensorData& data);
+	bool update_motor_status(SensorData &data);
 
 	/**
 	 * @brief Check if limit switch prevents movement in given direction

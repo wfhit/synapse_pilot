@@ -12,7 +12,6 @@ parameters:
         min: 0.0
         max: 10.0
         decimal: 3
-        unit: ""
 
       DTC_I:
         description:
@@ -23,7 +22,6 @@ parameters:
         min: 0.0
         max: 5.0
         decimal: 3
-        unit: ""
 
       DTC_D:
         description:
@@ -34,7 +32,6 @@ parameters:
         min: 0.0
         max: 1.0
         decimal: 3
-        unit: ""
 
       DTC_I_MAX:
         description:
@@ -45,7 +42,6 @@ parameters:
         min: 0.0
         max: 100.0
         decimal: 1
-        unit: ""
 
       DTC_MAX_SPD:
         description:

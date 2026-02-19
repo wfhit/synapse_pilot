@@ -88,6 +88,7 @@ void AS5600::RunImpl()
 		processSensorData();
 		publishSensorData();
 		updateReadyCounter(true);
+
 	} else {
 		updateReadyCounter(false);
 		perf_count(_comms_errors);

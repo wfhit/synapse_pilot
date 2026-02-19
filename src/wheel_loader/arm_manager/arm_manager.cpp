@@ -102,6 +102,7 @@ void ArmManager::process_arm_commands()
 			if (check_can_arm(cmd.force)) {
 				arm(cmd.source);
 				PX4_INFO("Armed (source: %d)", cmd.source);
+
 			} else {
 				_arm_status.arm_reject_count++;
 				PX4_WARN("Arm rejected - safety checks failed");
@@ -131,12 +132,14 @@ bool ArmManager::check_can_arm(bool force)
 
 	// Check health monitor status
 	health_monitor_status_s health_status;
+
 	if (_health_monitor_status_sub.copy(&health_status)) {
 		if (_param_require_health.get() && !health_status.system_healthy) {
 			_arm_status.health_check_failed = true;
 			can_arm = false;
 			PX4_DEBUG("Arm blocked: system not healthy");
 		}
+
 	} else if (_param_require_health.get()) {
 		_arm_status.health_check_failed = true;
 		can_arm = false;
@@ -145,6 +148,7 @@ bool ArmManager::check_can_arm(bool force)
 
 	// Check operation mode - don't allow arming in SAFETY_STOP
 	operation_mode_status_s mode_status;
+
 	if (_operation_mode_status_sub.copy(&mode_status)) {
 		if (mode_status.current_mode == operation_mode_cmd_s::MODE_WL_SAFETY_STOP) {
 			_arm_status.mode_not_allowed = true;
@@ -155,6 +159,7 @@ bool ArmManager::check_can_arm(bool force)
 
 	// Check actuator status - ensure all valid
 	actuator_status_s actuator_status;
+
 	if (_actuator_status_sub.copy(&actuator_status)) {
 		if (!actuator_status.chassis_left_valid ||
 		    !actuator_status.chassis_right_valid ||
@@ -165,6 +170,7 @@ bool ArmManager::check_can_arm(bool force)
 			can_arm = false;
 			PX4_DEBUG("Arm blocked: actuators not ready");
 		}
+
 	} else {
 		_arm_status.actuators_not_ready = true;
 		can_arm = false;
@@ -174,6 +180,7 @@ bool ArmManager::check_can_arm(bool force)
 	// Check manual control (if timeout parameter is set)
 	if (_param_manual_timeout.get() > 0) {
 		manual_control_setpoint_s manual;
+
 		if (_manual_control_sub.copy(&manual)) {
 			const hrt_abstime now = hrt_absolute_time();
 			const uint32_t timeout_ms = (now - manual.timestamp) / 1000;
@@ -183,6 +190,7 @@ bool ArmManager::check_can_arm(bool force)
 				can_arm = false;
 				PX4_DEBUG("Arm blocked: manual control timeout");
 			}
+
 		} else {
 			_arm_status.manual_control_lost = true;
 			can_arm = false;
@@ -225,11 +233,15 @@ void ArmManager::disarm(uint8_t reason, uint8_t source)
 	_arm_status.last_disarm_reason = reason;
 
 	const char *reason_str = "unknown";
+
 	switch (reason) {
-		case arm_status_s::DISARM_REASON_MANUAL: reason_str = "manual"; break;
-		case arm_status_s::DISARM_REASON_TIMEOUT: reason_str = "idle timeout"; break;
-		case arm_status_s::DISARM_REASON_HEALTH: reason_str = "health failure"; break;
-		case arm_status_s::DISARM_REASON_EMERGENCY: reason_str = "emergency"; break;
+	case arm_status_s::DISARM_REASON_MANUAL: reason_str = "manual"; break;
+
+	case arm_status_s::DISARM_REASON_TIMEOUT: reason_str = "idle timeout"; break;
+
+	case arm_status_s::DISARM_REASON_HEALTH: reason_str = "health failure"; break;
+
+	case arm_status_s::DISARM_REASON_EMERGENCY: reason_str = "emergency"; break;
 	}
 
 	PX4_WARN("System DISARMED (%s)", reason_str);
@@ -239,6 +251,7 @@ void ArmManager::check_auto_disarm()
 {
 	// Check for health failures
 	health_monitor_status_s health_status;
+
 	if (_health_monitor_status_sub.copy(&health_status)) {
 		if (!health_status.system_healthy) {
 			disarm(arm_status_s::DISARM_REASON_HEALTH, arm_cmd_s::SOURCE_AUTO);
@@ -265,6 +278,7 @@ void ArmManager::check_auto_disarm()
 		if (idle_duration > _param_idle_timeout.get()) {
 			disarm(arm_status_s::DISARM_REASON_TIMEOUT, arm_cmd_s::SOURCE_AUTO);
 		}
+
 	} else {
 		// Reset idle timer if system becomes active
 		_idle_start_time = 0;
@@ -279,11 +293,12 @@ bool ArmManager::check_system_idle()
 
 	// Check vehicle velocity
 	vehicle_local_position_s local_pos;
+
 	if (_vehicle_local_position_sub.copy(&local_pos)) {
 		const float velocity = sqrtf(
-			local_pos.vx * local_pos.vx +
-			local_pos.vy * local_pos.vy
-		);
+					       local_pos.vx * local_pos.vx +
+					       local_pos.vy * local_pos.vy
+				       );
 
 		if (velocity > idle_vel_threshold) {
 			is_idle = false;
@@ -293,6 +308,7 @@ bool ArmManager::check_system_idle()
 
 	// Check operation mode (HOLD and LOITER are considered idle)
 	operation_mode_status_s mode_status;
+
 	if (_operation_mode_status_sub.copy(&mode_status)) {
 		if (mode_status.current_mode != operation_mode_cmd_s::MODE_WL_HOLD &&
 		    mode_status.current_mode != operation_mode_cmd_s::MODE_WL_LOITER) {
@@ -303,9 +319,11 @@ bool ArmManager::check_system_idle()
 
 	// Check manual control input
 	manual_control_setpoint_s manual;
+
 	if (_manual_control_sub.copy(&manual)) {
 		// Check if any stick is deflected
 		const float stick_threshold = 0.05f;
+
 		if (fabsf(manual.roll) > stick_threshold ||
 		    fabsf(manual.pitch) > stick_threshold ||
 		    fabsf(manual.yaw) > stick_threshold ||
@@ -341,12 +359,14 @@ void ArmManager::update_arm_status()
 	// Update timing
 	if (_last_arm_time > 0) {
 		_arm_status.time_since_armed = (now - _last_arm_time) / 1e6f;
+
 	} else {
 		_arm_status.time_since_armed = -1.0f;
 	}
 
 	if (_last_disarm_time > 0) {
 		_arm_status.time_since_disarmed = (now - _last_disarm_time) / 1e6f;
+
 	} else {
 		_arm_status.time_since_disarmed = -1.0f;
 	}
@@ -356,6 +376,7 @@ void ArmManager::update_arm_status()
 
 	if (_arm_status.system_idle && _idle_start_time > 0) {
 		_arm_status.idle_time = (now - _idle_start_time) / 1e6f;
+
 	} else {
 		_arm_status.idle_time = 0.0f;
 	}

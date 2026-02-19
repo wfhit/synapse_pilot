@@ -142,8 +142,10 @@ bool HoldMode::captureCurrentState()
 
 	// Get boom position from boom_status topic
 	boom_status_s boom_status;
+
 	if (_boom_status_sub.copy(&boom_status) && boom_status.position_valid) {
 		_hold_state.boom_position = boom_status.angle;
+
 	} else {
 		PX4_WARN("Hold mode: boom_status unavailable, using fallback");
 		_hold_state.boom_position = 1.5f;
@@ -151,8 +153,10 @@ bool HoldMode::captureCurrentState()
 
 	// Get tilt angle from bucket_status topic
 	bucket_status_s bucket_status;
+
 	if (_bucket_status_sub.copy(&bucket_status)) {
 		_hold_state.tilt_angle = bucket_status.bucket_angle;
+
 	} else {
 		PX4_WARN("Hold mode: bucket_status unavailable, using fallback");
 		_hold_state.tilt_angle = 0.0f;
@@ -160,8 +164,10 @@ bool HoldMode::captureCurrentState()
 
 	// Get articulation angle from steering_status topic
 	steering_status_s steering_status;
+
 	if (_steering_status_sub.copy(&steering_status) && steering_status.position_valid) {
 		_hold_state.articulation_angle = steering_status.actual_angle_rad;
+
 	} else {
 		PX4_WARN("Hold mode: steering_status unavailable, using fallback");
 		_hold_state.articulation_angle = 0.0f;
@@ -194,18 +200,21 @@ void HoldMode::updateCurrentState()
 
 	// Get boom position from boom_status topic
 	boom_status_s boom_status;
+
 	if (_boom_status_sub.copy(&boom_status) && boom_status.position_valid) {
 		_current_state.boom_position = boom_status.angle;
 	}
 
 	// Get tilt angle from bucket_status topic
 	bucket_status_s bucket_status;
+
 	if (_bucket_status_sub.copy(&bucket_status)) {
 		_current_state.tilt_angle = bucket_status.bucket_angle;
 	}
 
 	// Get articulation angle from steering_status topic
 	steering_status_s steering_status;
+
 	if (_steering_status_sub.copy(&steering_status) && steering_status.position_valid) {
 		_current_state.articulation_angle = steering_status.actual_angle_rad;
 	}

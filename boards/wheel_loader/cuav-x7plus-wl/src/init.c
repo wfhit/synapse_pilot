@@ -226,12 +226,15 @@ __EXPORT int board_app_initialize(uintptr_t arg)
 	px4_platform_configure();
 
 #ifdef CONFIG_CAN
+
 	/* Initialize CAN bus (CAN1 only) */
 	if (can_devinit() != OK) {
 		syslog(LOG_ERR, "[boot] Failed to initialize CAN1\n");
+
 	} else {
 		syslog(LOG_INFO, "[boot] CAN1 initialized successfully\n");
 	}
+
 #endif
 
 	/* Initialize WK2132 I2C-to-UART bridge */
