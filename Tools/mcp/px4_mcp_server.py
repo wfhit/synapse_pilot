@@ -1,7 +1,7 @@
 """PX4 MCP Server for firmware development.
 
 Provides tools to build, upload, and interact with PX4 firmware on
-wheel loader boards via Claude Code.
+any supported board (wheel loader, CUAV, Holybro, etc.) via Claude Code.
 
 Usage:
     python3 Tools/mcp/px4_mcp_server.py
@@ -26,9 +26,10 @@ import nsh_client
 import serial_manager
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-DOCKER_IMAGE = "px4io/px4-dev-nuttx-focal:2022-08-12"
+DOCKER_IMAGE = "px4io/px4-dev:v1.16.0-rc1-258-g0369abd556"
 
 BOARD_TARGETS = {
+    # --- Wheel loader boards ---
     "wheel_loader_cuav-x7plus-wl_default": {
         "role": "Main coordinator",
         "chip": "STM32H743",
@@ -49,6 +50,27 @@ BOARD_TARGETS = {
         "chip": "STM32H743",
         "description": "NXT Dual board for rear body: drivetrain_controller, steering_controller, traction_controller, boom_control, driver_lamp_controller, load_lamp_controller",
     },
+    # --- Standard PX4 boards ---
+    "cuav_x7pro_default": {
+        "role": "Flight controller",
+        "chip": "STM32H753",
+        "description": "CUAV X7Pro flight controller (FMUv6X class)",
+    },
+    "cuav_nora_default": {
+        "role": "Flight controller",
+        "chip": "STM32H743",
+        "description": "CUAV Nora flight controller",
+    },
+    "cuav_7-nano_default": {
+        "role": "Flight controller",
+        "chip": "STM32H743",
+        "description": "CUAV V7 Nano flight controller",
+    },
+    "cuav_x25-evo_default": {
+        "role": "Flight controller",
+        "chip": "STM32H743",
+        "description": "CUAV X25 Evo flight controller",
+    },
 }
 
 mcp = FastMCP("px4", log_level="WARNING")
@@ -61,7 +83,7 @@ mcp = FastMCP("px4", log_level="WARNING")
 
 @mcp.resource("px4://boards")
 def get_boards() -> str:
-    """List all wheel loader board targets with roles and descriptions."""
+    """List all supported board targets with roles and descriptions."""
     return json.dumps(BOARD_TARGETS, indent=2)
 
 
@@ -98,10 +120,10 @@ def get_build_status(target: str) -> str:
 
 @mcp.tool()
 async def build_firmware(target: str, clean: bool = False) -> str:
-    """Build PX4 firmware for a wheel loader board target.
+    """Build PX4 firmware for a board target.
 
     Args:
-        target: Board target name (e.g. 'wheel_loader_cuav-x7plus-wl_default')
+        target: Board target name (e.g. 'cuav_x7pro_default', 'wheel_loader_cuav-x7plus-wl_default')
         clean: If True, run 'make clean' before building
     """
     if target not in BOARD_TARGETS:

@@ -45,11 +45,16 @@ def _open_serial(port: str) -> serial.Serial:
 
 
 def _wait_for_prompt(ser: serial.Serial, timeout: float = 30) -> str:
-    """Send newlines until we see 'nsh>'. Returns output collected while waiting."""
+    """Send carriage returns until we see 'nsh>'. Returns output collected while waiting.
+
+    PX4's cdcacm_autostart scans for 3 consecutive carriage returns (0x0D)
+    to trigger NSH when SYS_USB_AUTO=1 (auto-detect mode).
+    """
     output_lines = []
     timeout_start = time.monotonic()
 
-    ser.write(b"\n\n\n")
+    # 3 consecutive \r bytes trigger NSH in auto-detect mode
+    ser.write(b"\r\r\r")
 
     while True:
         line = ser.readline().decode("ascii", errors="ignore")
@@ -62,9 +67,10 @@ def _wait_for_prompt(ser: serial.Serial, timeout: float = 30) -> str:
             if time.monotonic() > timeout_start + timeout:
                 raise NshTimeoutError(
                     "Timeout waiting for NSH prompt. "
-                    "Board may be in bootloader mode."
+                    "Board may be in bootloader mode or "
+                    "SYS_USB_AUTO may not be set to 1 (auto-detect)."
                 )
-            ser.write(b"\n")
+            ser.write(b"\r")
 
 
 def run_nsh_command(
@@ -83,7 +89,7 @@ def run_nsh_command(
         ser.reset_input_buffer()
 
         success_cmd = "cmd succeeded!"
-        serial_cmd = '{0}; echo "{1}"; echo "{2}";\n'.format(
+        serial_cmd = '{0}; echo "{1}"; echo "{2}";\r'.format(
             command, success_cmd, success_cmd
         )
         ser.write(serial_cmd.encode("ascii"))
@@ -179,10 +185,10 @@ def monitor_boot(port: str, timeout: float = 180) -> NshResult:
                         return_code=-1,
                     )
 
-                # Send newline every 10 seconds to prod the board
+                # Send carriage returns every 10 seconds to prod the board
                 if time.monotonic() - timeout_newline > 10:
                     timeout_newline = time.monotonic()
-                    ser.write(b"\n")
+                    ser.write(b"\r\r\r")
     finally:
         ser.close()
 
@@ -202,7 +208,7 @@ def run_hil_test(
         ser.reset_input_buffer()
 
         cmd = "tests " + test_name
-        ser.write("{0}\n".format(cmd).encode("ascii"))
+        ser.write("{0}\r".format(cmd).encode("ascii"))
 
         # Wait for command echo
         output_lines = []
@@ -245,9 +251,9 @@ def run_hil_test(
                         return_code=-1,
                     )
 
-                # Send newline every 30 seconds to keep connection alive
+                # Send carriage return every 30 seconds to keep connection alive
                 if time.monotonic() - timeout_newline > 30:
-                    ser.write(b"\n")
+                    ser.write(b"\r")
                     timeout_newline = time.monotonic()
     finally:
         ser.close()

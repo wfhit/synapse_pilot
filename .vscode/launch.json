@@ -2,11 +2,11 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "jlink (hkust_nxt-dual)",
-            "gdbPath": "/opt/gcc/bin/arm-none-eabi-gdb",
-            "device": "STM32H743VI",
+            "name": "jlink (wheel_loader_cuav-x7plus-wl)",
+            "gdbPath": "/usr/bin/gdb-multiarch",
+            "device": "STM32H743XI",
             "svdFile": "",
-            "rtos": "",
+            "rtos": "/home/frank/big_disk/synapse_pilot_ws/synapse_pilot/platforms/nuttx/NuttX/nuttx/tools/jlink-nuttx.so",
             "executable": "${command:cmake.launchTargetPath}",
             "request": "launch",
             "type": "cortex-debug",
@@ -24,9 +24,9 @@
             ]
         },
         {
-            "name": "stlink (hkust_nxt-dual)",
-            "gdbPath": "/opt/gcc/bin/arm-none-eabi-gdb",
-            "device": "STM32H743VI",
+            "name": "stlink (wheel_loader_cuav-x7plus-wl)",
+            "gdbPath": "/usr/bin/gdb-multiarch",
+            "device": "STM32H743XI",
             "svdFile": "",
             "executable": "${command:cmake.launchTargetPath}",
             "request": "launch",
@@ -43,9 +43,9 @@
             ]
         },
         {
-            "name": "blackmagic (hkust_nxt-dual)",
-            "gdbPath": "/opt/gcc/bin/arm-none-eabi-gdb",
-            "device": "STM32H743VI",
+            "name": "blackmagic (wheel_loader_cuav-x7plus-wl)",
+            "gdbPath": "/usr/bin/gdb-multiarch",
+            "device": "STM32H743XI",
             "svdFile": "",
             "executable": "${command:cmake.launchTargetPath}",
             "request": "launch",

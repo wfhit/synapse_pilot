@@ -277,6 +277,13 @@ if(EXISTS ${BOARD_DEFCONFIG})
 	    endforeach()
 	endif()
 
+	# Derive CONFIG_BUILD_FLAT from CONFIG_BOARD_PROTECTED for NuttX builds.
+	# NuttX flat builds need CONFIG_BUILD_FLAT defined so CMake uses the correct
+	# build layers (px4_layer.cmake vs px4_protected_layers.cmake).
+	if(NOT CONFIG_BOARD_PROTECTED)
+		set(CONFIG_BUILD_FLAT y CACHE INTERNAL "NuttX flat build (not protected)" FORCE)
+	endif()
+
 	if(PLATFORM)
 		# set OS, and append specific platform module path
 		set(PX4_PLATFORM ${PLATFORM} CACHE STRING "PX4 board OS" FORCE)
