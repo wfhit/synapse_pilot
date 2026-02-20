@@ -67,7 +67,7 @@ Baudrate: **57600**. Connect with `screen /dev/ttyACM0 57600` after setting `SYS
 
 ## Claude Code Skills
 
-Five slash commands are available in `.claude/skills/`:
+Six slash commands are available in `.claude/skills/`:
 
 | Skill | Usage | What it does |
 |-------|-------|-------------|
@@ -76,6 +76,7 @@ Five slash commands are available in `.claude/skills/`:
 | `/nsh` | `/nsh ver all` | Run NSH command on connected board (requires `SYS_USB_AUTO=1`) |
 | `/board-status` | `/board-status` | List connected PX4 boards via USB (VID:PID, device, mode) |
 | `/board-diff` | `/board-diff cuav-x7pro cuav-wl` | Compare config files between two board variants |
+| `/ulog` | `/ulog` or `/ulog download` or `/ulog analyze <file>` | Enable ulog, download latest `.ulg` from SD card, and analyze with pyulog |
 
 ## MCP Server
 
