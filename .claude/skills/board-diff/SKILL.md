@@ -16,13 +16,6 @@ Compare the configuration files between two board variants to understand differe
 | `nxt-rear` | `boards/wheel_loader/nxt-dual-wl-rear` |
 | `cuav-wl` | `boards/wheel_loader/cuav-x7plus-wl` |
 | `holybro` | `boards/wheel_loader/holybro-v6xrt-wl` |
-| `nxt-dual` | `boards/hkust/nxt-dual` |
-| `cuav-x7pro` | `boards/cuav/x7pro` |
-| `cuav-nora` | `boards/cuav/nora` |
-| `cuav-7nano` | `boards/cuav/7-nano` |
-| `cuav-x25evo` | `boards/cuav/x25-evo` |
-| `matek-slim` | `boards/matek/h743-slim` |
-| `matek-h743` | `boards/matek/h743` |
 
 Parse `$ARGUMENTS` to extract two board shortnames. If only one is given, ask for the second. If none given, suggest common comparisons.
 

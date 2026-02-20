@@ -13,7 +13,7 @@ Upload a built firmware `.px4` file to a connected board via USB bootloader.
 Identify the connected board by checking USB devices:
 
 ```bash
-lsusb | grep -iE "matek|1b8c|cuav|3163|px4|stm"
+lsusb | grep -iE "1b8c|3163"
 ls -la /dev/ttyACM* 2>/dev/null
 ```
 
@@ -21,10 +21,9 @@ Known VID:PID mappings:
 
 | VID:PID | Board |
 |---------|-------|
-| `1b8c:0036` | NXT-Dual (app mode) |
-| `1b8c:004b` | NXT-Dual (bootloader mode) |
-| `3163:004c` | CUAV X7Pro / CUAV X7Plus-WL |
-| `26ac:*` | PX4 generic |
+| `1b8c:0036` | NXT-Dual (nxt-front / nxt-rear) — app mode |
+| `1b8c:004b` | NXT-Dual (nxt-front / nxt-rear) — bootloader mode |
+| `3163:004c` | CUAV X7Plus-WL (cuav-wl) |
 
 ## Firmware File Location
 
@@ -36,9 +35,6 @@ Find the firmware file based on the board target:
 | `nxt-rear` | `build/wheel_loader_nxt-dual-wl-rear_default/*.px4` |
 | `cuav-wl` | `build/wheel_loader_cuav-x7plus-wl_default/*.px4` |
 | `holybro` | `build/wheel_loader_holybro-v6xrt-wl_default/*.px4` |
-| `nxt-dual` | `build/hkust_nxt-dual_default/*.px4` |
-| `cuav-x7pro` | `build/cuav_x7pro_default/*.px4` |
-| `cuav-nora` | `build/cuav_nora_default/*.px4` |
 
 If `$ARGUMENTS` specifies a board shortname, use it. Otherwise, auto-detect from the connected board's VID:PID.
 
@@ -52,20 +48,23 @@ The uploader automatically sends a reboot-to-bootloader command over MAVLink/ser
 
 ## Steps
 
-1. Check which board is connected via USB (lsusb + /dev/ttyACM*)
-2. Resolve the firmware `.px4` file path (from argument or auto-detect)
-3. Verify the `.px4` file exists; if not, suggest running `/build` first
-4. Run `px_uploader.py` with a 2-minute timeout
-5. After upload completes, wait 10 seconds and check if USB re-enumerates
-6. Report success or failure
+1. Log: `[upload] Scanning USB for connected wheel loader boards...`
+2. Check which board is connected via USB (lsusb + /dev/ttyACM*); log detected board and VID:PID
+3. Resolve the firmware `.px4` file path (from argument or auto-detect); log: `[upload] Firmware: <path> (<size> bytes)`
+4. Verify the `.px4` file exists; if not, log `[upload] ✗ Firmware not found — run /build <board> first` and stop
+5. Log: `[upload] Starting upload to <port> at <timestamp>...`
+6. Run `px_uploader.py` with a 2-minute timeout; stream its output so erase/program progress is visible
+7. Log each phase as it appears in uploader output: `[upload] Erasing...`, `[upload] Programming... <N>%`, `[upload] Verifying...`
+8. On completion: Log `[upload] ✓ Upload complete — elapsed <duration>s` or `[upload] ✗ Upload failed — exit code <N>`
+9. Wait 10 seconds, then check if USB re-enumerates
 
 ## Post-Upload Verification
 
 After the board reboots, check:
 ```bash
 sleep 10
-lsusb | grep -iE "matek|1b8c|cuav|3163"
+lsusb | grep -iE "1b8c|3163"
 ls -la /dev/ttyACM* 2>/dev/null
 ```
 
-Report whether the board re-enumerated and which VID:PID was detected.
+Log: `[upload] Board re-enumerated as <VID:PID> on <port>` or `[upload] ✗ Board did not re-enumerate — check USB cable`
