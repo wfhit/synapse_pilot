@@ -1,5 +1,8 @@
 name: Unit Tests
 
+env:
+  PX4_DOCKER_IMAGE: px4io/px4-dev:v1.16.0-rc1-258-g0369abd556
+
 on:
   push:
     branches:
@@ -44,32 +47,66 @@ jobs:
     name: Unit Tests
     needs: check-runner
     runs-on: ${{ fromJSON(needs.check-runner.outputs.runner) }}
-    container:
-      image: px4io/px4-dev:v1.16.0-rc1-258-g0369abd556
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Git ownership workaround
-        run: git config --system --add safe.directory '*'
+      - name: Restore Docker image cache
+        id: docker-cache
+        uses: actions/cache@v4
+        with:
+          path: /tmp/px4-docker.tar
+          key: docker-image-${{ env.PX4_DOCKER_IMAGE }}
+
+      - name: Pull and save Docker image
+        if: steps.docker-cache.outputs.cache-hit != 'true'
+        run: |
+          docker pull ${{ env.PX4_DOCKER_IMAGE }}
+          docker save ${{ env.PX4_DOCKER_IMAGE }} -o /tmp/px4-docker.tar
+
+      - name: Load Docker image from cache
+        if: steps.docker-cache.outputs.cache-hit == 'true'
+        run: docker load -i /tmp/px4-docker.tar
 
       - name: Run tests
-        run: make tests
+        run: |
+          docker run --rm \
+            -v "${{ github.workspace }}:${{ github.workspace }}" \
+            -w "${{ github.workspace }}" \
+            "${{ env.PX4_DOCKER_IMAGE }}" \
+            bash -c "git config --global --add safe.directory '*' && make tests"
 
   module-documentation:
     name: Module Documentation
     needs: check-runner
     runs-on: ${{ fromJSON(needs.check-runner.outputs.runner) }}
-    container:
-      image: px4io/px4-dev:v1.16.0-rc1-258-g0369abd556
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Git ownership workaround
-        run: git config --system --add safe.directory '*'
+      - name: Restore Docker image cache
+        id: docker-cache
+        uses: actions/cache@v4
+        with:
+          path: /tmp/px4-docker.tar
+          key: docker-image-${{ env.PX4_DOCKER_IMAGE }}
+
+      - name: Pull and save Docker image
+        if: steps.docker-cache.outputs.cache-hit != 'true'
+        run: |
+          docker pull ${{ env.PX4_DOCKER_IMAGE }}
+          docker save ${{ env.PX4_DOCKER_IMAGE }} -o /tmp/px4-docker.tar
+
+      - name: Load Docker image from cache
+        if: steps.docker-cache.outputs.cache-hit == 'true'
+        run: docker load -i /tmp/px4-docker.tar
 
       - name: Validate Module Documentation
-        run: make module_documentation
+        run: |
+          docker run --rm \
+            -v "${{ github.workspace }}:${{ github.workspace }}" \
+            -w "${{ github.workspace }}" \
+            "${{ env.PX4_DOCKER_IMAGE }}" \
+            bash -c "git config --global --add safe.directory '*' && make module_documentation"
