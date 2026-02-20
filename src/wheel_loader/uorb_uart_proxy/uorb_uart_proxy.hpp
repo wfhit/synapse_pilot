@@ -51,7 +51,6 @@
 
 #include <px4_platform_common/module.h>
 #include <px4_platform_common/module_params.h>
-#include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
 #include <uORB/Subscription.hpp>
 #include <uORB/Publication.hpp>
 #include <lib/distributed_uorb/distributed_uorb_protocol.hpp>
@@ -72,7 +71,7 @@
 using namespace time_literals;
 using namespace distributed_uorb;
 
-class UorbUartProxy : public ModuleBase<UorbUartProxy>, public ModuleParams, public px4::ScheduledWorkItem
+class UorbUartProxy : public ModuleBase<UorbUartProxy>, public ModuleParams
 {
 public:
 	UorbUartProxy();
@@ -91,9 +90,10 @@ public:
 	int print_status() override;
 
 	bool init();
+	void run();
 
 private:
-	void Run() override;
+	static int run_trampoline(int argc, char *argv[]);
 
 	// UART management
 	bool open_uart();

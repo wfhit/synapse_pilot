@@ -40,14 +40,12 @@
 #include <drivers/drv_hrt.h>
 
 UorbUartProxy::UorbUartProxy() :
-	ModuleParams(nullptr),
-	ScheduledWorkItem(MODULE_NAME, px4::wq_configurations::hp_default)
+	ModuleParams(nullptr)
 {
 }
 
 UorbUartProxy::~UorbUartProxy()
 {
-	ScheduleClear();
 	close_uart();
 }
 
@@ -66,9 +64,6 @@ bool UorbUartProxy::init()
 
 	// Setup outgoing subscriptions
 	setup_outgoing_subscriptions();
-
-	// Schedule periodic execution
-	ScheduleOnInterval(10_ms);
 
 	PX4_INFO("Initialized on %s at %ld baud, node_id=%ld",
 		 _uart_device, (long)_param_baud.get(), (long)_param_node_id.get());
@@ -194,26 +189,20 @@ void UorbUartProxy::setup_outgoing_subscriptions()
 	PX4_INFO("Setup %zu outgoing subscriptions", _out_sub_count);
 }
 
-void UorbUartProxy::Run()
+void UorbUartProxy::run()
 {
-	if (should_exit()) {
-		ScheduleClear();
-		exit_and_cleanup();
-		return;
-	}
+	while (!should_exit()) {
+		send_outgoing();
+		receive_incoming();
 
-	// Send outgoing messages
-	send_outgoing();
+		hrt_abstime now = hrt_absolute_time();
 
-	// Receive incoming messages
-	receive_incoming();
+		if (now - _last_heartbeat_time >= HEARTBEAT_INTERVAL) {
+			send_heartbeat();
+			_last_heartbeat_time = now;
+		}
 
-	// Send heartbeat every 1 second
-	hrt_abstime now = hrt_absolute_time();
-
-	if (now - _last_heartbeat_time >= HEARTBEAT_INTERVAL) {
-		send_heartbeat();
-		_last_heartbeat_time = now;
+		usleep(10000); // 10ms
 	}
 }
 
@@ -568,25 +557,40 @@ int UorbUartProxy::print_status()
 
 int UorbUartProxy::task_spawn(int argc, char *argv[])
 {
-	UorbUartProxy *instance = new UorbUartProxy();
+	_task_id = px4_task_spawn_cmd("uorb_uart_proxy",
+				      SCHED_DEFAULT,
+				      SCHED_PRIORITY_DEFAULT,
+				      4096,
+				      (px4_main_t)&UorbUartProxy::run_trampoline,
+				      (char *const *)argv);
 
-	if (instance) {
-		_object.store(instance);
-		_task_id = task_id_is_work_queue;
-
-		if (instance->init()) {
-			return PX4_OK;
-		}
-
-	} else {
-		PX4_ERR("alloc failed");
+	if (_task_id < 0) {
+		_task_id = -1;
+		return -errno;
 	}
 
-	delete instance;
+	return 0;
+}
+
+int UorbUartProxy::run_trampoline(int argc, char *argv[])
+{
+	UorbUartProxy *instance = new UorbUartProxy();
+
+	if (!instance) {
+		PX4_ERR("alloc failed");
+		return -1;
+	}
+
+	_object.store(instance);
+
+	if (instance->init()) {
+		instance->run();
+	}
+
 	_object.store(nullptr);
 	_task_id = -1;
-
-	return PX4_ERROR;
+	delete instance;
+	return 0;
 }
 
 int UorbUartProxy::custom_command(int argc, char *argv[])
