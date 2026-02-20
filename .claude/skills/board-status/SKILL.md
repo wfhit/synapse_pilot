@@ -12,7 +12,7 @@ Check which PX4 boards are connected via USB and report their status.
 1. List USB devices and filter for known PX4 boards:
 
 ```bash
-lsusb | grep -iE "matek|1b8c|cuav|3163|px4|stm|26ac"
+lsusb | grep -iE "1b8c|3163"
 ```
 
 2. Check for serial devices:
@@ -29,14 +29,15 @@ for dev in /dev/ttyACM*; do
 done
 ```
 
+Note: Only wheel loader boards are supported: NXT-Dual (front/rear actuator boards) and CUAV X7Plus-WL (main coordinator).
+
 ## Board Identification
 
 | VID:PID | Board | Mode |
 |---------|-------|------|
-| `1b8c:004b` | NXT-Dual | Bootloader |
-| `1b8c:0036` | NXT-Dual | Application |
-| `3163:004c` | CUAV X7Pro / X7Plus-WL | Application |
-| `26ac:0011` | PX4 FMU v5 | Application |
+| `1b8c:004b` | NXT-Dual (nxt-front / nxt-rear) | Bootloader |
+| `1b8c:0036` | NXT-Dual (nxt-front / nxt-rear) | Application |
+| `3163:004c` | CUAV X7Plus-WL (cuav-wl) | Application |
 
 ## Output Format
 
