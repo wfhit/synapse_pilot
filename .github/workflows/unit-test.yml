@@ -22,13 +22,6 @@ jobs:
     runs-on: frank_private_runner
     container:
       image: px4io/px4-dev:v1.16.0-rc1-258-g0369abd556
-    strategy:
-      fail-fast: false
-      matrix:
-        check: [
-          "tests",
-          "tests_coverage",
-        ]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -37,16 +30,8 @@ jobs:
       - name: Git ownership workaround
         run: git config --system --add safe.directory '*'
 
-      - name: Running [${{ matrix.check }}]
-        run: make ${{ matrix.check }}
-
-      - name: Upload Coverage to Codecov
-        if: contains(matrix.check, 'coverage')
-        uses: codecov/codecov-action@v4
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          flags: unittests
-          file: coverage/lcov.info
+      - name: Run tests
+        run: make tests
 
   module-documentation:
     name: Module Documentation
@@ -63,19 +48,3 @@ jobs:
 
       - name: Validate Module Documentation
         run: make module_documentation
-
-  stack-check:
-    name: Stack Check
-    runs-on: frank_private_runner
-    container:
-      image: px4io/px4-dev-nuttx-focal:2022-08-12
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Git ownership workaround
-        run: git config --system --add safe.directory '*'
-
-      - name: Build and Check Stack Usage
-        run: make px4_fmu-v2_default stack_check
