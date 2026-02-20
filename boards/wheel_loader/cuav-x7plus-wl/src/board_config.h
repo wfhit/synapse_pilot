@@ -103,16 +103,15 @@
 #define GPIO_CAN1_SILENT_S0  /* PH2  */ (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_CLEAR|GPIO_PORTH|GPIO_PIN2)
 #define GPIO_CAN2_SILENT_S1  /* PH3  */ (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_CLEAR|GPIO_PORTH|GPIO_PIN3)
 
-/* NOTE: I2C2 (PF0/PF1) has been disabled and repurposed for navigation lamp system */
+/* NOTE: I2C2 (PF0/PF1) restored for GPS2 compass. Nav lamp moved to spare UART8 pins. */
 
 /* HEATER */
 #define GPIO_HEATER_OUTPUT   /* PA8 */ (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_CLEAR|GPIO_PORTA|GPIO_PIN8)
 #define HEATER_OUTPUT_EN(on_true)      px4_arch_gpiowrite(GPIO_HEATER_OUTPUT, (on_true))
 
-/* STATUS LAMP SYSTEM - Simplified Two-GPIO Configuration */
-/* Using repurposed I2C2 pins for navigation lamp system */
-#define GPIO_STATUS_LAMP_STATE   /* PF0 */ (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_CLEAR|GPIO_PORTF|GPIO_PIN0)  /* Former I2C2_SDA */
-#define GPIO_STATUS_LAMP_LIGHT   /* PF1 */ (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_CLEAR|GPIO_PORTF|GPIO_PIN1)  /* Former I2C2_SCL */
+/* STATUS LAMP SYSTEM - Using spare UART8 pins (PE0/PE1) */
+#define GPIO_STATUS_LAMP_STATE   /* PE0 */ (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_CLEAR|GPIO_PORTE|GPIO_PIN0)
+#define GPIO_STATUS_LAMP_LIGHT   /* PE1 */ (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_CLEAR|GPIO_PORTE|GPIO_PIN1)
 #define BOARD_HAS_NAV_LAMP 1
 
 /* Status Lamp Control Macros */
@@ -171,7 +170,20 @@
 
 #define HRT_PPM_CHANNEL         /* T3C1 */  1  /* use capture/compare channel 1 */
 #define GPIO_PPM_IN             /* PB4 T3C1 */ GPIO_TIM3_CH1IN_2
-#define RC_SERIAL_PORT          "/dev/ttyS5"
+/* Serial Port Mapping (CONFIG_STM32H7_SERIAL_DISABLE_REORDERING=y)
+ * NuttX assigns /dev/ttyS* in peripheral enable order from defconfig:
+ *
+ * /dev/ttyS0  USART1  GPS1        38400   Primary GPS + I2C1 (compass)
+ * /dev/ttyS1  USART2  TELEM1      921600  VLA proxy
+ * /dev/ttyS2  UART4   GPS2        38400   Second GPS + I2C2 (compass)
+ * /dev/ttyS3  USART6  TELEM2      57600   RC input (RadioMaster TX16S)
+ * /dev/ttyS4  UART7   DSU7        115200  NSH debug console (SERIAL_CONSOLE)
+ * /dev/ttyS5  UART8   RC port     57600   spare
+ * /dev/ttyS10 WK2132  UBR3        921600  Front NXT uORB bridge (WK2132 ch0, I2C3 connector)
+ * /dev/ttyS11 WK2132  UBR4        921600  Rear NXT uORB bridge  (WK2132 ch1, I2C3 connector)
+ */
+
+#define RC_SERIAL_PORT          "/dev/ttyS3"
 #define RC_SERIAL_SINGLEWIRE
 
 /**
@@ -251,7 +263,7 @@
 
 /* WK2132 I2C-to-UART Bridge Configuration */
 #define BOARD_HAS_WK2132              1
-#define WK2132_I2C_BUS                1       /* Use I2C1 bus (labeled as port 8 on X7Plus-WL board) */
+#define WK2132_I2C_BUS                3       /* MCU I2C3 (PH7/PH8) = board I2C3 connector */
 
 /* WK2132 J1 jumper configuration (IA1:IA0):
  * 0 = Open (pull-up to VCC), 1 = Close (connect to GND)

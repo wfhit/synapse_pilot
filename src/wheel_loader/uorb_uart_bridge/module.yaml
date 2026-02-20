@@ -23,15 +23,18 @@ parameters:
                 long: |
                     Serial port selection for Front NXT controller board.
                     Specifies which UART port to use for communication with Front NXT.
+                    On cuav-x7plus-wl: ttyS10 = WK2132 ch0 (UBR3, via I2C1).
             type: int32
             values:
                 1: ttyS1
                 2: ttyS2
                 3: ttyS3
                 4: ttyS4
+                10: ttyS10
+                11: ttyS11
             min: 1
-            max: 4
-            default: 2
+            max: 11
+            default: 10
             reboot_required: true
 
         UORB_BR_R_PORT:
@@ -40,15 +43,18 @@ parameters:
                 long: |
                     Serial port selection for Rear NXT controller board.
                     Specifies which UART port to use for communication with Rear NXT.
+                    On cuav-x7plus-wl: ttyS11 = WK2132 ch1 (UBR4, via I2C1).
             type: int32
             values:
                 1: ttyS1
                 2: ttyS2
                 3: ttyS3
                 4: ttyS4
+                10: ttyS10
+                11: ttyS11
             min: 1
-            max: 4
-            default: 3
+            max: 11
+            default: 11
             reboot_required: true
 
         UORB_BR_BAUD:
