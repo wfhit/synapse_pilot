@@ -1,5 +1,8 @@
 name: CodeQL Security Analysis
 
+env:
+  PX4_DOCKER_IMAGE: px4io/px4-dev:v1.16.0-rc1-258-g0369abd556
+
 on:
   push:
     branches:
@@ -50,7 +53,7 @@ jobs:
     needs: check-runner
     runs-on: ${{ fromJSON(needs.check-runner.outputs.runner) }}
     container:
-      image: px4io/px4-dev-nuttx-focal:2022-08-12
+      image: px4io/px4-dev:v1.16.0-rc1-258-g0369abd556
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4

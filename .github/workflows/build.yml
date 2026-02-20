@@ -1,5 +1,8 @@
 name: Build
 
+env:
+  PX4_DOCKER_IMAGE: px4io/px4-dev:v1.16.0-rc1-258-g0369abd556
+
 on:
   push:
     tags:
@@ -47,8 +50,6 @@ jobs:
     name: Build [${{ matrix.target }}]
     needs: check-runner
     runs-on: ${{ fromJSON(needs.check-runner.outputs.runner) }}
-    container:
-      image: px4io/px4-dev:v1.16.0-rc1-258-g0369abd556
     strategy:
       fail-fast: false
       matrix:
@@ -63,10 +64,24 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Git ownership workaround
-        run: git config --system --add safe.directory '*'
+      - name: Restore Docker image cache
+        id: docker-cache
+        uses: actions/cache@v4
+        with:
+          path: /tmp/px4-docker.tar
+          key: docker-image-${{ env.PX4_DOCKER_IMAGE }}
 
-      - name: Cache Restore
+      - name: Pull and save Docker image
+        if: steps.docker-cache.outputs.cache-hit != 'true'
+        run: |
+          docker pull ${{ env.PX4_DOCKER_IMAGE }}
+          docker save ${{ env.PX4_DOCKER_IMAGE }} -o /tmp/px4-docker.tar
+
+      - name: Load Docker image from cache
+        if: steps.docker-cache.outputs.cache-hit == 'true'
+        run: docker load -i /tmp/px4-docker.tar
+
+      - name: Restore ccache
         uses: actions/cache/restore@v4
         with:
           path: ~/.ccache
@@ -75,21 +90,27 @@ jobs:
             ccache-${{ runner.os }}-${{ matrix.target }}-
             ccache-${{ runner.os }}-
 
-      - name: Configure ccache
+      - name: Build ${{ matrix.target }}
         run: |
           mkdir -p ~/.ccache
-          echo "base_dir = ${GITHUB_WORKSPACE}" > ~/.ccache/ccache.conf
-          echo "compression = true" >> ~/.ccache/ccache.conf
-          echo "compression_level = 6" >> ~/.ccache/ccache.conf
-          echo "max_size = 120M" >> ~/.ccache/ccache.conf
-          echo "hash_dir = false" >> ~/.ccache/ccache.conf
-          echo "compiler_check = content" >> ~/.ccache/ccache.conf
-          ccache -z
+          docker run --rm \
+            -v "${{ github.workspace }}:${{ github.workspace }}" \
+            -w "${{ github.workspace }}" \
+            -v "$HOME/.ccache:/root/.ccache" \
+            "${{ env.PX4_DOCKER_IMAGE }}" \
+            bash -c "
+              git config --global --add safe.directory '*'
+              echo 'base_dir = ${{ github.workspace }}' > /root/.ccache/ccache.conf
+              echo 'compression = true' >> /root/.ccache/ccache.conf
+              echo 'compression_level = 6' >> /root/.ccache/ccache.conf
+              echo 'max_size = 120M' >> /root/.ccache/ccache.conf
+              echo 'hash_dir = false' >> /root/.ccache/ccache.conf
+              echo 'compiler_check = content' >> /root/.ccache/ccache.conf
+              ccache -z
+              make ${{ matrix.target }}
+            "
 
-      - name: Build ${{ matrix.target }}
-        run: make ${{ matrix.target }}
-
-      - name: Cache Save
+      - name: Save ccache
         if: always()
         uses: actions/cache/save@v4
         with:
