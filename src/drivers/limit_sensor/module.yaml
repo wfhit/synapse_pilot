@@ -31,7 +31,7 @@ parameters:
         type: int32
         min: 1000
         max: 100000
-        default: 10000
+        default: 2000
         unit: us
         decimal: 0
         increment: 1000

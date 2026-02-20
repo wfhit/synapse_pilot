@@ -115,8 +115,8 @@ private:
 	const char *get_function_name(LimitFunction func);
 
 	// Debouncing parameters (configurable via parameters)
-	uint64_t _debounce_time_us{10000}; // Default 10ms, loaded from LS_DEBOUNCE_US
-	static constexpr uint8_t DEBOUNCE_COUNTS = 2; // Need 2 consistent reads
+	uint64_t _debounce_time_us{2000}; // Default 2ms, loaded from LS_DEBOUNCE_US
+	static constexpr uint8_t DEBOUNCE_COUNTS = 1; // Need 1 consistent read after debounce period
 
 	// Performance counters
 	perf_counter_t _cycle_perf;

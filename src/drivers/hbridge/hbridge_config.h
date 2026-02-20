@@ -20,6 +20,7 @@ struct hbridge_config_t {
 	bool enabled;               ///< Whether this channel is enabled
 	int pwm_ch;                 ///< PWM channel number
 	uint32_t dir_gpio;          ///< Direction control GPIO
+	bool dir_reverse;           ///< Hardware default direction reverse (overrides param default)
 };
 
 /**
