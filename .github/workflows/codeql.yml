@@ -25,9 +25,29 @@ permissions:
   actions: read
 
 jobs:
+  check-runner:
+    name: Check Runner Availability
+    runs-on: ubuntu-latest
+    outputs:
+      runner: ${{ steps.pick.outputs.runner }}
+    steps:
+      - name: Pick runner
+        id: pick
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ONLINE=$(gh api repos/${{ github.repository }}/actions/runners \
+            --jq '[.runners[] | select(.status == "online" and (.labels[].name == "self-hosted"))] | length')
+          if [ "${ONLINE:-0}" -gt 0 ]; then
+            echo "runner=[\"self-hosted\"]" >> "$GITHUB_OUTPUT"
+          else
+            echo "runner=[\"ubuntu-latest\"]" >> "$GITHUB_OUTPUT"
+          fi
+
   analyze-cpp:
     name: Analyze C/C++
-    runs-on: frank_private_runner
+    needs: check-runner
+    runs-on: ${{ fromJSON(needs.check-runner.outputs.runner) }}
     container:
       image: px4io/px4-dev-nuttx-focal:2022-08-12
     steps:
@@ -43,11 +63,9 @@ jobs:
         uses: github/codeql-action/init@v3
         with:
           languages: cpp
+          build-mode: none
           # Use queries for security and quality
           queries: security-and-quality
-
-      - name: Build PX4 SITL
-        run: make px4_sitl_default
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
@@ -56,7 +74,8 @@ jobs:
 
   analyze-python:
     name: Analyze Python
-    runs-on: frank_private_runner
+    needs: check-runner
+    runs-on: ${{ fromJSON(needs.check-runner.outputs.runner) }}
     container:
       image: px4io/px4-dev:v1.16.0-rc1-258-g0369abd556
     steps:
