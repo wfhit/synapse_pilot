@@ -62,7 +62,7 @@ param set-default QE_POLL_RATE 100
 # Encoder 0 (Front Wheel) Configuration
 param set-default QE_0_ENABLE 1        # Enable encoder 0
 param set-default QE_0_RESOLUTION 0.120919  # Resolution: 2*pi/52 rad/pulse for 13-line encoder (2*pi/52 = 0.120919)
-param set-default QE_0_REVERSE 0       # Normal direction
+param set-default QE_0_REVERSE 1       # Reversed (hardware-verified 2026-02-20)
 param set-default QE_0_OVERFLOW 0      # No auto-reset (0 disables)
 
 # Encoder 1 (Bucket) Configuration
@@ -80,7 +80,7 @@ param set-default LS_3_ENABLE 0       # Not configured on front board
 
 # H-Bridge Configuration for Front Board
 param set-default HBRIDGE_ENABLE 1     # Enable H-Bridge system
-param set-default HBRIDGE_DIR_REV0 0   # Channel 0 direction normal
+param set-default HBRIDGE_DIR_REV0 1   # Channel 0 (front_wheel) direction reversed (hardware-verified 2026-02-20)
 param set-default HBRIDGE_DIR_REV1 0   # Channel 1 direction normal
 param set-default HBRIDGE_0_FLIM 0     # Channel 0 forward limit disabled (bucket) instance 0
 param set-default HBRIDGE_0_RLIM 1     # Channel 0 reverse limit disabled (bucket) instance 1
