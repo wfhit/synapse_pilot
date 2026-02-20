@@ -37,8 +37,11 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           ONLINE=$(gh api repos/${{ github.repository }}/actions/runners \
-            --jq '[.runners[] | select(.status == "online" and (.labels[].name == "self-hosted"))] | length')
+            --jq '[.runners[] | select(.status == "online" and (.labels[].name == "self-hosted"))] | length' \
+            2>/dev/null || echo "0")
           if [ "${ONLINE:-0}" -gt 0 ]; then
+            echo "runner=[\"self-hosted\"]" >> "$GITHUB_OUTPUT"
+          elif [ "${{ vars.SELF_HOSTED_RUNNER }}" = "true" ]; then
             echo "runner=[\"self-hosted\"]" >> "$GITHUB_OUTPUT"
           else
             echo "runner=[\"ubuntu-latest\"]" >> "$GITHUB_OUTPUT"
