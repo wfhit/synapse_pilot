@@ -141,6 +141,21 @@
 #define HRT_TIMER               8  /* use timer1 for the HRT */
 #define HRT_TIMER_CHANNEL       1  /* use capture/compare channel 1 */
 
+/* Serial Port Mapping (CONFIG_STM32H7_SERIAL_DISABLE_REORDERING=y)
+ * NuttX assigns /dev/ttyS* in peripheral enable order from defconfig:
+ *
+ * /dev/ttyS0  UART8   NSH console 115200  (SERIAL_CONSOLE)
+ * /dev/ttyS1  USART1  uORB proxy  921600  Inter-board comms with main board (UORB_PX_UART=1)
+ *
+ * Pins repurposed as GPIO (not available as serial):
+ *   UART4  PA0/PA1   -> not used, disabled
+ *   UART5  PB12/PB13 -> quadrature encoder 1 (RC port)
+ *   UART7  PE7       -> DRV8701 H-bridge enable GPIO
+ *   USART2 PD5/PD6   -> quadrature encoder 2 (TELEM1 port)
+ *   USART3            -> not used, disabled
+ *   USART6            -> not connected by board design
+ */
+
 /* GPIO Pin Usage for WL-Front:
  * RC port pins (PB12/PB13) - Quadrature encoder 1 from wheel encoder (A/B phases)
  * TELEM1 port pins (PD5/PD6) - Quadrature encoder 2 from bucket/tilt encoder (A/B phases)

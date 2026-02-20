@@ -34,8 +34,8 @@
 #include <px4_arch/i2c_hw_description.h>
 
 constexpr px4_i2c_bus_t px4_i2c_buses[I2C_BUS_MAX_BUS_ITEMS] = {
-	// initI2CBusExternal(1),
-	// initI2CBusExternal(2),
-	initI2CBusInternal(3),
-	initI2CBusExternal(4),
+	initI2CBusExternal(1),    // I2C1 (PB8/PB9):   GPS1 connector — primary GPS compass
+	initI2CBusExternal(2),    // I2C2 (PF0/PF1):   GPS2 connector — second GPS compass
+	initI2CBusExternal(3),    // I2C3 (PH7/PH8):   board I2C3 connector — WK2132 I2C-UART bridge
+	initI2CBusExternal(4),    // I2C4 (PF14/PF15): board I2C4 connector — LED light driver
 };
