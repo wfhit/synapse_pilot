@@ -35,7 +35,14 @@
  * @file board_hbridge_config.cpp
  *
  * Board-specific H-Bridge configuration for NXT-Dual-WL-Front
- * This board manages boom and bucket operations
+ * This board manages front wheel and bucket operations.
+ *
+ * Hardware-verified wiring (2026-02-20):
+ *   Channel 0 (PWM0, PE14): front_wheel — direction reversed (HBRIDGE_DIR_REV0=1)
+ *   Channel 1 (PWM1, PE13): bucket_motor
+ *
+ * Encoder direction also reversed for front wheel (QE_0_REVERSE=1) so that
+ * positive duty cycle = forward motion = positive encoder velocity.
  */
 
 #include <board_config.h>
@@ -43,23 +50,23 @@
 
 #ifdef BOARD_HAS_HBRIDGE_CONFIG
 
-// Channel configurations for front board (boom and bucket)
+// Channel configurations for front board (front wheel and bucket)
 hbridge_config_t hbridge_configs[HBRIDGE_MAX_INSTANCES] = {
-	// Channel 0 - Boom control via PWM 0
+	// Channel 0 - Front wheel control via PWM 0
 	{
 		.instance_id = 0,
-		.name = "bucket_motor",
+		.name = "front_wheel",
 		.enabled = true,
 		.pwm_ch = 0,
-		.dir_gpio = GPIO_DRV8701_LEFT_DIR   // PE14 - Bucket direction
+		.dir_gpio = GPIO_DRV8701_LEFT_DIR   // PE14 - Front wheel direction
 	},
 	// Channel 1 - Bucket control via PWM 1
 	{
 		.instance_id = 1,
-		.name = "front_wheel",
+		.name = "bucket_motor",
 		.enabled = true,
 		.pwm_ch = 1,
-		.dir_gpio = GPIO_DRV8701_RIGHT_DIR  // PE13 - Front wheel direction
+		.dir_gpio = GPIO_DRV8701_RIGHT_DIR  // PE13 - Bucket direction
 	}
 };
 

@@ -2,7 +2,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "jlink (wheel_loader_nxt-dual-wl-rear)",
+            "name": "jlink (wheel_loader_nxt-dual-wl-front)",
             "gdbPath": "/usr/bin/gdb-multiarch",
             "device": "STM32H743VI",
             "svdFile": "",
@@ -24,7 +24,7 @@
             ]
         },
         {
-            "name": "stlink (wheel_loader_nxt-dual-wl-rear)",
+            "name": "stlink (wheel_loader_nxt-dual-wl-front)",
             "gdbPath": "/usr/bin/gdb-multiarch",
             "device": "STM32H743VI",
             "svdFile": "",
@@ -43,7 +43,7 @@
             ]
         },
         {
-            "name": "blackmagic (wheel_loader_nxt-dual-wl-rear)",
+            "name": "blackmagic (wheel_loader_nxt-dual-wl-front)",
             "gdbPath": "/usr/bin/gdb-multiarch",
             "device": "STM32H743VI",
             "svdFile": "",
