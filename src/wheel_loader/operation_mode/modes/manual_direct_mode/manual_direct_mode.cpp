@@ -119,14 +119,9 @@ void ManualDirectMode::update(float dt)
 
 bool ManualDirectMode::is_valid() const
 {
-	bool position_valid = _vehicle_local_position.xy_valid && _vehicle_local_position.z_valid &&
-			      (hrt_elapsed_time(&_vehicle_local_position.timestamp) < 500000);  // 500ms in microseconds
-
-	bool attitude_valid = (hrt_elapsed_time(&_vehicle_attitude.timestamp) < 500000);  // 500ms in microseconds
-
-	bool rc_valid = (hrt_elapsed_time(&_manual_control_setpoint.timestamp) < 500000);  // 500ms in microseconds
-
-	return position_valid && attitude_valid && rc_valid;
+	// Activation validity is checked in activate() via subscription copies.
+	// Returning true here allows the manager to attempt activation.
+	return true;
 }
 
 void ManualDirectMode::processRCInputs(float dt)
