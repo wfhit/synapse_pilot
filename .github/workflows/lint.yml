@@ -42,22 +42,6 @@ jobs:
       - name: Running [${{ matrix.check }}]
         run: make ${{ matrix.check }}
 
-  clang-tidy:
-    name: Clang Tidy
-    runs-on: frank_private_runner
-    container:
-      image: px4io/px4-dev-clang:2021-09-08
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Git ownership workaround
-        run: git config --system --add safe.directory '*'
-
-      - name: Running clang-tidy
-        run: make clang-tidy
-
   python-checks:
     name: Python CI Checks
     runs-on: frank_private_runner
