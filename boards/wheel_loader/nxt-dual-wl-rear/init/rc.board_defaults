@@ -29,9 +29,9 @@ param set-default SYS_USB_AUTO 1
 
 # --- Wheel loader params commented out for incremental bringup ---
 
-# AS5600 magnetic encoder configuration for wheel loader
+# AS5600 magnetic encoder for boom position (on I2C bus 4)
 param set-default SENS_EN_AS5600 1
-param set-default AS5600_I2C_BUS 1
+param set-default AS5600_I2C_BUS 4
 param set-default AS5600_OFFSET 0.0
 
 # ST3215 Servo Configuration - Use SRV1 port

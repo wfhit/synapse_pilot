@@ -202,3 +202,5 @@ The following are compiled in but NOT auto-started (still commented out in `rc.b
 - NSH not responding on USB: check `SYS_USB_AUTO` — if set to 2, use MAVLink shell; if set to 1, send `\r\r\r`
 - UART parameter min values: if a UART device param needs to allow `/dev/ttyS0` (index 0), ensure `module.yaml` sets `min: 0` and `default: 0`, not `min: 1`
 - Docker build file ownership: Docker builds create root-owned files. Use `docker run ... chown -R $(id -u):$(id -g) build/` to fix permissions before host-side operations
+- **Hardware change → reboot first**: after any physical hardware change, always reboot the board and wait for boot to complete before checking functionality
+- **Rear board AS5600 requires external power**: the AS5600 magnetic encoder on nxt-dual-wl-rear is powered externally (not from USB). If it doesn't appear on I2C4 (0x36), check external power before assuming a software bug

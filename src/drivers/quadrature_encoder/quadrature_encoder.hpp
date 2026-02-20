@@ -123,7 +123,8 @@ private:
 	// === Performance Monitoring ===
 	perf_counter_t _cycle_perf;           // Main loop performance
 	perf_counter_t _sample_perf;          // Sampling performance
-	perf_counter_t _fault_perf;           // Error/fault tracking
+	perf_counter_t _no_data_perf;         // No new encoder data (normal at rest)
+	perf_counter_t _fault_perf;           // Hardware/config errors
 
 	// === Timing Control ===
 	uint32_t _run_interval_us{10000};     // Polling interval (default 100Hz)
