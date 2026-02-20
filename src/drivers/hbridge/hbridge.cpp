@@ -188,6 +188,19 @@ bool HBridge::init()
 	// Load parameters
 	updateParams();
 
+	// Apply board-level direction reverse default (overrides param default at first boot)
+	if (_board_config->dir_reverse) {
+		if (_instance == 0) {
+			_param_dir_reverse_0.set(1);
+			_param_dir_reverse_0.commit_no_notification();
+		} else if (_instance == 1) {
+			_param_dir_reverse_1.set(1);
+			_param_dir_reverse_1.commit_no_notification();
+		}
+
+		updateParams();
+	}
+
 	// Configure hardware
 	if (!configure_hardware()) {
 		PX4_ERR("Failed to configure hardware for instance %d", _instance);

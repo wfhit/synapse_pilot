@@ -58,7 +58,8 @@ hbridge_config_t hbridge_configs[HBRIDGE_MAX_INSTANCES] = {
 		.name = "front_wheel",
 		.enabled = true,
 		.pwm_ch = 0,
-		.dir_gpio = GPIO_DRV8701_LEFT_DIR   // PE14 - Front wheel direction
+		.dir_gpio = GPIO_DRV8701_LEFT_DIR,   // PE14 - Front wheel direction
+		.dir_reverse = false
 	},
 	// Channel 1 - Bucket control via PWM 1
 	{
@@ -66,7 +67,8 @@ hbridge_config_t hbridge_configs[HBRIDGE_MAX_INSTANCES] = {
 		.name = "bucket_motor",
 		.enabled = true,
 		.pwm_ch = 1,
-		.dir_gpio = GPIO_DRV8701_RIGHT_DIR  // PE13 - Bucket direction
+		.dir_gpio = GPIO_DRV8701_RIGHT_DIR,  // PE13 - Bucket direction
+		.dir_reverse = true
 	}
 };
 

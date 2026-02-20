@@ -51,7 +51,8 @@ hbridge_config_t hbridge_configs[HBRIDGE_MAX_INSTANCES] = {
 		.name = "boom_motor",
 		.enabled = true,
 		.pwm_ch = 0,
-		.dir_gpio = DRV8701_LEFT_DIR_GPIO   // PE14 - Rear wheel direction
+		.dir_gpio = DRV8701_LEFT_DIR_GPIO,   // PE14 - Rear wheel direction
+		.dir_reverse = false
 	},
 	// Channel 1 - Right wheel control via PWM 3
 	{
@@ -59,7 +60,8 @@ hbridge_config_t hbridge_configs[HBRIDGE_MAX_INSTANCES] = {
 		.name = "rear_wheel",
 		.enabled = true,
 		.pwm_ch = 1,
-		.dir_gpio = DRV8701_RIGHT_DIR_GPIO  // PE13 - Boom direction
+		.dir_gpio = DRV8701_RIGHT_DIR_GPIO,  // PE13 - Boom direction
+		.dir_reverse = false
 	}
 };
 
