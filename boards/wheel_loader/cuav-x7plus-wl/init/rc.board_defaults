@@ -22,3 +22,10 @@ param set-default VLA_CONFIG 101
 
 rgbled_pwm start
 safety_button start
+
+# RC channel mapping for CRSF receiver on TELEM2
+param set-default RC_MAP_ROLL 1
+param set-default RC_MAP_PITCH 2
+param set-default RC_MAP_THROTTLE 3
+param set-default RC_MAP_YAW 4
+param set-default RC_CHAN_CNT 16
