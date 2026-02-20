@@ -209,6 +209,8 @@ void UorbUartProxy::run()
 void UorbUartProxy::send_outgoing()
 {
 	for (size_t i = 0; i < _out_sub_count; i++) {
+		if (should_exit()) { return; }
+
 		OutgoingSub &sub = _out_subs[i];
 
 		if (sub.sub.updated()) {

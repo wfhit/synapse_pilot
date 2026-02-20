@@ -67,6 +67,7 @@ QuadratureEncoder::QuadratureEncoder(uint8_t instance) :
 	_parameter_update_sub(ORB_ID(parameter_update)),
 	_cycle_perf(perf_alloc(PC_ELAPSED, MODULE_NAME": cycle")),
 	_sample_perf(perf_alloc(PC_ELAPSED, MODULE_NAME": sample")),
+	_no_data_perf(perf_alloc(PC_COUNT, MODULE_NAME": no_data")),
 	_fault_perf(perf_alloc(PC_COUNT, MODULE_NAME": fault"))
 {
 	// Initialize encoder state
@@ -111,6 +112,7 @@ QuadratureEncoder::~QuadratureEncoder()
 	// Free performance counters
 	perf_free(_cycle_perf);
 	perf_free(_sample_perf);
+	perf_free(_no_data_perf);
 	perf_free(_fault_perf);
 }
 
@@ -267,8 +269,8 @@ bool QuadratureEncoder::read_encoder_state()
 
 	// Get raw hardware data
 	if (!quad_encoder_get_raw_data(_instance, &raw_data)) {
-		perf_count(_fault_perf);
-		return false; // No new data available
+		perf_count(_no_data_perf);
+		return false; // No new data available (normal when stationary)
 	}
 
 	// Process counter changes
@@ -479,6 +481,7 @@ int QuadratureEncoder::print_status()
 
 	perf_print_counter(_cycle_perf);
 	perf_print_counter(_sample_perf);
+	perf_print_counter(_no_data_perf);
 	perf_print_counter(_fault_perf);
 
 	return 0;
