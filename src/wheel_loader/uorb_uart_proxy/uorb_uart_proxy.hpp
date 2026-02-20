@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2025 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2024-2025 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -35,161 +35,140 @@
  * @file uorb_uart_proxy.hpp
  * @author PX4 Development Team
  *
- * Refactored uORB UART Proxy module for NXT controller boards
- * Uses improved distributed uORB protocol and dynamic topic registry
- * Provides transparent uORB messaging with X7+ main board via UART
+ * uORB UART Proxy - Forwards uORB topics over UART to/from main board
+ *
+ * Runs on NXT-Dual controller boards (front/rear) and communicates with
+ * uorb_uart_bridge on the X7+ main board.
+ *
+ * Key features:
+ * - Persistent subscriptions (no subscription-every-cycle bug)
+ * - RX frame accumulation (handles partial frames across reads)
+ * - Static topic tables (no global registry overhead)
+ * - Lazy incoming publications (created on first frame received)
  */
 
 #pragma once
 
-#include <px4_platform_common/defines.h>
 #include <px4_platform_common/module.h>
 #include <px4_platform_common/module_params.h>
 #include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
-#include <lib/perf/perf_counter.h>
+#include <uORB/Subscription.hpp>
+#include <uORB/Publication.hpp>
 #include <lib/distributed_uorb/distributed_uorb_protocol.hpp>
 #include <lib/distributed_uorb/distributed_uorb_topic_registry.hpp>
 
-#include <uORB/Publication.hpp>
-#include <uORB/Subscription.hpp>
-#include <uORB/SubscriptionMultiArray.hpp>
-
-// uORB topic includes
+// Outgoing topics (NXT -> X7+)
 #include <uORB/topics/boom_status.h>
 #include <uORB/topics/bucket_status.h>
-#include <uORB/topics/boom_control_setpoint.h>
-#include <uORB/topics/tilt_control_setpoint.h>
 #include <uORB/topics/steering_status.h>
 #include <uORB/topics/sensor_limit_switch.h>
 #include <uORB/topics/sensor_quad_encoder.h>
 #include <uORB/topics/hbridge_status.h>
-#include <uORB/topics/vehicle_status.h>
 
-#include <poll.h>
-#include <termios.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <sys/select.h>
+// Incoming topics (X7+ -> NXT)
+#include <uORB/topics/boom_control_setpoint.h>
+#include <uORB/topics/tilt_control_setpoint.h>
 
 using namespace time_literals;
 using namespace distributed_uorb;
 
-/**
- * Topic subscription/publication management for NXT proxy
- */
-struct ProxyTopicHandler {
-	uint16_t topic_id;
-	const orb_metadata *meta;
-	uORB::Subscription *subscription;
-	orb_advert_t publication;
-	uint8_t instance;
-	hrt_abstime last_updated;
-	bool is_outgoing; // true for NXT → X7+, false for X7+ → NXT
-};
-
-class UorbUartProxy : public ModuleBase<UorbUartProxy>,
-	public ModuleParams,
-	public px4::ScheduledWorkItem
+class UorbUartProxy : public ModuleBase<UorbUartProxy>, public ModuleParams, public px4::ScheduledWorkItem
 {
 public:
 	UorbUartProxy();
 	~UorbUartProxy() override;
 
+	/** @see ModuleBase */
 	static int task_spawn(int argc, char *argv[]);
+
+	/** @see ModuleBase */
 	static int custom_command(int argc, char *argv[]);
+
+	/** @see ModuleBase */
 	static int print_usage(const char *reason = nullptr);
 
+	/** @see ModuleBase::print_status() */
 	int print_status() override;
+
 	bool init();
 
 private:
 	void Run() override;
 
-	// Connection management
-	bool configure_uart();
-	void check_connection();
+	// UART management
+	bool open_uart();
+	void close_uart();
+
+	// Outgoing (NXT -> X7+): persistent subscriptions
+	struct OutgoingSub {
+		uORB::Subscription sub;
+		uint16_t topic_id;
+		const char *name;
+	};
+	static constexpr size_t MAX_OUT_SUBS = 16;
+	OutgoingSub _out_subs[MAX_OUT_SUBS]{};
+	size_t _out_sub_count{0};
+
+	void setup_outgoing_subscriptions();
+	void send_outgoing();
+
+	// Incoming (X7+ -> NXT): lazy publications
+	struct IncomingPub {
+		orb_advert_t handle{nullptr};
+		const orb_metadata *meta{nullptr};
+		uint16_t topic_id{0};
+		uint8_t instance{0};
+	};
+	static constexpr size_t MAX_IN_PUBS = 8;
+	IncomingPub _in_pubs[MAX_IN_PUBS]{};
+	size_t _in_pub_count{0};
+
+	void receive_incoming();
+	void parse_rx_buffer();
+	void dispatch_frame(const ProtocolFrame *frame, const uint8_t *payload);
+	void publish_incoming(uint16_t topic_id, uint8_t instance, const uint8_t *data, size_t size);
+	const orb_metadata *get_topic_meta(uint16_t topic_id);
+
+	// Heartbeat
 	void send_heartbeat();
 
-	// Message processing
-	void process_outgoing_messages();
-	void process_incoming_messages();
-	void handle_received_frame(const ProtocolFrame *frame);
-
-	// Topic management
-	bool setup_topic_handlers();
-	void cleanup_topic_handlers();
-	ProxyTopicHandler *find_topic_handler(uint16_t topic_id, uint8_t instance);
-	bool publish_to_local_topic(uint16_t topic_id, uint8_t instance, const void *data, size_t data_size);
-
-	// Communication utilities
-	bool send_frame(const uint8_t *frame_data, size_t frame_size);
-	bool receive_frames();
-	void handle_communication_error(const char *error_msg);
-
-	// Board type detection and filtering
-	NodeId detect_board_type();
-	bool is_topic_relevant_for_node(uint16_t topic_id, NodeId node_id);
-
-	// UART connection
-	int _uart_fd{-1};
-	char _device_path[32];
-	bool _is_connected{false};
-
-	// Node identification
-	NodeId _node_id{NodeId::RESERVED};
-
-	// Topic handlers (fixed-size array for embedded system)
-	static constexpr size_t MAX_TOPIC_HANDLERS = 24; // Support up to 24 topics per NXT node
-	ProxyTopicHandler _topic_handlers[MAX_TOPIC_HANDLERS];
-	size_t _topic_handler_count{0};
-
-	// Protocol utilities
+	// Protocol
 	FrameBuilder _frame_builder;
 	FrameParser _frame_parser;
+	uint16_t _tx_seq{0};
 
-	// Communication state
+	// Buffers (class members, not stack)
+	static constexpr size_t TX_BUF_SIZE = 600;
+	static constexpr size_t RX_BUF_SIZE = 1024;
+	static constexpr size_t MSG_BUF_SIZE = 256;
+	uint8_t _tx_buf[TX_BUF_SIZE];
+	uint8_t _rx_buf[RX_BUF_SIZE];
+	size_t _rx_len{0};
+	uint8_t _msg_buf[MSG_BUF_SIZE];
+
+	// UART state
+	int _uart_fd{-1};
+	char _uart_device[32]{};
+
+	// Timing
 	hrt_abstime _last_heartbeat_time{0};
-	hrt_abstime _last_message_time{0};
-	uint16_t _tx_sequence{0};
-	uint16_t _last_rx_sequence{0};
+	hrt_abstime _last_rx_time{0};
+	static constexpr hrt_abstime HEARTBEAT_INTERVAL = 1_s;
 
-	// Performance counters
-	perf_counter_t _loop_perf;
-	perf_counter_t _comms_error_perf;
-	perf_counter_t _packet_tx_perf;
-	perf_counter_t _packet_rx_perf;
-	perf_counter_t _bytes_tx_perf;
-	perf_counter_t _bytes_rx_perf;
+	// Statistics
+	uint32_t _tx_frames{0};
+	uint32_t _rx_frames{0};
+	uint32_t _tx_bytes{0};
+	uint32_t _rx_bytes{0};
+	uint32_t _rx_errors{0};
+	uint32_t _parse_errors{0};
 
-	// Communication statistics
-	struct {
-		uint32_t tx_packets{0};
-		uint32_t rx_packets{0};
-		uint32_t tx_errors{0};
-		uint32_t rx_errors{0};
-	} _stats;
-
-	// Timing constants
-	static constexpr unsigned SCHEDULE_INTERVAL = 10000;  // 10ms for responsiveness
-	static constexpr uint32_t HEARTBEAT_INTERVAL_MS = 1000;
-	static constexpr uint32_t CONNECTION_TIMEOUT_MS = 3000;
-	static constexpr size_t MAX_TX_QUEUE_SIZE = 30;
-
-	// Shared I/O buffers (heap-allocated with class, not on work queue stack)
-	static constexpr size_t IO_BUFFER_SIZE = 512;
-	static constexpr size_t MAX_TOPIC_DATA_SIZE = 256;
-	uint8_t _tx_buffer[IO_BUFFER_SIZE];
-	uint8_t _rx_buffer[IO_BUFFER_SIZE];
-	uint8_t _topic_data[MAX_TOPIC_DATA_SIZE];
-
-	// Module parameters (≤16 chars per coding style)
+	// Parameters
 	DEFINE_PARAMETERS(
 		(ParamBool<px4::params::UORB_PX_EN>) _param_enable,
-		(ParamInt<px4::params::UORB_PX_BAUD>) _param_baudrate,
-		(ParamBool<px4::params::UORB_PX_STATS>) _param_enable_stats,
+		(ParamInt<px4::params::UORB_PX_UART>) _param_uart_port,
+		(ParamInt<px4::params::UORB_PX_BAUD>) _param_baud,
 		(ParamInt<px4::params::UORB_PX_NODE_ID>) _param_node_id,
-		(ParamInt<px4::params::UORB_PX_UART>) _param_uart_device
+		(ParamBool<px4::params::UORB_PX_STATS>) _param_stats
 	)
 };
-
-extern "C" __EXPORT int uorb_uart_proxy_main(int argc, char *argv[]);

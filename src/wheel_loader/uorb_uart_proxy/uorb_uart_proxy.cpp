@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2025 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2024-2025 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,575 +31,537 @@
  *
  ****************************************************************************/
 
-/**
- * @file uorb_uart_proxy.cpp
- * @author PX4 Development Team
- *
- * Refactored uORB UART Proxy implementation for NXT controller boards
- * Uses improved distributed uORB protocol for robust communication
- */
-
 #include "uorb_uart_proxy.hpp"
-#include <px4_platform_common/log.h>
-#include <px4_platform_common/getopt.h>
-#include <drivers/drv_hrt.h>
-#include <cstring>
-#include <errno.h>
-#include <sys/ioctl.h>
-#include <unistd.h>
 
-using namespace distributed_uorb;
+#include <fcntl.h>
+#include <termios.h>
+#include <unistd.h>
+#include <poll.h>
+#include <drivers/drv_hrt.h>
 
 UorbUartProxy::UorbUartProxy() :
 	ModuleParams(nullptr),
-	ScheduledWorkItem(MODULE_NAME, px4::wq_configurations::hp_default),
-	_loop_perf(perf_alloc(PC_ELAPSED, MODULE_NAME": cycle")),
-	_comms_error_perf(perf_alloc(PC_COUNT, MODULE_NAME": comm_errors")),
-	_packet_tx_perf(perf_alloc(PC_COUNT, MODULE_NAME": tx_packets")),
-	_packet_rx_perf(perf_alloc(PC_COUNT, MODULE_NAME": rx_packets")),
-	_bytes_tx_perf(perf_alloc(PC_COUNT, MODULE_NAME": tx_bytes")),
-	_bytes_rx_perf(perf_alloc(PC_COUNT, MODULE_NAME": rx_bytes"))
+	ScheduledWorkItem(MODULE_NAME, px4::wq_configurations::hp_default)
 {
 }
 
 UorbUartProxy::~UorbUartProxy()
 {
-	cleanup_topic_handlers();
-
-	if (_uart_fd >= 0) {
-		close(_uart_fd);
-		_uart_fd = -1;
-	}
-
-	perf_free(_loop_perf);
-	perf_free(_comms_error_perf);
-	perf_free(_packet_tx_perf);
-	perf_free(_packet_rx_perf);
-	perf_free(_bytes_tx_perf);
-	perf_free(_bytes_rx_perf);
+	ScheduleClear();
+	close_uart();
 }
 
 bool UorbUartProxy::init()
 {
-	// Detect board type based on parameter or auto-detection
-	_node_id = detect_board_type();
-
-	if (_node_id == NodeId::RESERVED) {
-		PX4_ERR("Failed to detect board type");
+	if (!_param_enable.get()) {
+		PX4_INFO("Proxy disabled (UORB_PX_EN=0)");
 		return false;
 	}
 
-	// Configure UART device path
-	snprintf(_device_path, sizeof(_device_path), "/dev/ttyS%ld", _param_uart_device.get());
-
-	if (!configure_uart()) {
-		PX4_ERR("Failed to configure UART");
+	// Open UART
+	if (!open_uart()) {
+		PX4_ERR("Failed to open UART");
 		return false;
 	}
 
-	if (!setup_topic_handlers()) {
-		PX4_ERR("Failed to setup topic handlers");
-		return false;
-	}
+	// Setup outgoing subscriptions
+	setup_outgoing_subscriptions();
 
-	ScheduleOnInterval(SCHEDULE_INTERVAL);
-	PX4_INFO("uORB UART Proxy initialized for node %d", static_cast<int>(_node_id));
+	// Schedule periodic execution
+	ScheduleOnInterval(10_ms);
+
+	PX4_INFO("Initialized on %s at %ld baud, node_id=%ld",
+		 _uart_device, (long)_param_baud.get(), (long)_param_node_id.get());
+
 	return true;
 }
 
-NodeId UorbUartProxy::detect_board_type()
+bool UorbUartProxy::open_uart()
 {
-	// Use parameter if set explicitly
-	int node_param = _param_node_id.get();
+	// Build device path from parameter
+	int32_t uart_port = _param_uart_port.get();
+	snprintf(_uart_device, sizeof(_uart_device), "/dev/ttyS%ld", (long)uart_port);
 
-	if (node_param == static_cast<int>(NodeId::NXT_FRONT)) {
-		return NodeId::NXT_FRONT;
-
-	} else if (node_param == static_cast<int>(NodeId::NXT_REAR)) {
-		return NodeId::NXT_REAR;
-	}
-
-	// Auto-detection based on hardware characteristics or configuration
-	// For now, default to FRONT if not specified
-	PX4_WARN("Node ID not specified, defaulting to NXT_FRONT");
-	return NodeId::NXT_FRONT;
-}
-
-bool UorbUartProxy::configure_uart()
-{
-	if (_is_connected) {
-		return true;
-	}
-
-	// Close existing connection if open
-	if (_uart_fd >= 0) {
-		close(_uart_fd);
-		_uart_fd = -1;
-	}
-
-	PX4_INFO("Opening UART %s...", _device_path);
-	_uart_fd = open(_device_path, O_RDWR | O_NOCTTY | O_NONBLOCK);
+	// Open UART
+	_uart_fd = ::open(_uart_device, O_RDWR | O_NOCTTY | O_NONBLOCK);
 
 	if (_uart_fd < 0) {
-		handle_communication_error("Failed to open UART");
+		PX4_ERR("Failed to open %s: %d", _uart_device, errno);
 		return false;
 	}
 
-	PX4_INFO("UART opened successfully (fd=%d)", _uart_fd);
-
+	// Configure UART
 	struct termios uart_config;
 
 	if (tcgetattr(_uart_fd, &uart_config) != 0) {
-		PX4_ERR("Error getting UART attributes: %s", strerror(errno));
-		close(_uart_fd);
+		PX4_ERR("tcgetattr failed: %d", errno);
+		::close(_uart_fd);
 		_uart_fd = -1;
 		return false;
 	}
 
-	// Get baudrate parameter (default to 115200)
-	int32_t baudrate = _param_baudrate.get();
+	// Raw mode
+	uart_config.c_iflag &= ~(IGNBRK | BRKINT | ICRNL | INLCR | PARMRK | INPCK | ISTRIP | IXON);
+	uart_config.c_oflag &= ~(OCRNL | ONLCR | ONLRET | ONOCR | OFILL | OPOST);
+	uart_config.c_lflag &= ~(ECHO | ECHONL | ICANON | IEXTEN | ISIG);
+	uart_config.c_cflag &= ~(CSIZE | PARENB | CSTOPB);
+	uart_config.c_cflag |= CS8;
 
-	if (baudrate <= 0) {
-		baudrate = 115200;  // Default baudrate
-	}
-
-	PX4_INFO("Configuring baudrate: %ld", (long)baudrate);
-
+	// Set baud rate
+	int32_t baud = _param_baud.get();
 	speed_t speed;
 
-	switch (baudrate) {
-	case 9600:    speed = B9600; break;
-
-	case 19200:   speed = B19200; break;
-
-	case 38400:   speed = B38400; break;
-
-	case 57600:   speed = B57600; break;
-
-	case 115200:  speed = B115200; break;
-
-	case 230400:  speed = B230400; break;
-
-	case 460800:  speed = B460800; break;
-
-	case 921600:  speed = B921600; break;
-
-	case 1000000: speed = B1000000; break;
+	switch (baud) {
+	case 9600:   speed = B9600;   break;
+	case 19200:  speed = B19200;  break;
+	case 38400:  speed = B38400;  break;
+	case 57600:  speed = B57600;  break;
+	case 115200: speed = B115200; break;
+	case 230400: speed = B230400; break;
+	case 460800: speed = B460800; break;
+	case 921600: speed = B921600; break;
 
 	default:
-		PX4_WARN("Unsupported baudrate: %ld, using 115200", (long)baudrate);
-		speed = B115200;
-		break;
-	}
-
-	cfsetospeed(&uart_config, speed);
-	cfsetispeed(&uart_config, speed);
-
-	// Configure port settings (8N1, no flow control)
-	uart_config.c_cflag &= ~PARENB;  // No parity
-	uart_config.c_cflag &= ~CSTOPB;  // One stop bit
-	uart_config.c_cflag &= ~CSIZE;   // Clear size bits
-	uart_config.c_cflag |= CS8;      // 8 data bits
-	uart_config.c_cflag &= ~CRTSCTS; // No hardware flow control
-	uart_config.c_cflag |= CREAD | CLOCAL; // Enable reading and ignore modem control lines
-
-	uart_config.c_lflag &= ~ICANON;  // Non-canonical mode
-	uart_config.c_lflag &= ~ECHO;    // No echo
-	uart_config.c_lflag &= ~ECHOE;   // No echo erase
-	uart_config.c_lflag &= ~ECHONL;  // No echo newline
-	uart_config.c_lflag &= ~ISIG;    // No signal processing
-
-	uart_config.c_iflag &= ~(IXON | IXOFF | IXANY); // No software flow control
-	uart_config.c_iflag &= ~(IGNBRK | BRKINT | PARMRK | ISTRIP | INLCR | IGNCR | ICRNL);
-
-	uart_config.c_oflag &= ~OPOST;   // No output processing
-	uart_config.c_oflag &= ~ONLCR;   // No CR to NL translation
-
-	// Set timeouts for blocking reads
-	uart_config.c_cc[VTIME] = 1;     // Wait for up to 0.1s (1 decisecond)
-	uart_config.c_cc[VMIN] = 0;      // No minimum number of characters
-
-	if (tcsetattr(_uart_fd, TCSANOW, &uart_config) != 0) {
-		PX4_ERR("Error setting UART attributes: %s", strerror(errno));
-		close(_uart_fd);
+		PX4_ERR("Unsupported baud rate: %ld", (long)baud);
+		::close(_uart_fd);
 		_uart_fd = -1;
 		return false;
 	}
 
-	// Clear any existing data
-	tcflush(_uart_fd, TCIOFLUSH);
+	cfsetispeed(&uart_config, speed);
+	cfsetospeed(&uart_config, speed);
 
-	_is_connected = true;
-	PX4_INFO("Configured UART on %s", _device_path);
+	// Non-blocking reads
+	uart_config.c_cc[VMIN] = 0;
+	uart_config.c_cc[VTIME] = 0;
+
+	if (tcsetattr(_uart_fd, TCSANOW, &uart_config) != 0) {
+		PX4_ERR("tcsetattr failed: %d", errno);
+		::close(_uart_fd);
+		_uart_fd = -1;
+		return false;
+	}
+
 	return true;
+}
+
+void UorbUartProxy::close_uart()
+{
+	if (_uart_fd >= 0) {
+		::close(_uart_fd);
+		_uart_fd = -1;
+	}
+}
+
+void UorbUartProxy::setup_outgoing_subscriptions()
+{
+	// Helper to add a subscription
+	auto add_sub = [this](const orb_metadata * meta, uint8_t instance, uint16_t topic_id, const char *name) {
+		if (_out_sub_count >= MAX_OUT_SUBS) {
+			PX4_ERR("Too many outgoing subscriptions");
+			return;
+		}
+
+		OutgoingSub &sub = _out_subs[_out_sub_count++];
+		sub.sub = uORB::Subscription(meta, instance);
+		sub.topic_id = topic_id;
+		sub.name = name;
+	};
+
+	// Status topics (instance 0)
+	add_sub(ORB_ID(boom_status), 0, static_cast<uint16_t>(TopicIdRange::BOOM_STATUS), "boom_status");
+	add_sub(ORB_ID(bucket_status), 0, static_cast<uint16_t>(TopicIdRange::BUCKET_STATUS), "bucket_status");
+	add_sub(ORB_ID(steering_status), 0, static_cast<uint16_t>(TopicIdRange::STEERING_STATUS), "steering_status");
+
+	// Multi-instance sensor topics
+	// sensor_limit_switch: 4 instances
+	for (uint8_t i = 0; i < 4; i++) {
+		add_sub(ORB_ID(sensor_limit_switch), i, static_cast<uint16_t>(TopicIdRange::SENSOR_LIMIT_SWITCH),
+			"sensor_limit_switch");
+	}
+
+	// sensor_quad_encoder: 2 instances
+	for (uint8_t i = 0; i < 2; i++) {
+		add_sub(ORB_ID(sensor_quad_encoder), i, static_cast<uint16_t>(TopicIdRange::SENSOR_QUAD_ENCODER),
+			"sensor_quad_encoder");
+	}
+
+	// hbridge_status: 2 instances
+	for (uint8_t i = 0; i < 2; i++) {
+		add_sub(ORB_ID(hbridge_status), i, static_cast<uint16_t>(TopicIdRange::HBRIDGE_STATUS), "hbridge_status");
+	}
+
+	PX4_INFO("Setup %zu outgoing subscriptions", _out_sub_count);
 }
 
 void UorbUartProxy::Run()
 {
 	if (should_exit()) {
+		ScheduleClear();
+		exit_and_cleanup();
 		return;
 	}
 
-	perf_begin(_loop_perf);
+	// Send outgoing messages
+	send_outgoing();
 
-	// Check and maintain connection
-	check_connection();
+	// Receive incoming messages
+	receive_incoming();
 
-	// Process messages in both directions
-	process_outgoing_messages();
-	process_incoming_messages();
+	// Send heartbeat every 1 second
+	hrt_abstime now = hrt_absolute_time();
 
-	// Send periodic heartbeat
-	send_heartbeat();
-
-	perf_end(_loop_perf);
+	if (now - _last_heartbeat_time >= HEARTBEAT_INTERVAL) {
+		send_heartbeat();
+		_last_heartbeat_time = now;
+	}
 }
 
-void UorbUartProxy::check_connection()
+void UorbUartProxy::send_outgoing()
 {
-	if (!_is_connected) {
-		configure_uart();
+	for (size_t i = 0; i < _out_sub_count; i++) {
+		OutgoingSub &sub = _out_subs[i];
+
+		if (sub.sub.updated()) {
+			// Copy message data
+			if (!sub.sub.copy(_msg_buf)) {
+				continue;
+			}
+
+			// Get message size from metadata
+			const orb_metadata *meta = sub.sub.get_topic();
+
+			if (meta == nullptr) {
+				continue;
+			}
+
+			size_t msg_size = meta->o_size;
+
+			if (msg_size > MSG_BUF_SIZE) {
+				PX4_ERR("Message too large: %zu > %zu", msg_size, MSG_BUF_SIZE);
+				continue;
+			}
+
+			// Build frame
+			uint8_t instance = sub.sub.get_instance();
+
+			// Determine source node ID from parameter
+			NodeId source_node;
+			int32_t node_id_param = _param_node_id.get();
+
+			if (node_id_param == static_cast<int32_t>(NodeId::NXT_FRONT)) {
+				source_node = NodeId::NXT_FRONT;
+			} else if (node_id_param == static_cast<int32_t>(NodeId::NXT_REAR)) {
+				source_node = NodeId::NXT_REAR;
+			} else {
+				source_node = NodeId::RESERVED;
+			}
+
+			size_t frame_size = _frame_builder.build_data_frame(
+						    _tx_buf, TX_BUF_SIZE,
+						    sub.topic_id, instance,
+						    source_node, NodeId::BROADCAST,
+						    _msg_buf, msg_size
+					    );
+
+			if (frame_size == 0) {
+				PX4_ERR("Failed to build frame for topic_id=0x%04x", sub.topic_id);
+				continue;
+			}
+
+			// Send frame
+			ssize_t written = ::write(_uart_fd, _tx_buf, frame_size);
+
+			if (written != (ssize_t)frame_size) {
+				_rx_errors++;
+			} else {
+				_tx_frames++;
+				_tx_bytes += frame_size;
+			}
+		}
+	}
+}
+
+void UorbUartProxy::receive_incoming()
+{
+	if (_uart_fd < 0) {
+		return;
 	}
 
-	// Check for connection timeout
-	const hrt_abstime now = hrt_absolute_time();
+	// Read available data into RX buffer
+	size_t space = RX_BUF_SIZE - _rx_len;
 
-	if (_last_message_time > 0 &&
-	    (now - _last_message_time) > (CONNECTION_TIMEOUT_MS * 1000)) {
+	if (space == 0) {
+		// Buffer full, discard oldest data
+		PX4_WARN("RX buffer full, discarding data");
+		_rx_len = 0;
+		_rx_errors++;
+		return;
+	}
 
-		PX4_WARN("Connection timeout, attempting reconnect");
-		_is_connected = false;
+	ssize_t n = ::read(_uart_fd, _rx_buf + _rx_len, space);
 
-		if (_uart_fd >= 0) {
-			close(_uart_fd);
-			_uart_fd = -1;
+	if (n > 0) {
+		_rx_len += n;
+		_rx_bytes += n;
+		_last_rx_time = hrt_absolute_time();
+
+		// Parse accumulated data
+		parse_rx_buffer();
+	}
+}
+
+void UorbUartProxy::parse_rx_buffer()
+{
+	while (_rx_len > 0) {
+		// Look for sync bytes (0xFF 0xFE)
+		size_t sync_pos = 0;
+		bool found_sync = false;
+
+		for (size_t i = 0; i < _rx_len - 1; i++) {
+			if (_rx_buf[i] == 0xFF && _rx_buf[i + 1] == 0xFE) {
+				sync_pos = i;
+				found_sync = true;
+				break;
+			}
 		}
 
-		configure_uart();
+		if (!found_sync) {
+			// No sync found, keep last byte in case it's the first sync byte
+			if (_rx_len > 1) {
+				_rx_buf[0] = _rx_buf[_rx_len - 1];
+				_rx_len = 1;
+			}
+
+			return;
+		}
+
+		// Discard data before sync
+		if (sync_pos > 0) {
+			memmove(_rx_buf, _rx_buf + sync_pos, _rx_len - sync_pos);
+			_rx_len -= sync_pos;
+		}
+
+		// Need at least 6 bytes to read frame_length field
+		// ProtocolFrame: sync1(1) + sync2(1) + protocol_version(1) + message_type(1) + frame_length(2)
+		if (_rx_len < 6) {
+			return;  // Wait for more data
+		}
+
+		// Read frame_length (bytes 4-5, little-endian uint16_t)
+		uint16_t frame_length = _rx_buf[4] | (_rx_buf[5] << 8);
+
+		// Validate frame_length
+		static constexpr size_t MIN_FRAME_SIZE = 22;  // 18-byte header + 4-byte CRC
+		static constexpr size_t MAX_FRAME_SIZE = 534; // 18 + 512 + 4
+
+		if (frame_length < MIN_FRAME_SIZE || frame_length > MAX_FRAME_SIZE) {
+			// Invalid frame length, skip sync bytes and resync
+			memmove(_rx_buf, _rx_buf + 2, _rx_len - 2);
+			_rx_len -= 2;
+			_parse_errors++;
+			continue;
+		}
+
+		// Wait for complete frame
+		if (_rx_len < frame_length) {
+			return;  // Need more data
+		}
+
+		// Try to parse frame
+		const ProtocolFrame *frame = _frame_parser.parse_frame(_rx_buf, frame_length);
+
+		if (frame != nullptr) {
+			// Valid frame, dispatch it
+			const uint8_t *payload = _rx_buf + sizeof(ProtocolFrame);
+			dispatch_frame(frame, payload);
+
+			_rx_frames++;
+
+			// Consume frame
+			memmove(_rx_buf, _rx_buf + frame_length, _rx_len - frame_length);
+			_rx_len -= frame_length;
+		} else {
+			// Parse failed, skip sync bytes and resync
+			memmove(_rx_buf, _rx_buf + 2, _rx_len - 2);
+			_rx_len -= 2;
+			_parse_errors++;
+		}
+	}
+}
+
+void UorbUartProxy::dispatch_frame(const ProtocolFrame *frame, const uint8_t *payload)
+{
+	switch (frame->message_type) {
+	case static_cast<uint8_t>(MessageType::DATA):
+		publish_incoming(frame->topic_id, frame->instance, payload, frame->payload_length);
+		break;
+
+	case static_cast<uint8_t>(MessageType::HEARTBEAT):
+		// Just update last RX time (already done in receive_incoming)
+		break;
+
+	default:
+		// Unknown message type
+		break;
+	}
+}
+
+void UorbUartProxy::publish_incoming(uint16_t topic_id, uint8_t instance, const uint8_t *data, size_t size)
+{
+	// Get topic metadata
+	const orb_metadata *meta = get_topic_meta(topic_id);
+
+	if (meta == nullptr) {
+		return;
+	}
+
+	// Validate size
+	if (size != meta->o_size) {
+		PX4_WARN("Size mismatch for topic_id=0x%04x: got %zu, expected %zu", topic_id, size, meta->o_size);
+		return;
+	}
+
+	// Find or create publication
+	IncomingPub *pub = nullptr;
+
+	for (size_t i = 0; i < _in_pub_count; i++) {
+		if (_in_pubs[i].topic_id == topic_id && _in_pubs[i].instance == instance) {
+			pub = &_in_pubs[i];
+			break;
+		}
+	}
+
+	if (pub == nullptr) {
+		// Create new publication
+		if (_in_pub_count >= MAX_IN_PUBS) {
+			PX4_ERR("Too many incoming publications");
+			return;
+		}
+
+		pub = &_in_pubs[_in_pub_count++];
+		pub->topic_id = topic_id;
+		pub->instance = instance;
+		pub->meta = meta;
+
+		// Advertise with specific instance
+		int instance_copy = instance;
+		pub->handle = orb_advertise_multi(meta, data, &instance_copy);
+
+		if (pub->handle == nullptr) {
+			PX4_ERR("Failed to advertise topic_id=0x%04x instance=%u", topic_id, instance);
+			_in_pub_count--;
+			return;
+		}
+
+		PX4_INFO("Created publication for topic_id=0x%04x instance=%u", topic_id, instance);
+	} else {
+		// Publish to existing handle
+		orb_publish(meta, pub->handle, data);
+	}
+}
+
+const orb_metadata *UorbUartProxy::get_topic_meta(uint16_t topic_id)
+{
+	// Map topic IDs to metadata
+	switch (static_cast<TopicIdRange>(topic_id)) {
+	case TopicIdRange::BOOM_CONTROL_SETPOINT:
+		return ORB_ID(boom_control_setpoint);
+
+	case TopicIdRange::TILT_CONTROL_SETPOINT:
+		return ORB_ID(tilt_control_setpoint);
+
+	default:
+		return nullptr;
 	}
 }
 
 void UorbUartProxy::send_heartbeat()
 {
-	if (!_is_connected) {
-		return;
-	}
+	// Determine source node ID from parameter
+	NodeId source_node;
+	int32_t node_id_param = _param_node_id.get();
 
-	const hrt_abstime now = hrt_absolute_time();
-
-	if ((now - _last_heartbeat_time) >= (HEARTBEAT_INTERVAL_MS * 1000)) {
-		// Create heartbeat payload
-		distributed_uorb::HeartbeatPayload payload{};
-		payload.timestamp = hrt_absolute_time();
-		payload.uptime_ms = static_cast<uint32_t>(hrt_absolute_time() / 1000);
-		payload.system_health = 100;  // Assume healthy
-		payload.cpu_load = 50;        // Placeholder
-		payload.free_memory_kb = 64;  // Placeholder
-		payload.tx_packets = _stats.tx_packets;
-		payload.rx_packets = _stats.rx_packets;
-		payload.tx_errors = _stats.tx_errors;
-		payload.rx_errors = _stats.rx_errors;
-
-		size_t frame_size = _frame_builder.build_heartbeat_frame(
-					    _tx_buffer,
-					    IO_BUFFER_SIZE,
-					    _node_id,
-					    payload,
-					    _tx_sequence++
-				    );
-
-		if (frame_size > 0) {
-			send_frame(_tx_buffer, frame_size);
-			perf_count(_packet_tx_perf);
-		}
-
-		_last_heartbeat_time = now;
-	}
-}
-
-bool UorbUartProxy::setup_topic_handlers()
-{
-	// Initialize topic registry with relevant topics for this node type
-	using namespace distributed_uorb;
-
-	// Register topics based on node type
-	if (_node_id == NodeId::NXT_FRONT || _node_id == NodeId::NXT_REAR) {
-		// Common topics for both NXT nodes
-		g_topic_registry.register_topic("boom_status", ORB_ID(boom_status));
-		g_topic_registry.register_topic("bucket_status", ORB_ID(bucket_status));
-		g_topic_registry.register_topic("steering_status", ORB_ID(steering_status));
-		g_topic_registry.register_topic("sensor_limit_switch", ORB_ID(sensor_limit_switch));
-		g_topic_registry.register_topic("sensor_quad_encoder", ORB_ID(sensor_quad_encoder));
-		g_topic_registry.register_topic("hbridge_status", ORB_ID(hbridge_status));
-
-		// Incoming command topics
-		g_topic_registry.register_topic("boom_control_setpoint", ORB_ID(boom_control_setpoint));
-		g_topic_registry.register_topic("tilt_control_setpoint", ORB_ID(tilt_control_setpoint));
-	}
-
-	PX4_INFO("Registered %zu topics in distributed registry", g_topic_registry.get_topic_count());
-	return true;
-}
-
-void UorbUartProxy::cleanup_topic_handlers()
-{
-	for (size_t i = 0; i < _topic_handler_count; i++) {
-		if (_topic_handlers[i].subscription != nullptr) {
-			delete _topic_handlers[i].subscription;
-			_topic_handlers[i].subscription = nullptr;
-		}
-
-		if (_topic_handlers[i].publication != nullptr) {
-			orb_unadvertise(_topic_handlers[i].publication);
-			_topic_handlers[i].publication = nullptr;
-		}
-	}
-
-	_topic_handler_count = 0;
-}
-
-void UorbUartProxy::process_outgoing_messages()
-{
-	if (!_is_connected) {
-		return;
-	}
-
-	// Get all registered topics for sending status to X7+
-	static constexpr size_t MAX_LOCAL_TOPICS = 16;
-	const TopicInfo *topics[MAX_LOCAL_TOPICS];
-	size_t topic_count = g_topic_registry.get_all_topics(topics, MAX_LOCAL_TOPICS);
-
-	// Send status information from NXT to X7+
-	for (size_t i = 0; i < topic_count; i++) {
-		const TopicInfo *topic_info = topics[i];
-
-		if (!is_topic_relevant_for_node(topic_info->topic_id, _node_id)) {
-			continue;
-		}
-
-		// Skip topics larger than our buffer
-		if (topic_info->meta->o_size > MAX_TOPIC_DATA_SIZE) {
-			continue;
-		}
-
-		// Use stack-minimal subscription check
-		uORB::Subscription sub(topic_info->meta);
-
-		// Check for new data to send upstream
-		if (sub.updated()) {
-			if (sub.copy(_topic_data)) {
-				size_t frame_size = _frame_builder.build_data_frame(
-							    _tx_buffer, IO_BUFFER_SIZE,
-							    topic_info->topic_id, 0,
-							    _node_id, NodeId::X7_MAIN,
-							    _topic_data, topic_info->meta->o_size,
-							    Priority::NORMAL, Reliability::BEST_EFFORT,
-							    _tx_sequence++);
-
-				if (frame_size > 0) {
-					send_frame(_tx_buffer, frame_size);
-					_stats.tx_packets++;
-					perf_count(_packet_tx_perf);
-					perf_count(_bytes_tx_perf);
-				}
-			}
-		}
-	}
-}
-
-void UorbUartProxy::process_incoming_messages()
-{
-	if (_is_connected) {
-		receive_frames();
-	}
-}
-
-bool UorbUartProxy::is_topic_relevant_for_node(uint16_t topic_id, NodeId node_id)
-{
-	const TopicInfo *topic_info = g_topic_registry.get_topic_info(topic_id);
-
-	if (topic_info == nullptr || topic_info->meta == nullptr) {
-		return false;
-	}
-
-	const char *topic_name = topic_info->meta->o_name;
-
-	// Topics that NXT nodes send to X7+ (outgoing from NXT perspective)
-	if (strcmp(topic_name, "boom_status") == 0 ||
-	    strcmp(topic_name, "bucket_status") == 0 ||
-	    strcmp(topic_name, "steering_status") == 0 ||
-	    strcmp(topic_name, "sensor_limit_switch") == 0 ||
-	    strcmp(topic_name, "sensor_quad_encoder") == 0 ||
-	    strcmp(topic_name, "hbridge_status") == 0) {
-		return true;
-	}
-
-	// Topics that X7+ sends to NXT nodes (incoming from NXT perspective)
-	if (strcmp(topic_name, "boom_control_setpoint") == 0 ||
-	    strcmp(topic_name, "tilt_control_setpoint") == 0) {
-		return true;
-	}
-
-	return false;
-}
-
-bool UorbUartProxy::send_frame(const uint8_t *frame_data, size_t frame_size)
-{
-	if (!_is_connected || _uart_fd < 0) {
-		return false;
-	}
-
-	ssize_t written = write(_uart_fd, frame_data, frame_size);
-
-	if (written != static_cast<ssize_t>(frame_size)) {
-		_stats.tx_errors++;
-		handle_communication_error("UART write failed");
-		return false;
-	}
-
-	return true;
-}
-
-bool UorbUartProxy::receive_frames()
-{
-	if (!_is_connected || _uart_fd < 0) {
-		return false;
-	}
-
-	ssize_t bytes_read = read(_uart_fd, _rx_buffer, IO_BUFFER_SIZE);
-
-	if (bytes_read > 0) {
-		_last_message_time = hrt_absolute_time();
-		perf_count(_bytes_rx_perf);
-
-		// Parse received data for complete frames
-		for (ssize_t i = 0; i < bytes_read;) {
-			const ProtocolFrame *frame = _frame_parser.parse_frame(&_rx_buffer[i], bytes_read - i);
-
-			if (frame != nullptr) {
-				handle_received_frame(frame);
-				_stats.rx_packets++;
-				perf_count(_packet_rx_perf);
-				// Calculate frame size including header and footer
-				size_t frame_size = sizeof(ProtocolFrame) + frame->payload_length + sizeof(uint32_t);
-				i += frame_size;
-
-			} else {
-				i++; // Skip this byte and continue parsing
-			}
-		}
-
-		return true;
-	}
-
-	return false;
-}
-
-void UorbUartProxy::handle_received_frame(const ProtocolFrame *frame)
-{
-	if (frame == nullptr) {
-		return;
-	}
-
-	switch (static_cast<uint8_t>(frame->message_type)) {
-	case static_cast<uint8_t>(MessageType::DATA): {
-			// Publish received command data to local uORB
-			publish_to_local_topic(frame->topic_id, frame->instance, frame->payload, frame->payload_length);
-			break;
-		}
-
-	case static_cast<uint8_t>(MessageType::HEARTBEAT): {
-			// Connection is alive, no action needed
-			break;
-		}
-
-	case static_cast<uint8_t>(MessageType::ACK): {
-			// Handle acknowledgment if needed
-			break;
-		}
-
-	default:
-		PX4_WARN("Unknown message type: %d", static_cast<int>(frame->message_type));
-		break;
-	}
-}
-
-bool UorbUartProxy::publish_to_local_topic(uint16_t topic_id, uint8_t instance, const void *data, size_t data_size)
-{
-	const TopicInfo *topic_info = g_topic_registry.get_topic_info(topic_id);
-
-	if (topic_info == nullptr || topic_info->meta == nullptr) {
-		PX4_WARN("Unknown topic ID: %d", topic_id);
-		return false;
-	}
-
-	const orb_metadata *meta = topic_info->meta;
-
-	if (data_size != meta->o_size) {
-		PX4_WARN("Size mismatch for topic %s: expected %zu, got %zu", meta->o_name, meta->o_size, data_size);
-		return false;
-	}
-
-	// Find or create topic handler
-	ProxyTopicHandler *handler = find_topic_handler(topic_id, instance);
-
-	if (handler == nullptr) {
-		// Create new handler if we have space
-		if (_topic_handler_count < MAX_TOPIC_HANDLERS) {
-			ProxyTopicHandler *new_handler = &_topic_handlers[_topic_handler_count];
-			new_handler->topic_id = topic_id;
-			new_handler->meta = meta;
-			new_handler->subscription = nullptr;
-			int instance_int = static_cast<int>(instance);
-			new_handler->publication = orb_advertise_multi(meta, data, &instance_int);
-			new_handler->instance = instance;
-			new_handler->last_updated = hrt_absolute_time();
-			new_handler->is_outgoing = false;
-			_topic_handler_count++;
-
-		} else {
-			PX4_WARN("Maximum topic handlers reached (%zu)", MAX_TOPIC_HANDLERS);
-			return false;
-		}
-
+	if (node_id_param == static_cast<int32_t>(NodeId::NXT_FRONT)) {
+		source_node = NodeId::NXT_FRONT;
+	} else if (node_id_param == static_cast<int32_t>(NodeId::NXT_REAR)) {
+		source_node = NodeId::NXT_REAR;
 	} else {
-		// Update existing publication
-		if (handler->publication != nullptr) {
-			orb_publish(meta, handler->publication, data);
-			handler->last_updated = hrt_absolute_time();
-		}
+		source_node = NodeId::RESERVED;
 	}
 
-	return true;
-}
+	HeartbeatPayload hb{};
+	hb.timestamp = hrt_absolute_time();
+	hb.uptime_ms = hrt_absolute_time() / 1000;
+	hb.system_health = 100;
+	hb.cpu_load = 0;
+	hb.free_memory_kb = 0;
+	hb.tx_packets = _tx_frames;
+	hb.rx_packets = _rx_frames;
+	hb.tx_errors = 0;
+	hb.rx_errors = _rx_errors;
 
-ProxyTopicHandler *UorbUartProxy::find_topic_handler(uint16_t topic_id, uint8_t instance)
-{
-	for (size_t i = 0; i < _topic_handler_count; i++) {
-		if (_topic_handlers[i].topic_id == topic_id && _topic_handlers[i].instance == instance) {
-			return &_topic_handlers[i];
+	size_t frame_size = _frame_builder.build_heartbeat_frame(
+				    _tx_buf, TX_BUF_SIZE,
+				    source_node, hb,
+				    _tx_seq++
+			    );
+
+	if (frame_size > 0) {
+		ssize_t written = ::write(_uart_fd, _tx_buf, frame_size);
+
+		if (written == (ssize_t)frame_size) {
+			_tx_frames++;
+			_tx_bytes += frame_size;
 		}
 	}
-
-	return nullptr;
-}
-
-void UorbUartProxy::handle_communication_error(const char *error_msg)
-{
-	_stats.tx_errors++;
-	perf_count(_comms_error_perf);
-	PX4_WARN("Communication error: %s", error_msg);
 }
 
 int UorbUartProxy::print_status()
 {
-	PX4_INFO("uORB UART Proxy status:");
-	PX4_INFO("  Node ID: %d", static_cast<int>(_node_id));
-	PX4_INFO("  Connected: %s", _is_connected ? "YES" : "NO");
-	PX4_INFO("  Device: %s", _device_path);
-	PX4_INFO("  TX packets: %lu (errors: %lu)", (unsigned long)_stats.tx_packets, (unsigned long)_stats.tx_errors);
-	PX4_INFO("  RX packets: %lu (errors: %lu)", (unsigned long)_stats.rx_packets, (unsigned long)_stats.rx_errors);
-	PX4_INFO("  Topic handlers: %zu", _topic_handler_count);
+	PX4_INFO("uORB UART Proxy Status");
+	PX4_INFO("  Device: %s", _uart_device);
+	PX4_INFO("  Node ID: %ld", (long)_param_node_id.get());
+	PX4_INFO("  Baud: %ld", (long)_param_baud.get());
+	PX4_INFO("  UART FD: %d", _uart_fd);
+
+	hrt_abstime now = hrt_absolute_time();
+	hrt_abstime rx_age = now - _last_rx_time;
+	bool connected = (rx_age < 3_s);
+
+	PX4_INFO("  Connected: %s (last RX: %.1fs ago)", connected ? "yes" : "no", (double)rx_age / 1e6);
+
+	PX4_INFO("Memory usage:");
+	size_t out_subs_mem = sizeof(_out_subs);
+	size_t in_pubs_mem = sizeof(_in_pubs);
+	size_t buffers_mem = sizeof(_tx_buf) + sizeof(_rx_buf) + sizeof(_msg_buf);
+	size_t total_mem = sizeof(*this);
+	PX4_INFO("  Class size: %zu bytes", total_mem);
+	PX4_INFO("  Outgoing subs: %zu bytes (%zu used)", out_subs_mem, _out_sub_count * sizeof(OutgoingSub));
+	PX4_INFO("  Incoming pubs: %zu bytes (%zu used)", in_pubs_mem, _in_pub_count * sizeof(IncomingPub));
+	PX4_INFO("  Buffers: %zu bytes (TX=%zu, RX=%zu, MSG=%zu)", buffers_mem,
+		 sizeof(_tx_buf), sizeof(_rx_buf), sizeof(_msg_buf));
+	PX4_INFO("  RX buffer fill: %zu / %zu bytes (%.1f%%)", _rx_len, sizeof(_rx_buf),
+		 100.0 * _rx_len / sizeof(_rx_buf));
+
+	PX4_INFO("Statistics:");
+	PX4_INFO("  TX: %lu frames, %lu bytes", (unsigned long)_tx_frames, (unsigned long)_tx_bytes);
+	PX4_INFO("  RX: %lu frames, %lu bytes", (unsigned long)_rx_frames, (unsigned long)_rx_bytes);
+	PX4_INFO("  Errors: RX=%lu, Parse=%lu", (unsigned long)_rx_errors, (unsigned long)_parse_errors);
+
+	PX4_INFO("Outgoing subscriptions: %zu", _out_sub_count);
+
+	for (size_t i = 0; i < _out_sub_count; i++) {
+		const OutgoingSub &sub = _out_subs[i];
+		PX4_INFO("  [%zu] %s (0x%04x) instance=%u", i, sub.name, sub.topic_id, sub.sub.get_instance());
+	}
+
+	PX4_INFO("Incoming publications: %zu", _in_pub_count);
+
+	for (size_t i = 0; i < _in_pub_count; i++) {
+		const IncomingPub &pub = _in_pubs[i];
+		PX4_INFO("  [%zu] topic_id=0x%04x instance=%u", i, pub.topic_id, pub.instance);
+	}
 
 	return 0;
 }
@@ -608,35 +570,27 @@ int UorbUartProxy::task_spawn(int argc, char *argv[])
 {
 	UorbUartProxy *instance = new UorbUartProxy();
 
-	if (instance == nullptr) {
-		PX4_ERR("Failed to allocate instance");
-		return PX4_ERROR;
+	if (instance) {
+		_object.store(instance);
+		_task_id = task_id_is_work_queue;
+
+		if (instance->init()) {
+			return PX4_OK;
+		}
+
+	} else {
+		PX4_ERR("alloc failed");
 	}
 
-	_object.store(instance);
-	_task_id = task_id_is_work_queue;
+	delete instance;
+	_object.store(nullptr);
+	_task_id = -1;
 
-	if (!instance->init()) {
-		delete instance;
-		_object.store(nullptr);
-		_task_id = -1;
-		PX4_ERR("Failed to initialize");
-		return PX4_ERROR;
-	}
-
-	return PX4_OK;
+	return PX4_ERROR;
 }
 
 int UorbUartProxy::custom_command(int argc, char *argv[])
 {
-	if (!is_running()) {
-		int ret = UorbUartProxy::task_spawn(argc, argv);
-
-		if (ret) {
-			return ret;
-		}
-	}
-
 	return print_usage("unknown command");
 }
 
@@ -649,27 +603,17 @@ int UorbUartProxy::print_usage(const char *reason)
 	PRINT_MODULE_DESCRIPTION(
 		R"DESCR_STR(
 ### Description
-uORB UART Proxy for NXT controller boards in Wheel Loader Robot.
+uORB UART Proxy for NXT controller boards.
 
-This module runs on NXT-Dual controller boards and provides transparent
-uORB messaging to/from the X7+ main board via UART. It uses an improved
-distributed uORB protocol with CRC32 validation and board-type awareness.
+Forwards uORB topics over UART to/from the X7+ main board using the
+distributed uORB protocol.
 
-### Examples
-Start the proxy:
-$ uorb_uart_proxy start
+)DESCR_STR");
 
-Check status:
-$ uorb_uart_proxy status
-
-Stop the proxy:
-$ uorb_uart_proxy stop
-	)DESCR_STR");
-
-	PRINT_MODULE_USAGE_NAME("uorb_uart_proxy", "communication");
+	PRINT_MODULE_USAGE_NAME("uorb_uart_proxy", "system");
 	PRINT_MODULE_USAGE_COMMAND("start");
-	PRINT_MODULE_USAGE_COMMAND("stop");
-	PRINT_MODULE_USAGE_COMMAND("status");
+	PRINT_MODULE_USAGE_DEFAULT_COMMANDS();
+
 	return 0;
 }
 

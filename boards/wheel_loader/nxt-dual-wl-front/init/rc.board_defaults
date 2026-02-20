@@ -29,8 +29,12 @@ param set-default SYS_USB_AUTO 1
 
 # --- Wheel loader params commented out for incremental bringup ---
 
-# uORB UART Proxy: USART1 = ttyS0 on this board (SERIAL_DISABLE_REORDERING)
-param set-default UORB_PX_UART 0
+# uORB UART Proxy Configuration for Front Board
+param set-default UORB_PX_EN 1         # Enable uORB UART Proxy
+param set-default UORB_PX_UART 0       # USART1 = ttyS0 on this board (SERIAL_DISABLE_REORDERING)
+param set-default UORB_PX_BAUD 921600  # 921600 baud for high-speed communication
+param set-default UORB_PX_NODE_ID 2    # Front NXT Board (Node ID 2)
+param set-default UORB_PX_STATS 0      # Disable statistics by default
 
 # AS5600 magnetic encoder configuration for tilt position feedback
 param set-default SENS_EN_AS5600 1
