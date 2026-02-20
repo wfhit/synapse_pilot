@@ -2,11 +2,11 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "jlink (wheel_loader_nxt-dual-wl-front)",
+            "name": "jlink (wheel_loader_cuav-x7plus-wl)",
             "gdbPath": "/usr/bin/gdb-multiarch",
-            "device": "STM32H743VI",
+            "device": "STM32H743XI",
             "svdFile": "",
-            "rtos": "",
+            "rtos": "/home/frank/big_disk/synapse_pilot_ws/synapse_pilot/platforms/nuttx/NuttX/nuttx/tools/jlink-nuttx.so",
             "executable": "${command:cmake.launchTargetPath}",
             "request": "launch",
             "type": "cortex-debug",
@@ -24,9 +24,9 @@
             ]
         },
         {
-            "name": "stlink (wheel_loader_nxt-dual-wl-front)",
+            "name": "stlink (wheel_loader_cuav-x7plus-wl)",
             "gdbPath": "/usr/bin/gdb-multiarch",
-            "device": "STM32H743VI",
+            "device": "STM32H743XI",
             "svdFile": "",
             "executable": "${command:cmake.launchTargetPath}",
             "request": "launch",
@@ -43,9 +43,9 @@
             ]
         },
         {
-            "name": "blackmagic (wheel_loader_nxt-dual-wl-front)",
+            "name": "blackmagic (wheel_loader_cuav-x7plus-wl)",
             "gdbPath": "/usr/bin/gdb-multiarch",
-            "device": "STM32H743VI",
+            "device": "STM32H743XI",
             "svdFile": "",
             "executable": "${command:cmake.launchTargetPath}",
             "request": "launch",
