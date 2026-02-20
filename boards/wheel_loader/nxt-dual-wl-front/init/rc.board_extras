@@ -37,9 +37,12 @@ fi
 #	echo "Front wheel control module started"
 #fi
 
-## Start uORB UART proxy for distributed system communication (deferred - stack fix needed)
-#echo "Starting uORB UART proxy"
-#uorb_uart_proxy start
+# Start uORB UART Proxy for communication with X7+ main board
+if param compare UORB_PX_EN 1
+then
+	echo "Starting uORB UART Proxy"
+	uorb_uart_proxy start
+fi
 
 # CDC ACM already auto-started for NSH console
 echo "CDC ACM enabled for NSH console access"

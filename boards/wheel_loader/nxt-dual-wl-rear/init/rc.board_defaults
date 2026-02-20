@@ -81,3 +81,11 @@ param set-default HBRIDGE_0_FLIM 0     # Channel 0 forward limit (boom) instance
 param set-default HBRIDGE_0_RLIM 1     # Channel 0 reverse limit (boom) instance 1
 param set-default HBRIDGE_1_FLIM 255   # Channel 1 forward limit (rear_wheel)
 param set-default HBRIDGE_1_RLIM 255   # Channel 1 reverse limit (rear_wheel)
+
+# uORB UART Proxy Configuration for Rear Board
+param set-default UORB_PX_EN 1         # Enable uORB UART Proxy
+param set-default UORB_PX_UART 0       # Use ttyS0 for communication with X7+
+param set-default UORB_PX_BAUD 921600  # 921600 baud for high-speed communication
+param set-default UORB_PX_NODE_ID 3    # Rear NXT Board (Node ID 3)
+param set-default UORB_PX_STATS 0      # Disable statistics by default
+

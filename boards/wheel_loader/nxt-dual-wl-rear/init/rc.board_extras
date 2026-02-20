@@ -39,3 +39,11 @@ quadrature_encoder start
 
 # CDC ACM for NSH console access
 echo "CDC ACM enabled for NSH console access"
+
+# Start uORB UART Proxy for communication with X7+ main board
+if param compare UORB_PX_EN 1
+then
+	echo "Starting uORB UART Proxy"
+	uorb_uart_proxy start
+fi
+
