@@ -22,9 +22,8 @@ Known VID:PID mappings:
 | VID:PID | Board |
 |---------|-------|
 | `1b8c:0036` | NXT-Dual (nxt-front / nxt-rear) — app mode |
-| `1b8c:004b` | NXT-Dual (nxt-front / nxt-rear) — bootloader mode |
-| `3163:004c` | CUAV X7Plus-WL (cuav-wl) — app mode |
-| `3163:004b` | CUAV X7Plus-WL (cuav-wl) — bootloader mode |
+| `3162:004b` | NXT-Dual (nxt-front / nxt-rear) — bootloader mode |
+| `3163:004c` | CUAV X7Plus-WL (cuav-wl) — app & bootloader mode (same VID:PID) |
 | `3162:004c` | Holybro V6X-RT-WL (holybro) — app mode |
 
 **Note:** `CDCACM_CONSOLE` is disabled on all boards. USB CDC ACM is available for
@@ -74,7 +73,7 @@ The uploader automatically sends a reboot-to-bootloader command over MAVLink/ser
 After the board reboots, check:
 ```bash
 sleep 10
-lsusb | grep -iE "1b8c|3163"
+lsusb | grep -iE "1b8c|3162|3163"
 ls -la /dev/ttyACM* 2>/dev/null
 ```
 
