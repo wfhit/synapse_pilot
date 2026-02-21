@@ -2,11 +2,6 @@
 
 Adapted from Tools/HIL/{run_nsh_cmd.py, monitor_firmware_upload.py, run_tests.py}.
 Returns results and raises exceptions instead of calling sys.exit().
-
-NOTE: Some STM32H7 boards (e.g. CUAV X7Plus-WL) have a USB CDC ACM bug where
-the first byte of each USB bulk OUT transfer is delayed and delivered after the
-rest of the packet.  All command writes are prefixed with a space to absorb this
-(NSH ignores leading whitespace).  See commit message for the repro details.
 """
 
 import time
@@ -91,9 +86,6 @@ def _wait_for_prompt(ser: serial.Serial, timeout: float = 30) -> str:
         if len(line) > 0:
             output_lines.append(line)
             if "nsh>" in line:
-                # Drain any remaining prompt output (from the
-                # multiple \r's) so stale bytes don't interfere
-                # with the next command.
                 _drain_pending(ser)
                 return "".join(output_lines)
         else:
@@ -119,15 +111,11 @@ def run_nsh_command(
         _wait_for_prompt(ser)
 
         # Send a single \r to get one clean prompt, then drain it.
-        # This guarantees no stale bytes are in-flight on USB before
-        # the real command is written.
         ser.write(b"\r")
         _drain_pending(ser, settle=0.2)
 
         success_cmd = "cmd succeeded!"
-        # Leading space absorbs the STM32H7 USB CDC ACM first-byte-delay
-        # bug — NSH ignores leading whitespace.
-        serial_cmd = ' {0}; echo "{1}"; echo "{2}";\r'.format(
+        serial_cmd = '{0}; echo "{1}"; echo "{2}";\r'.format(
             command, success_cmd, success_cmd
         )
         ser.write(serial_cmd.encode("ascii"))
@@ -247,9 +235,8 @@ def run_hil_test(
         ser.write(b"\r")
         _drain_pending(ser, settle=0.2)
 
-        # Leading space absorbs the STM32H7 USB CDC ACM first-byte-delay bug
         cmd = "tests " + test_name
-        ser.write(" {0}\r".format(cmd).encode("ascii"))
+        ser.write("{0}\r".format(cmd).encode("ascii"))
 
         # Wait for command echo
         output_lines = []
