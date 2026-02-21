@@ -37,6 +37,7 @@
  * @value 0 Disabled
  * @value 1 Auto-detect
  * @value 2 MAVLink
+ * @value 3 NSH
  *
  * @reboot_required true
  *

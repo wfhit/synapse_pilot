@@ -173,20 +173,6 @@ void CdcAcmAutostart::state_connected()
 void CdcAcmAutostart::state_disconnected()
 {
 	if (_vbus_present && _vbus_present_prev) {
-		/* Check if CDC/ACM device is already registered (e.g., an
-		 * external tool like MCP NSH client opened the USB port first,
-		 * causing sercon to have been called already). Skip sercon_main
-		 * to avoid "Already connected" error flooding the console. */
-		int fd = px4_open(USB_DEVICE_PATH, O_RDONLY | O_NONBLOCK);
-
-		if (fd >= 0) {
-			px4_close(fd);
-			_state = UsbAutoStartState::connecting;
-			PX4_DEBUG("CDC/ACM already registered, state connecting");
-			_reschedule_time = 1_s;
-			return;
-		}
-
 		PX4_DEBUG("starting sercon");
 
 		if (sercon_main(0, nullptr) == EXIT_SUCCESS) {
@@ -231,6 +217,20 @@ void CdcAcmAutostart::state_connecting()
 		if (start_mavlink()) {
 			_state = UsbAutoStartState::connected;
 			_active_protocol = UsbProtocol::mavlink;
+
+		} else {
+			_state = UsbAutoStartState::disconnecting;
+			_reschedule_time = 100_ms;
+		}
+
+		return;
+
+	} else if (_sys_usb_auto.get() == 3) {
+		PX4_INFO("Starting NSH on %s (SYS_USB_AUTO=3)", USB_DEVICE_PATH);
+
+		if (start_nsh()) {
+			_state = UsbAutoStartState::connected;
+			_active_protocol = UsbProtocol::nsh;
 
 		} else {
 			_state = UsbAutoStartState::disconnecting;
@@ -657,9 +657,13 @@ int CdcAcmAutostart::print_usage(const char *reason)
 		R"DESCR_STR(
 ### Description
 This module listens on USB and auto-configures the protocol depending on the bytes received.
-The supported protocols are: MAVLink, nsh, and ublox serial passthrough. If the parameter SYS_USB_AUTO=2
-the module will only try to start mavlink as long as the USB VBUS is detected. Otherwise it will spin
-and continue to check for VBUS and start mavlink once it is detected.
+The supported protocols are: MAVLink, nsh, and ublox serial passthrough.
+
+SYS_USB_AUTO values:
+  0 = Disabled
+  1 = Auto-detect (scans for MAVLink heartbeat, 3xCR for NSH, or u-blox bytes)
+  2 = MAVLink (always start MAVLink on USB)
+  3 = NSH (always start NSH terminal on USB)
 )DESCR_STR");
 
 	PRINT_MODULE_USAGE_NAME("cdcacm_autostart", "system");

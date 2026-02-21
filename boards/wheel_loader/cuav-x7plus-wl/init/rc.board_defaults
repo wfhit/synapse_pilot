@@ -4,7 +4,7 @@
 #------------------------------------------------------------------------------
 
 # USB CDC ACM auto-start configuration
-param set-default SYS_USB_AUTO 1
+param set-default SYS_USB_AUTO 3
 
 param set-default BAT1_V_DIV 18
 param set-default BAT2_V_DIV 18
