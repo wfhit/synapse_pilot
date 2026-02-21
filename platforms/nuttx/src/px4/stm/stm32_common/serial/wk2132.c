@@ -1114,6 +1114,9 @@ errout:
 
 /**
  * @brief Shutdown UART port
+ *
+ * Acquires priv->exclsem so the poll worker finishes any in-progress
+ * I2C operations on this port before the channel clock is disabled.
  */
 static void wk2132_shutdown(FAR struct uart_dev_s *dev)
 {
@@ -1122,7 +1125,10 @@ static void wk2132_shutdown(FAR struct uart_dev_s *dev)
 	int i;
 	bool any_enabled = false;
 
-	/* Mark device as disabled first */
+	/* Wait for the poll worker to finish any in-progress I2C on this port */
+	nxsem_wait(&priv->exclsem);
+
+	/* Mark device as disabled — poll worker will skip this port */
 	priv->enabled = false;
 
 	/* Disable all interrupts */
@@ -1138,6 +1144,8 @@ static void wk2132_shutdown(FAR struct uart_dev_s *dev)
 	}
 
 	nxsem_post(&g_wk2132_poll_sem);
+
+	nxsem_post(&priv->exclsem);
 
 	/* Check if any devices are still enabled */
 	nxsem_wait(&g_wk2132_poll_sem);
