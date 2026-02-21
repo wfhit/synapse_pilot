@@ -595,8 +595,15 @@ static void wk2132_poll_worker(FAR void *arg)
 
 		FAR struct wk2132_dev_s *priv = (FAR struct wk2132_dev_s *)dev->priv;
 
+		/* Try to acquire port lock — skip if reconfigure holds it */
+		if (nxsem_trywait(&priv->exclsem) != OK) {
+			priv->fsr_valid = false;
+			continue;
+		}
+
 		if (!priv->enabled) {
 			priv->fsr_valid = false;
+			nxsem_post(&priv->exclsem);
 			continue;
 		}
 
@@ -671,6 +678,8 @@ static void wk2132_poll_worker(FAR void *arg)
 		} else {
 			priv->fsr_valid = false;
 		}
+
+		nxsem_post(&priv->exclsem);
 	}
 
 	/* ---- Phase 2: TX for all ports ---- */
@@ -684,7 +693,13 @@ static void wk2132_poll_worker(FAR void *arg)
 
 		FAR struct wk2132_dev_s *priv = (FAR struct wk2132_dev_s *)dev->priv;
 
+		/* Try to acquire port lock — skip if reconfigure holds it */
+		if (nxsem_trywait(&priv->exclsem) != OK) {
+			continue;
+		}
+
 		if (!priv->enabled) {
+			nxsem_post(&priv->exclsem);
 			continue;
 		}
 
@@ -764,6 +779,8 @@ static void wk2132_poll_worker(FAR void *arg)
 				priv->tx_staging_tail = tx_tail;
 			}
 		}
+
+		nxsem_post(&priv->exclsem);
 	}
 
 	/* Schedule next poll (volatile read, no semaphore needed) */

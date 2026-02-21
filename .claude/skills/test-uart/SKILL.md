@@ -26,10 +26,10 @@ Test bidirectional UART connectivity between two connected boards using `gen_ser
 
 1. Identify connected boards:
    ```bash
-   lsusb | grep -iE "1b8c|3163"
+   lsusb | grep -iE "1b8c|3162|3163"
    ls -la /dev/ttyACM* 2>/dev/null
    ```
-   Map each `/dev/ttyACM*` to a board using VID:PID (`1b8c:0036` = NXT, `3163:004c` = CUAV).
+   Map each `/dev/ttyACM*` to a board using VID:PID (`1b8c:0036` = NXT app, `3162:004b` = NXT bootloader, `3163:004c` = CUAV).
 
 2. Parse `$ARGUMENTS` for two endpoints in format `<board>:<port>`. Examples:
    - `nxt-f:ttyS1 cuav:ttyS11`

@@ -38,9 +38,9 @@ done
 
 | VID:PID | Board | Mode |
 |---------|-------|------|
-| `1b8c:004b` | NXT-Dual (nxt-front / nxt-rear) | Bootloader |
+| `3162:004b` | NXT-Dual (nxt-front / nxt-rear) | Bootloader |
 | `1b8c:0036` | NXT-Dual (nxt-front / nxt-rear) | Application |
-| `3163:004c` | CUAV X7Plus-WL (cuav-wl) | Application |
+| `3163:004c` | CUAV X7Plus-WL (cuav-wl) | Application & Bootloader (same VID:PID) |
 | `3162:004c` | Holybro V6X-RT-WL (holybro) | Application |
 
 **Note:** NXT-Dual front and rear share the same VID:PID. Distinguish them by
