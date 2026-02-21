@@ -1,0 +1,15 @@
+menuconfig SYSTEMCMDS_GEN_SERIAL_TEST
+	bool "gen_serial_test"
+	default n
+	---help---
+		Enable support for general serial port test utility
+
+		This command provides comprehensive testing capabilities for any
+		serial port used in wheel loader serial communication systems.
+
+		Test modes include:
+		- Basic connectivity test
+		- Loopback test (requires hardware loopback)
+		- Echo test (requires external echo device)
+		- Pattern transmission test
+		- Continuous transmission test

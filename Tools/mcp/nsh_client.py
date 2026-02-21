@@ -2,6 +2,11 @@
 
 Adapted from Tools/HIL/{run_nsh_cmd.py, monitor_firmware_upload.py, run_tests.py}.
 Returns results and raises exceptions instead of calling sys.exit().
+
+NOTE: Some STM32H7 boards (e.g. CUAV X7Plus-WL) have a USB CDC ACM bug where
+the first byte of each USB bulk OUT transfer is delayed and delivered after the
+rest of the packet.  All command writes are prefixed with a space to absorb this
+(NSH ignores leading whitespace).  See commit message for the repro details.
 """
 
 import time
@@ -44,6 +49,30 @@ def _open_serial(port: str) -> serial.Serial:
     )
 
 
+def _drain_pending(ser: serial.Serial, settle: float = 0.3) -> None:
+    """Read and discard all pending serial data until quiet for *settle* seconds.
+
+    After sending \\r\\r\\r, NSH may still be emitting prompt lines and ANSI
+    escape sequences.  This helper keeps reading until no new data arrives
+    for *settle* seconds, ensuring the board-side input buffer is idle before
+    the next command is written.
+    """
+    saved_timeout = ser.timeout
+    ser.timeout = 0.05  # short non-blocking reads for draining
+    try:
+        deadline = time.monotonic() + settle
+        while time.monotonic() < deadline:
+            chunk = ser.read(256)
+            if chunk:
+                # Got data — reset the quiet-period timer
+                deadline = time.monotonic() + settle
+            else:
+                time.sleep(0.01)
+    finally:
+        ser.timeout = saved_timeout
+    ser.reset_input_buffer()
+
+
 def _wait_for_prompt(ser: serial.Serial, timeout: float = 30) -> str:
     """Send carriage returns until we see 'nsh>'. Returns output collected while waiting.
 
@@ -62,13 +91,17 @@ def _wait_for_prompt(ser: serial.Serial, timeout: float = 30) -> str:
         if len(line) > 0:
             output_lines.append(line)
             if "nsh>" in line:
+                # Drain any remaining prompt output (from the
+                # multiple \r's) so stale bytes don't interfere
+                # with the next command.
+                _drain_pending(ser)
                 return "".join(output_lines)
         else:
             if time.monotonic() > timeout_start + timeout:
                 raise NshTimeoutError(
                     "Timeout waiting for NSH prompt."
                 )
-            ser.write(b"\r")
+            ser.write(b"\r\r\r")
 
 
 def run_nsh_command(
@@ -84,10 +117,17 @@ def run_nsh_command(
     ser = _open_serial(port)
     try:
         _wait_for_prompt(ser)
-        ser.reset_input_buffer()
+
+        # Send a single \r to get one clean prompt, then drain it.
+        # This guarantees no stale bytes are in-flight on USB before
+        # the real command is written.
+        ser.write(b"\r")
+        _drain_pending(ser, settle=0.2)
 
         success_cmd = "cmd succeeded!"
-        serial_cmd = '{0}; echo "{1}"; echo "{2}";\r'.format(
+        # Leading space absorbs the STM32H7 USB CDC ACM first-byte-delay
+        # bug — NSH ignores leading whitespace.
+        serial_cmd = ' {0}; echo "{1}"; echo "{2}";\r'.format(
             command, success_cmd, success_cmd
         )
         ser.write(serial_cmd.encode("ascii"))
@@ -203,10 +243,13 @@ def run_hil_test(
     ser.timeout = 3
     try:
         _wait_for_prompt(ser)
-        ser.reset_input_buffer()
 
+        ser.write(b"\r")
+        _drain_pending(ser, settle=0.2)
+
+        # Leading space absorbs the STM32H7 USB CDC ACM first-byte-delay bug
         cmd = "tests " + test_name
-        ser.write("{0}\r".format(cmd).encode("ascii"))
+        ser.write(" {0}\r".format(cmd).encode("ascii"))
 
         # Wait for command echo
         output_lines = []

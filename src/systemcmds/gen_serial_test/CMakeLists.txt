@@ -31,11 +31,11 @@
 #
 ############################################################################
 px4_add_module(
-	MODULE systemcmds__wk2132_test
-	MAIN wk2132_test
+	MODULE systemcmds__gen_serial_test
+	MAIN gen_serial_test
 	STACK_MAIN 4096
 	COMPILE_FLAGS
 	SRCS
-		wk2132_test.cpp
+		gen_serial_test.cpp
 	DEPENDS
 	)
