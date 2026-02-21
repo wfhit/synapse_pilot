@@ -28,6 +28,16 @@ import serial_manager
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 DOCKER_IMAGE = "px4io/px4-dev:v1.16.0-rc1-258-g0369abd556"
 
+# Shortname → make target mapping (matches /build skill)
+SHORTNAMES = {
+    "nxt-front": "wheel_loader_nxt-dual-wl-front_default",
+    "nxt-rear": "wheel_loader_nxt-dual-wl-rear_default",
+    "cuav-wl": "wheel_loader_cuav-x7plus-wl_default",
+    "holybro": "wheel_loader_holybro-v6xrt-wl_default",
+    "cuav-x7pro": "cuav_x7pro_default",
+    "cuav-nora": "cuav_nora_default",
+}
+
 BOARD_TARGETS = {
     # --- Wheel loader boards ---
     "wheel_loader_cuav-x7plus-wl_default": {
@@ -73,6 +83,16 @@ BOARD_TARGETS = {
     },
 }
 
+
+def _resolve_target(target: str) -> str:
+    """Resolve a shortname or full target name to a valid make target."""
+    if target in SHORTNAMES:
+        return SHORTNAMES[target]
+    if target in BOARD_TARGETS:
+        return target
+    return target  # allow literal make targets
+
+
 mcp = FastMCP("px4", log_level="WARNING")
 
 
@@ -90,6 +110,7 @@ def get_boards() -> str:
 @mcp.resource("px4://build/{target}/status")
 def get_build_status(target: str) -> str:
     """Check whether firmware exists for a target, with file size and mtime."""
+    target = _resolve_target(target)
     if target not in BOARD_TARGETS:
         valid = list(BOARD_TARGETS.keys())
         return json.dumps({"error": f"Unknown target '{target}'. Valid targets: {valid}"})
@@ -124,8 +145,8 @@ async def build_firmware(target: str, clean: bool = False) -> str:
 
     Args:
         target: Board target name (e.g. 'cuav_x7pro_default', 'wheel_loader_cuav-x7plus-wl_default')
-        clean: If True, run 'make clean' before building
     """
+    target = _resolve_target(target)
     if target not in BOARD_TARGETS:
         valid = list(BOARD_TARGETS.keys())
         return f"Unknown target '{target}'. Valid targets: {valid}"
@@ -189,6 +210,7 @@ async def upload_firmware(target: str, port: str | None = None) -> str:
         target: Board target name
         port: Serial port (auto-detected if not specified)
     """
+    target = _resolve_target(target)
     if target not in BOARD_TARGETS:
         valid = list(BOARD_TARGETS.keys())
         return f"Unknown target '{target}'. Valid targets: {valid}"
@@ -398,6 +420,35 @@ async def get_dmesg(port: str | None = None) -> str:
         port: Serial port (auto-detected if not specified)
     """
     return await nsh_command("dmesg", port=port, timeout=10)
+
+
+@mcp.tool()
+async def param_get(name: str, port: str | None = None) -> str:
+    """Get a parameter value from a connected PX4 board.
+
+    Args:
+        name: Parameter name or pattern (e.g. 'SYS_USB_AUTO', 'UORB_BR*')
+        port: Serial port (auto-detected if not specified)
+    """
+    return await nsh_command(f"param show {name}", port=port, timeout=10)
+
+
+@mcp.tool()
+async def param_set(
+    name: str, value: str, save: bool = True, port: str | None = None
+) -> str:
+    """Set a parameter value on a connected PX4 board.
+
+    Args:
+        name: Parameter name (e.g. 'SYS_USB_AUTO')
+        value: Value to set
+        save: If True, also run 'param save' after setting
+        port: Serial port (auto-detected if not specified)
+    """
+    cmd = f"param set {name} {value}"
+    if save:
+        cmd += " && param save"
+    return await nsh_command(cmd, port=port, timeout=10)
 
 
 if __name__ == "__main__":

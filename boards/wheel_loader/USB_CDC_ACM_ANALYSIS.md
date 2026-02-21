@@ -155,17 +155,13 @@ NXT - 2 UARTs enabled:
 | FLASH_OVERRIDE_I | no | yes |
 | USE_LEGACY_PINMAP | no | yes |
 
-## Workaround (still in place)
+## Workaround (removed)
 
-`Tools/mcp/nsh_client.py` prefixes all command writes with a space byte as a
-sacrificial first byte. NSH ignores leading whitespace, so the space is absorbed
-by the delay and the actual command arrives intact. This workaround remains in
-place as defense-in-depth even after the defconfig fixes.
+The `Tools/mcp/nsh_client.py` space-prefix workaround has been removed now that the
+root cause is fixed in the defconfig (TTY_SIGINT/SIGTSTP disabled, IOB buffers increased).
 
 ## Verification Plan
 
 1. Build and flash CUAV with updated defconfig
-2. Test NSH commands via USB CDC ACM without the nsh_client.py workaround
-3. Verify first byte is no longer delayed
-4. If fixed, the nsh_client.py space-prefix workaround can optionally be kept
-   for robustness against other boards that may have similar issues
+2. Test NSH commands via USB CDC ACM — verify first byte is no longer delayed
+3. Confirm gen_serial_test and other NSH commands work without truncation

@@ -23,7 +23,13 @@ Known VID:PID mappings:
 |---------|-------|
 | `1b8c:0036` | NXT-Dual (nxt-front / nxt-rear) — app mode |
 | `1b8c:004b` | NXT-Dual (nxt-front / nxt-rear) — bootloader mode |
-| `3163:004c` | CUAV X7Plus-WL (cuav-wl) |
+| `3163:004c` | CUAV X7Plus-WL (cuav-wl) — app mode |
+| `3163:004b` | CUAV X7Plus-WL (cuav-wl) — bootloader mode |
+| `3162:004c` | Holybro V6X-RT-WL (holybro) — app mode |
+
+**Note:** `CDCACM_CONSOLE` is disabled on all boards. USB CDC ACM is available for
+NSH via `SYS_USB_AUTO=1` (cdcacm_autostart), but is not the kernel console.
+The kernel console runs on a physical UART (UART7 on CUAV, UART8 on NXT).
 
 ## Firmware File Location
 
@@ -35,6 +41,8 @@ Find the firmware file based on the board target:
 | `nxt-rear` | `build/wheel_loader_nxt-dual-wl-rear_default/*.px4` |
 | `cuav-wl` | `build/wheel_loader_cuav-x7plus-wl_default/*.px4` |
 | `holybro` | `build/wheel_loader_holybro-v6xrt-wl_default/*.px4` |
+| `cuav-x7pro` | `build/cuav_x7pro_default/*.px4` |
+| `cuav-nora` | `build/cuav_nora_default/*.px4` |
 
 If `$ARGUMENTS` specifies a board shortname, use it. Otherwise, auto-detect from the connected board's VID:PID.
 

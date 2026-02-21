@@ -58,6 +58,8 @@ The uploader sends a MAVLink reboot-to-bootloader command, then programs via the
 
 ## NSH Serial Console
 
+`CDCACM_CONSOLE` is disabled on all wheel loader boards. The kernel console runs on a physical UART (UART7 on CUAV, UART8 on NXT). USB CDC ACM is used for NSH access via `cdcacm_autostart`.
+
 NuttX Shell (NSH) access depends on the `SYS_USB_AUTO` parameter:
 
 - **`SYS_USB_AUTO=1`** (auto-detect): Send 3 consecutive carriage returns (`\r\r\r` = `0x0D 0x0D 0x0D`) to trigger NSH on the USB ACM port. This is what PX4's `cdcacm_autostart` scans for (see `src/drivers/cdcacm_autostart/cdcacm_autostart.cpp:451`).
@@ -65,22 +67,40 @@ NuttX Shell (NSH) access depends on the `SYS_USB_AUTO` parameter:
 
 Baudrate: **57600**. Connect with `screen /dev/ttyACM0 57600` after setting `SYS_USB_AUTO=1`.
 
+**USB CDC ACM first-byte-delay bug**: The CUAV X7Plus-WL board had a bug where the first byte of each USB bulk OUT transfer was delayed. Root cause was `CONFIG_TTY_SIGINT`/`CONFIG_TTY_SIGTSTP` and insufficient IOB buffers — fixed in the defconfig. Details in `boards/wheel_loader/USB_CDC_ACM_ANALYSIS.md`.
+
 ## Claude Code Skills
 
 Six slash commands are available in `.claude/skills/`:
 
 | Skill | Usage | What it does |
 |-------|-------|-------------|
-| `/build` | `/build cuav-x7pro` | Build firmware. Shortnames: `nxt-front`, `nxt-rear`, `cuav-wl`, `holybro`, `cuav-x7pro`, `cuav-nora`, `sitl`, `tests` |
-| `/upload` | `/upload cuav-x7pro` | Upload `.px4` firmware to connected board via USB bootloader |
-| `/nsh` | `/nsh ver all` | Run NSH command on connected board (requires `SYS_USB_AUTO=1`) |
-| `/board-status` | `/board-status` | List connected PX4 boards via USB (VID:PID, device, mode) |
-| `/board-diff` | `/board-diff cuav-x7pro cuav-wl` | Compare config files between two board variants |
+| `/build` | `/build nxt-front` | Build firmware. Shortnames: `nxt-front`, `nxt-rear`, `cuav-wl`, `holybro`, `cuav-x7pro`, `cuav-nora`, `sitl`, `tests` |
+| `/upload` | `/upload cuav-wl` | Upload `.px4` firmware to connected board via USB bootloader |
+| `/board-status` | `/board-status` | List connected PX4 boards via USB (VID:PID, device, mode, firmware version) |
+| `/board-diff` | `/board-diff cuav-wl nxt-front` | Compare config files between two board variants |
+| `/test-uart` | `/test-uart nxt-f:ttyS1 cuav:ttyS11` | Test UART connectivity between two boards using gen_serial_test |
 | `/ulog` | `/ulog` or `/ulog download` or `/ulog analyze <file>` | Enable ulog, download latest `.ulg` from SD card, and analyze with pyulog |
+
+For NSH commands, use the MCP `nsh_command` tool directly — no skill needed.
 
 ## MCP Server
 
-The `px4` MCP server (`Tools/mcp/px4_mcp_server.py`) provides tools for build, upload, NSH commands, serial port listing, device info, boot monitoring, HIL testing, and uORB listening.
+The `px4` MCP server (`Tools/mcp/px4_mcp_server.py`) provides tools for interacting with PX4 boards:
+
+| Tool | What it does |
+|------|-------------|
+| `nsh_command` | Run any NSH command on a connected board |
+| `param_get` | Read parameter values (`param show <name>`) |
+| `param_set` | Set parameter with optional auto-save |
+| `build_firmware` | Build firmware in Docker (accepts shortnames) |
+| `upload_firmware` | Upload `.px4` via USB bootloader |
+| `get_device_info` | Run `ver all` + `param show SYS*` |
+| `list_serial_ports` | List detected serial ports |
+| `monitor_boot` | Capture boot log until NSH prompt |
+| `run_hil_test` | Run a hardware-in-the-loop test |
+| `uorb_listen` | Listen to a uORB topic |
+| `get_dmesg` | Read kernel/system log |
 
 **Setup**: Requires conda environment `px4-mcp`:
 
@@ -191,6 +211,7 @@ The following are compiled in but NOT auto-started (still commented out in `rc.b
 - `tilt_control` — needs physical tilt hardware connected
 - `wheel_controller` — needs front wheel drive hardware
 - `uorb_uart_proxy` — verified working via manual `uorb_uart_proxy start` on NSH; auto-start deferred until main board bridge is ready
+- `gen_serial_test` — general-purpose serial port test utility (replaces `wk2132_test`); run manually from NSH
 
 ## Common Pitfalls
 
@@ -204,3 +225,49 @@ The following are compiled in but NOT auto-started (still commented out in `rc.b
 - Docker build file ownership: Docker builds create root-owned files. Use `docker run ... chown -R $(id -u):$(id -g) build/` to fix permissions before host-side operations
 - **Hardware change → reboot first**: after any physical hardware change, always reboot the board and wait for boot to complete before checking functionality
 - **Rear board AS5600 requires external power**: the AS5600 magnetic encoder on nxt-dual-wl-rear is powered externally (not from USB). If it doesn't appear on I2C4 (0x36), check external power before assuming a software bug
+
+## Hardware Discoveries (Feb 2026)
+
+Findings from hardware bringup and debugging sessions. These are verified facts about the physical wiring and board behavior.
+
+### WK2132 Channel Mapping (Corrected)
+
+The WK2132 I2C-to-UART bridge on the CUAV X7Plus-WL board has two channels. The actual wiring is the **opposite** of what was originally documented:
+
+| WK2132 Channel | ttyS | Connects to | UBR label |
+|---|---|---|---|
+| ch0 | `/dev/ttyS10` | **Rear** NXT board | UBR4 (`UORB_BR_R_PORT=10`) |
+| ch1 | `/dev/ttyS11` | **Front** NXT board | UBR3 (`UORB_BR_F_PORT=11`) |
+
+Verified by cross-board UART connectivity test at 115200 baud, bidirectional. Config files (`default.px4board`, `board_config.h`, `BOARD_INTERFACE.md`, `uorb_uart_bridge/module.yaml`) have been corrected to match.
+
+### USB CDC ACM First-Byte-Delay Bug
+
+The CUAV X7Plus-WL board exhibits a bug where the first byte of each USB bulk OUT transfer is delayed and delivered after the rest of the packet. The NXT board does not have this bug.
+
+**Root cause:** `CONFIG_TTY_SIGINT=y` and `CONFIG_TTY_SIGTSTP=y` were enabled on CUAV but not NXT. These cause per-byte scanning in the TTY receive path that splits first-byte processing from the rest. Additionally, the default IOB buffer pool (8 buffers) was too small for 6 active UARTs + USB CDC ACM.
+
+**Fix applied to CUAV defconfig:**
+- Disabled `CONFIG_TTY_SIGINT` and `CONFIG_TTY_SIGTSTP`
+- Added `CONFIG_MM_IOB=y`, `CONFIG_IOB_NBUFFERS=24`, `CONFIG_IOB_NCHAINS=24`
+- Removed DMA from UART7 (debug console) and UART8 (spare port) to reduce AHB bus contention
+- Right-sized UART buffers based on actual throughput
+
+Full analysis: `boards/wheel_loader/USB_CDC_ACM_ANALYSIS.md`
+
+### Console Configuration
+
+`CDCACM_CONSOLE` is disabled on both wheel loader boards. The kernel serial console runs on a physical UART:
+- **CUAV X7Plus-WL**: UART7 (`/dev/ttyS4`, DSU7 connector, 115200 baud)
+- **NXT-Dual boards**: UART8 (SERIAL_CONSOLE connector, 115200 baud)
+
+USB CDC ACM is still available for NSH via `SYS_USB_AUTO=1` (cdcacm_autostart), but is not the kernel console.
+
+## Reference Documents
+
+| Document | Path |
+|----------|------|
+| Board interface allocation | `boards/wheel_loader/BOARD_INTERFACE.md` |
+| Module allocation across boards | `boards/wheel_loader/MODULE_ALLOCATION.md` |
+| USB CDC ACM bug analysis | `boards/wheel_loader/USB_CDC_ACM_ANALYSIS.md` |
+| Serial port conventions | `.github/copilot-instructions.md` |

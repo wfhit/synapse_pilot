@@ -18,9 +18,16 @@ Map the argument to the full make target:
 | `nxt-rear` | `wheel_loader_nxt-dual-wl-rear_default` |
 | `cuav-wl` | `wheel_loader_cuav-x7plus-wl_default` |
 | `holybro` | `wheel_loader_holybro-v6xrt-wl_default` |
+| `cuav-x7pro` | `cuav_x7pro_default` |
+| `cuav-nora` | `cuav_nora_default` |
+| `sitl` | `px4_sitl_default` |
+| `tests` | `tests` |
+| `test_unit` | `test_unit` |
 
 If `$ARGUMENTS` is empty, ask the user which board to build.
 If the argument doesn't match a shortname, try using it as a literal make target.
+
+**Note:** `sitl`, `tests`, and `test_unit` must use `./Tools/docker_run.sh` instead of the direct Docker command (they need the simulation/test environment).
 
 ## Build Command
 
