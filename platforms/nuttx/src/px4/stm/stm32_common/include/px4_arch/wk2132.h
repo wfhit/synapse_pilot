@@ -210,6 +210,24 @@ struct wk2132_dev_s {
 	bool                     stopbits2; /* Two stop bits */
 	sem_t                    exclsem;  /* Mutual exclusion */
 	bool                     enabled;  /* Port enabled flag */
+
+	/* RX staging buffer: filled by poll worker via bulk I2C FIFO read,
+	 * consumed by uart_recvchars() via rxavailable()/receive() callbacks.
+	 * This eliminates I2C from the NuttX serial framework callbacks,
+	 * which may be called from critical sections where I2C would deadlock. */
+	uint8_t                  rx_staging[WK2132_FIFO_SIZE];
+	uint16_t                 rx_staging_count; /* Bytes available in staging */
+	uint16_t                 rx_staging_pos;   /* Current read position */
+
+	/* TX staging ring buffer: send() fills from uart_xmitchars context,
+	 * poll worker bulk-writes to WK2132 TX FIFO.  Using a ring buffer
+	 * so send()/txready() do zero I2C — they only touch memory. */
+	uint8_t                  tx_staging[WK2132_FIFO_SIZE];
+	volatile uint16_t        tx_staging_head;  /* Write position (send) */
+	volatile uint16_t        tx_staging_tail;  /* Read position (poll worker) */
+
+	/* Track TX interrupt enable state locally (no I2C in txint callback) */
+	bool                     txint_enabled;
 };
 
 /* Public Functions */
