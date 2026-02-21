@@ -141,7 +141,7 @@ static const struct uart_ops_s g_wk2132_uart_ops = {
 static struct work_s g_wk2132_poll_work;
 static bool g_wk2132_poll_started = false;
 static FAR struct uart_dev_s *g_wk2132_devices[WK2132_MAX_PORTS];
-static int g_wk2132_device_count = 0;
+static volatile int g_wk2132_device_count = 0;
 static sem_t g_wk2132_poll_sem = SEM_INITIALIZER(1); /* Protect polling state */
 
 /****************************************************************************

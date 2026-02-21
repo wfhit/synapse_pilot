@@ -139,9 +139,9 @@ static const struct uart_ops_s g_wk2132_uart_ops = {
 
 /* Work queue for polling */
 static struct work_s g_wk2132_poll_work;
-static bool g_wk2132_poll_started = false;
+static volatile bool g_wk2132_poll_running = false;
 static FAR struct uart_dev_s *g_wk2132_devices[WK2132_MAX_PORTS];
-static int g_wk2132_device_count = 0;
+static volatile int g_wk2132_device_count = 0;
 static sem_t g_wk2132_poll_sem = SEM_INITIALIZER(1); /* Protect polling state */
 
 /****************************************************************************
@@ -563,130 +563,211 @@ errout:
 }
 
 /**
- * @brief Polling worker function
+ * @brief Polling worker function — two-phase RX-first/TX-second
  *
- * RX path: reads RFCNT to check byte count, then does a single bulk I2C
- * FIFO read into a per-port staging buffer.  uart_recvchars() is called
- * afterwards; its rxavailable()/receive() callbacks pull from the staging
- * buffer with zero I2C — safe even if the NuttX serial framework calls
- * them from a critical section.
+ * Phase 1 (RX): Iterates all ports, reading a single FSR to gate the
+ * entire RX path.  FSR.RDAT set → read RFCNT + bulk FIFO read.  An
+ * inner loop re-checks FSR.RDAT up to 3 passes to keep up with data
+ * arriving at high baud rates (e.g. 921600).  The FSR value is cached
+ * per-port for reuse in Phase 2.
  *
- * TX path: first flushes any data in the TX staging ring buffer to the
- * WK2132 TX FIFO via a single bulk I2C write, then calls uart_xmitchars()
- * to refill the staging buffer via send()/txready() — also zero I2C.
+ * Phase 2 (TX): Iterates all ports, flushing the TX staging ring buffer
+ * to the WK2132 TX FIFO.  Uses the cached FSR from Phase 1: if
+ * !TDAT && !TFULL, the TX FIFO is empty (256 bytes free) and the TFCNT
+ * read is skipped entirely.
+ *
+ * Processing RX across all ports before any TX prevents port N+1's RX
+ * FIFO from overflowing while port N's TX bulk write occupies the I2C bus.
  */
 static void wk2132_poll_worker(FAR void *arg)
 {
 	int i;
-	int device_count;
-	bool should_continue;
+	int device_count = g_wk2132_device_count;
 
-	/* Snapshot device count under lock to avoid racing with setup */
-	nxsem_wait(&g_wk2132_poll_sem);
-	device_count = g_wk2132_device_count;
-	nxsem_post(&g_wk2132_poll_sem);
+	/* ---- Phase 1: RX for all ports ---- */
 
-	/* Poll all registered devices */
 	for (i = 0; i < device_count; i++) {
 		FAR struct uart_dev_s *dev = g_wk2132_devices[i];
 
-		if (dev != NULL) {
-			FAR struct wk2132_dev_s *priv = (FAR struct wk2132_dev_s *)dev->priv;
+		if (dev == NULL) {
+			continue;
+		}
 
-			/* Only poll enabled devices */
-			if (priv->enabled) {
-				/* --- RX: drain staging buffer, then read new FIFO data --- */
+		FAR struct wk2132_dev_s *priv = (FAR struct wk2132_dev_s *)dev->priv;
 
-				/* If staging has unconsumed data (e.g. NuttX recv buffer
-				 * was full last time), try to drain it first. */
-				if (priv->rx_staging_pos < priv->rx_staging_count) {
-					uart_recvchars(dev);
-				}
+		if (!priv->enabled) {
+			priv->fsr_valid = false;
+			continue;
+		}
 
-				/* Read new FIFO data only when staging is fully consumed */
-				if (priv->rx_staging_pos >= priv->rx_staging_count) {
+		/* Drain any unconsumed staging data from the previous cycle */
+		if (priv->rx_staging_pos < priv->rx_staging_count) {
+			uart_recvchars(dev);
+		}
+
+		/* Read new FIFO data only when staging is fully consumed */
+		if (priv->rx_staging_pos >= priv->rx_staging_count) {
+			uint8_t fsr = 0;
+
+			/* Single FSR read gates the entire RX path */
+			if (wk2132_i2c_read_reg(priv, WK2132_FSR, &fsr) >= 0) {
+				priv->cached_fsr = fsr;
+				priv->fsr_valid = true;
+
+				/* Inner loop: up to 3 passes for fast-arriving data */
+				int rx_pass;
+
+				for (rx_pass = 0; rx_pass < 3; rx_pass++) {
+					if (!(fsr & WK2132_FSR_RDAT)) {
+						break; /* No data in RX FIFO */
+					}
+
+					/* Read RFCNT for exact byte count */
 					uint8_t rfcnt = 0;
 
-					if (wk2132_i2c_read_reg(priv, WK2132_RFCNT, &rfcnt) >= 0) {
-						uint16_t rx_count = rfcnt;
-
-						/* RFCNT is 8-bit; a full 256-byte FIFO wraps to 0.
-						 * Detect this by checking FSR.RDAT when count is 0. */
-						if (rx_count == 0) {
-							uint8_t fsr = 0;
-
-							if (wk2132_i2c_read_reg(priv, WK2132_FSR, &fsr) >= 0
-							    && (fsr & WK2132_FSR_RDAT)) {
-								rx_count = WK2132_FIFO_SIZE;
-							}
-						}
-
-						if (rx_count > 0) {
-							if (wk2132_i2c_read_fifo_bulk(priv, priv->rx_staging, rx_count) >= 0) {
-								priv->rx_staging_count = rx_count;
-								priv->rx_staging_pos = 0;
-								uart_recvchars(dev);
-							}
-						}
+					if (wk2132_i2c_read_reg(priv, WK2132_RFCNT,
+								&rfcnt) < 0) {
+						break;
 					}
-				}
 
-				/* --- TX: refill staging from NuttX xmit buffer first --- */
-				if (priv->txint_enabled && dev->xmit.head != dev->xmit.tail) {
-					uart_xmitchars(dev);
-				}
+					uint16_t rx_count = rfcnt;
 
-				/* --- TX: flush staging ring buffer to WK2132 TX FIFO --- */
-				uint16_t tx_head = priv->tx_staging_head;
-				uint16_t tx_tail = priv->tx_staging_tail;
+					/* RFCNT wraps to 0 at 256 bytes;
+					 * RDAT already confirmed data present */
+					if (rx_count == 0) {
+						rx_count = WK2132_FIFO_SIZE;
+					}
 
-				if (tx_head != tx_tail) {
-					uint16_t tx_count;
+					if (wk2132_i2c_read_fifo_bulk(priv,
+								      priv->rx_staging,
+								      rx_count) < 0) {
+						break;
+					}
 
-					if (tx_head > tx_tail) {
-						tx_count = tx_head - tx_tail;
+					priv->rx_staging_count = rx_count;
+					priv->rx_staging_pos = 0;
+					uart_recvchars(dev);
+
+					/* Re-check only if staging fully consumed
+					 * and more passes remain */
+					if (rx_pass < 2
+					    && priv->rx_staging_pos >= priv->rx_staging_count) {
+						if (wk2132_i2c_read_reg(priv, WK2132_FSR,
+									&fsr) < 0) {
+							break;
+						}
+
+						priv->cached_fsr = fsr;
+
 					} else {
-						tx_count = WK2132_FIFO_SIZE - tx_tail;
-					}
-
-					uint8_t tfcnt = 0;
-
-					if (wk2132_i2c_read_reg(priv, WK2132_TFCNT, &tfcnt) >= 0) {
-						uint16_t space = WK2132_FIFO_SIZE - (uint16_t)tfcnt;
-
-						if (tfcnt == 0) {
-							uint8_t fsr = 0;
-
-							if (wk2132_i2c_read_reg(priv, WK2132_FSR, &fsr) >= 0
-							    && (fsr & WK2132_FSR_TFULL)) {
-								space = 0;
-							}
-						}
-
-						if (tx_count > space) {
-							tx_count = space;
-						}
-
-						if (tx_count > 0) {
-							wk2132_i2c_write_fifo_bulk(priv,
-										   &priv->tx_staging[tx_tail],
-										   tx_count);
-							priv->tx_staging_tail = (tx_tail + tx_count)
-										& (WK2132_FIFO_SIZE - 1);
-						}
+						break;
 					}
 				}
+
+			} else {
+				priv->fsr_valid = false;
+			}
+
+		} else {
+			priv->fsr_valid = false;
+		}
+	}
+
+	/* ---- Phase 2: TX for all ports ---- */
+
+	for (i = 0; i < device_count; i++) {
+		FAR struct uart_dev_s *dev = g_wk2132_devices[i];
+
+		if (dev == NULL) {
+			continue;
+		}
+
+		FAR struct wk2132_dev_s *priv = (FAR struct wk2132_dev_s *)dev->priv;
+
+		if (!priv->enabled) {
+			continue;
+		}
+
+		/* Refill staging from NuttX xmit buffer */
+		if (priv->txint_enabled && dev->xmit.head != dev->xmit.tail) {
+			uart_xmitchars(dev);
+		}
+
+		/* Flush staging ring buffer to WK2132 TX FIFO */
+		uint16_t tx_head = priv->tx_staging_head;
+		uint16_t tx_tail = priv->tx_staging_tail;
+
+		if (tx_head != tx_tail) {
+			/* Determine TX FIFO free space, using cached FSR when available */
+			uint16_t space;
+
+			if (priv->fsr_valid
+			    && !(priv->cached_fsr & (WK2132_FSR_TDAT | WK2132_FSR_TFULL))) {
+				/* TX FIFO was empty during RX phase and only
+				 * the poll worker writes to it → still empty */
+				space = WK2132_FIFO_SIZE;
+
+			} else {
+				/* Need TFCNT for exact free count */
+				uint8_t tfcnt = 0;
+
+				if (wk2132_i2c_read_reg(priv, WK2132_TFCNT,
+							&tfcnt) >= 0) {
+					space = WK2132_FIFO_SIZE - (uint16_t)tfcnt;
+
+					if (tfcnt == 0) {
+						/* Disambiguate: empty vs 256-byte wrap */
+						uint8_t fsr = 0;
+
+						if (wk2132_i2c_read_reg(priv, WK2132_FSR,
+									&fsr) >= 0
+						    && (fsr & WK2132_FSR_TFULL)) {
+							space = 0;
+						}
+					}
+
+				} else {
+					space = 0;
+				}
+			}
+
+			if (space > 0) {
+				/* Segment 1: tail → end (or tail → head if linear) */
+				uint16_t seg1 = (tx_head > tx_tail)
+						? tx_head - tx_tail
+						: WK2132_FIFO_SIZE - tx_tail;
+
+				if (seg1 > space) {
+					seg1 = space;
+				}
+
+				wk2132_i2c_write_fifo_bulk(priv,
+							   &priv->tx_staging[tx_tail],
+							   seg1);
+				space   -= seg1;
+				tx_tail  = (tx_tail + seg1) & (WK2132_FIFO_SIZE - 1);
+
+				/* Segment 2: 0 → head (only when ring wrapped and space remains) */
+				if (tx_tail == 0 && tx_head > 0 && space > 0) {
+					uint16_t seg2 = tx_head;
+
+					if (seg2 > space) {
+						seg2 = space;
+					}
+
+					wk2132_i2c_write_fifo_bulk(priv,
+								   &priv->tx_staging[0],
+								   seg2);
+					tx_tail = seg2;
+				}
+
+				priv->tx_staging_tail = tx_tail;
 			}
 		}
 	}
 
-	/* Check if we should continue polling (with proper synchronization) */
-	nxsem_wait(&g_wk2132_poll_sem);
-	should_continue = g_wk2132_poll_started;
-	nxsem_post(&g_wk2132_poll_sem);
-
-	/* Schedule next poll */
-	if (should_continue) {
+	/* Schedule next poll (volatile read, no semaphore needed) */
+	if (g_wk2132_poll_running) {
 		work_queue(LPWORK, &g_wk2132_poll_work, wk2132_poll_worker, NULL,
 			   MSEC2TICK(1));
 	}
@@ -990,13 +1071,13 @@ static int wk2132_setup(FAR struct uart_dev_s *dev)
 	/* Start polling if not already started (with proper synchronization) */
 	nxsem_wait(&g_wk2132_poll_sem);
 
-	if (!g_wk2132_poll_started) {
-		g_wk2132_poll_started = true;
+	if (!g_wk2132_poll_running) {
+		g_wk2132_poll_running = true;
 		ret = work_queue(LPWORK, &g_wk2132_poll_work, wk2132_poll_worker, NULL, 0);
 
 		if (ret < 0) {
 			syslog(LOG_ERR, "WK2132: Failed to start polling worker: %d\n", ret);
-			g_wk2132_poll_started = false;  /* Reset on failure */
+			g_wk2132_poll_running = false;  /* Reset on failure */
 			nxsem_post(&g_wk2132_poll_sem);
 			goto errout;
 		}
@@ -1057,8 +1138,8 @@ static void wk2132_shutdown(FAR struct uart_dev_s *dev)
 	}
 
 	/* If no devices are enabled, stop polling */
-	if (!any_enabled && g_wk2132_poll_started) {
-		g_wk2132_poll_started = false;
+	if (!any_enabled && g_wk2132_poll_running) {
+		g_wk2132_poll_running = false;
 		work_cancel(LPWORK, &g_wk2132_poll_work);
 		syslog(LOG_INFO, "WK2132: Stopped global polling - no devices enabled\n");
 	}
@@ -1339,6 +1420,8 @@ FAR struct uart_dev_s *wk2132_uart_init(FAR struct i2c_master_s *i2c,
 	priv->tx_staging_head  = 0;
 	priv->tx_staging_tail  = 0;
 	priv->txint_enabled    = false;
+	priv->cached_fsr       = 0;
+	priv->fsr_valid        = false;
 
 	nxsem_init(&priv->exclsem, 0, 1);
 
