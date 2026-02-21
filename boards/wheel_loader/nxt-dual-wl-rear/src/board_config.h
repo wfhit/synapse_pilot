@@ -151,11 +151,11 @@
 #define BOARD_ADC_USB_CONNECTED (px4_arch_gpioread(GPIO_OTGFS_VBUS))
 
 /* Serial Port Mapping (CONFIG_STM32H7_SERIAL_DISABLE_REORDERING=y)
- * NuttX assigns /dev/ttyS* in peripheral enable order from defconfig:
+ * NuttX assigns /dev/ttyS* in peripheral number order (not defconfig order):
  *
- * /dev/ttyS0  UART5   ST3215 servo 115200 (SRV1, smart servo steering)
- * /dev/ttyS1  UART8   NSH console 115200  (SERIAL_CONSOLE)
- * /dev/ttyS2  USART1  uORB proxy  921600  Inter-board comms with main board (UORB_PX_UART=2)
+ * /dev/ttyS0  USART1  uORB proxy  921600  Inter-board comms with main board (UORB_PX_UART=0)
+ * /dev/ttyS1  UART5   ST3215 servo 115200 (SRV1, smart servo steering)
+ * /dev/ttyS2  UART8   NSH console 115200  (SERIAL_CONSOLE)
  *
  * Pins repurposed as GPIO (not available as serial):
  *   UART4  PA0/PA1   -> not used, disabled

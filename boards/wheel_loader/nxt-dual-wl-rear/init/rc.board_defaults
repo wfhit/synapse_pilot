@@ -84,7 +84,7 @@ param set-default HBRIDGE_1_RLIM 255   # Channel 1 reverse limit (rear_wheel)
 
 # uORB UART Proxy Configuration for Rear Board
 param set-default UORB_PX_EN 0         # Disable uORB UART Proxy (enable manually after UART test)
-param set-default UORB_PX_UART 2       # USART1 = ttyS2 on this board (UART5, UART8, USART1)
+param set-default UORB_PX_UART 0       # USART1 = ttyS0 on this board (USART1, UART5, UART8)
 param set-default UORB_PX_BAUD 921600  # 921600 baud for high-speed communication
 param set-default UORB_PX_NODE_ID 3    # Rear NXT Board (Node ID 3)
 param set-default UORB_PX_STATS 0      # Disable statistics by default
