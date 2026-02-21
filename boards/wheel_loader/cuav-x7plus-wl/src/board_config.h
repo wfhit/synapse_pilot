@@ -179,8 +179,8 @@
  * /dev/ttyS3  USART6  TELEM2      57600   RC input (RadioMaster TX16S)
  * /dev/ttyS4  UART7   DSU7        115200  NSH debug console (SERIAL_CONSOLE)
  * /dev/ttyS5  UART8   RC port     57600   spare
- * /dev/ttyS10 WK2132  UBR3        921600  Front NXT uORB bridge (WK2132 ch0, I2C3 connector)
- * /dev/ttyS11 WK2132  UBR4        921600  Rear NXT uORB bridge  (WK2132 ch1, I2C3 connector)
+ * /dev/ttyS10 WK2132  UBR4        921600  Rear NXT uORB bridge  (WK2132 ch0, I2C3 connector)
+ * /dev/ttyS11 WK2132  UBR3        921600  Front NXT uORB bridge (WK2132 ch1, I2C3 connector)
  */
 
 #define RC_SERIAL_PORT          "/dev/ttyS3"

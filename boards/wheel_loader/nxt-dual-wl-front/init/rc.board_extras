@@ -37,12 +37,15 @@ fi
 #	echo "Front wheel control module started"
 #fi
 
-# Start uORB UART Proxy for communication with X7+ main board
-if param compare UORB_PX_EN 1
-then
-	echo "Starting uORB UART Proxy"
-	uorb_uart_proxy start
-fi
+## uORB UART Proxy disabled — using UART1 for raw send test
+#if param compare UORB_PX_EN 1
+#then
+#	echo "Starting uORB UART Proxy"
+#	uorb_uart_proxy start
+#fi
+
+## gen_serial_test auto-start disabled — run manually from NSH
+#gen_serial_test send -d /dev/ttyS0 -b 115200 -t 3600 &
 
 # CDC ACM already auto-started for NSH console
 echo "CDC ACM enabled for NSH console access"

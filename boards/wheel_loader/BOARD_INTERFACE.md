@@ -17,8 +17,8 @@ Last updated: 2026-02-20
 | USART6   | /dev/ttyS3 | TELEM2    | 57600   | RC input (RadioMaster TX16S, CRSF/SBUS) |
 | UART7    | /dev/ttyS4 | DSU7      | 115200  | NSH debug console (SERIAL_CONSOLE) |
 | UART8    | /dev/ttyS5 | RC port   | 57600   | spare                              |
-| WK2132 ch0 | /dev/ttyS10 | UBR3   | 921600  | Front NXT uORB bridge (`UORB_BR_F_PORT=10`) |
-| WK2132 ch1 | /dev/ttyS11 | UBR4   | 921600  | Rear NXT uORB bridge (`UORB_BR_R_PORT=11`)  |
+| WK2132 ch0 | /dev/ttyS10 | UBR4   | 921600  | Rear NXT uORB bridge (`UORB_BR_R_PORT=10`)  |
+| WK2132 ch1 | /dev/ttyS11 | UBR3   | 921600  | Front NXT uORB bridge (`UORB_BR_F_PORT=11`) |
 
 ### I2C Buses
 

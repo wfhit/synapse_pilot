@@ -32,12 +32,11 @@
  ****************************************************************************/
 
 /**
- * @file wk2132_test.cpp
+ * @file gen_serial_test.cpp
  * @author PX4 Development Team
  *
- * WK2132 UART test command for wheel loader serial communication testing.
- * This utility provides comprehensive testing capabilities for the WK2132
- * I2C-to-UART bridge used in wheel loader applications.
+ * General serial port test command for wheel loader serial communication testing.
+ * This utility provides comprehensive testing capabilities for any serial port.
  */
 
 #include <px4_platform_common/px4_config.h>
@@ -56,12 +55,13 @@
 #include <poll.h>
 #include <sys/ioctl.h>
 
-static const char *DEFAULT_DEVICE = "/dev/ttyS10";  // Default WK2132 serial device
+static const char *DEFAULT_DEVICE = "/dev/ttyS10";  // Default serial device
 static const int DEFAULT_BAUDRATE = 115200;
 static const int DEFAULT_TEST_DURATION = 10;  // seconds
 
 struct test_config {
 	const char *device;
+	const char *device2;
 	int baudrate;
 	int duration;
 	bool loopback;
@@ -78,9 +78,9 @@ static void usage()
 {
 	PRINT_MODULE_DESCRIPTION(
 		R"DESCR_STR(
-WK2132 UART test utility
+General serial port test utility
 
-This command provides comprehensive testing for the WK2132 I2C-to-UART bridge
+This command provides comprehensive testing for any serial port
 used in wheel loader serial communication systems.
 
 Test modes:
@@ -91,9 +91,10 @@ Test modes:
 - Continuous transmission test
 - Send test (send message every second at 115200 baud)
 - Receive test (listen and output received data for 30 seconds)
+- Cross-channel test (send on one port, receive on the other, both directions)
 )DESCR_STR");
 
-	PRINT_MODULE_USAGE_NAME("wk2132_test", "command");
+	PRINT_MODULE_USAGE_NAME("gen_serial_test", "command");
 	PRINT_MODULE_USAGE_COMMAND_DESCR("basic", "Run basic connectivity test");
 	PRINT_MODULE_USAGE_COMMAND_DESCR("loopback", "Run loopback test (requires TX-RX jumper)");
 	PRINT_MODULE_USAGE_COMMAND_DESCR("echo", "Run echo test (requires external echo device)");
@@ -101,8 +102,10 @@ Test modes:
 	PRINT_MODULE_USAGE_COMMAND_DESCR("continuous", "Continuous transmission test");
 	PRINT_MODULE_USAGE_COMMAND_DESCR("send", "Send test: send message every second at 115200 baud");
 	PRINT_MODULE_USAGE_COMMAND_DESCR("receive", "Receive test: listen and output received data for 30 seconds");
+	PRINT_MODULE_USAGE_COMMAND_DESCR("crosstest", "Cross-channel test: send on -d, receive on -r (both directions)");
 
 	PRINT_MODULE_USAGE_PARAM_STRING('d', "/dev/ttyS4", "<device>", "Serial device", true);
+	PRINT_MODULE_USAGE_PARAM_STRING('r', "/dev/ttyS11", "<device>", "Second serial device (crosstest)", true);
 	PRINT_MODULE_USAGE_PARAM_INT('b', 9600, 1200, 921600, "Baud rate", true);
 	PRINT_MODULE_USAGE_PARAM_INT('t', 10, 1, 3600, "Test duration (seconds)", true);
 	PRINT_MODULE_USAGE_PARAM_INT('p', 0, 0, 3, "Test pattern (0=incremental, 1=0x55, 2=0xAA, 3=random)", true);
@@ -235,7 +238,7 @@ static int test_basic_connectivity(const struct test_config *config)
 	}
 
 	// Test basic write capability
-	const char *test_msg = "WK2132 Test Message\r\n";
+	const char *test_msg = "Serial Test Message\r\n";
 	size_t msg_len = strlen(test_msg);
 	ssize_t written = write(fd, test_msg, msg_len);
 
@@ -246,20 +249,33 @@ static int test_basic_connectivity(const struct test_config *config)
 	} else if (written != (ssize_t)msg_len) {
 		PX4_WARN("Partial write: wrote %zd of %zu bytes", written, msg_len);
 	} else {
-		PX4_INFO("Successfully wrote %zd bytes: 'WK2132 Test Message'", written);
+		PX4_INFO("Successfully wrote %zd bytes: 'Serial Test Message'", written);
 	}
 
-	// Test read capability (with timeout)
+	// Test read capability (with poll timeout — blocking read
+	// on polled driver doesn't honour VTIME)
 	char read_buffer[64];
-	ssize_t bytes_read = read(fd, read_buffer, sizeof(read_buffer) - 1);
+	struct pollfd pfd;
+	pfd.fd = fd;
+	pfd.events = POLLIN;
+	pfd.revents = 0;
 
-	if (bytes_read > 0) {
-		read_buffer[bytes_read] = '\0';
-		PX4_INFO("Read %zd bytes: %s", bytes_read, read_buffer);
-	} else if (bytes_read == 0) {
-		PX4_INFO("No data received (timeout)");
+	int poll_result = poll(&pfd, 1, 2000); // 2 second timeout
+
+	if (poll_result > 0 && (pfd.revents & POLLIN)) {
+		ssize_t bytes_read = read(fd, read_buffer, sizeof(read_buffer) - 1);
+
+		if (bytes_read > 0) {
+			read_buffer[bytes_read] = '\0';
+			PX4_INFO("Read %zd bytes: %s", bytes_read, read_buffer);
+		} else {
+			PX4_WARN("Read failed after poll: %s", strerror(errno));
+		}
+
+	} else if (poll_result == 0) {
+		PX4_INFO("No data received (2s timeout)");
 	} else {
-		PX4_WARN("Read failed: %s", strerror(errno));
+		PX4_WARN("Poll failed: %s", strerror(errno));
 	}
 
 	close(fd);
@@ -392,7 +408,7 @@ static int test_echo(const struct test_config *config)
 	}
 
 	const char *test_messages[] = {
-		"Hello WK2132\r\n",
+		"Hello Serial\r\n",
 		"Echo Test 123\r\n",
 		"ABCDEFGHIJKLMNOPQRSTUVWXYZ\r\n",
 		"0123456789\r\n"
@@ -417,14 +433,27 @@ static int test_echo(const struct test_config *config)
 		// Wait for echo
 		usleep(100000); // 100ms delay
 
-		// Read echo
-		ssize_t bytes_read = read(fd, read_buffer, sizeof(read_buffer) - 1);
-		if (bytes_read > 0) {
-			read_buffer[bytes_read] = '\0';
-			PX4_INFO("Sent: %s", msg);
-			PX4_INFO("Echo: %s", read_buffer);
+		// Read echo (with poll timeout)
+		struct pollfd echo_pfd;
+		echo_pfd.fd = fd;
+		echo_pfd.events = POLLIN;
+		echo_pfd.revents = 0;
+
+		int echo_poll = poll(&echo_pfd, 1, 1000); // 1 second timeout
+
+		if (echo_poll > 0 && (echo_pfd.revents & POLLIN)) {
+			ssize_t bytes_read = read(fd, read_buffer, sizeof(read_buffer) - 1);
+
+			if (bytes_read > 0) {
+				read_buffer[bytes_read] = '\0';
+				PX4_INFO("Sent: %s", msg);
+				PX4_INFO("Echo: %s", read_buffer);
+			} else {
+				PX4_WARN("Read failed after poll for message %d", i);
+			}
+
 		} else {
-			PX4_WARN("No echo received for message %d", i);
+			PX4_WARN("No echo received for message %d (timeout)", i);
 		}
 	}
 
@@ -478,7 +507,7 @@ static int test_pattern(const struct test_config *config)
 
 static int test_send(const struct test_config *config)
 {
-	PX4_INFO("Starting send test on %s at 115200 baud", config->device);
+	PX4_INFO("Starting send test on %s at %d baud", config->device, config->baudrate);
 
 	int fd = open(config->device, O_RDWR | O_NOCTTY);
 	if (fd < 0) {
@@ -486,11 +515,7 @@ static int test_send(const struct test_config *config)
 		return -1;
 	}
 
-	// Force baudrate to 115200 for send test
-	struct test_config send_config = *config;
-	send_config.baudrate = 115200;
-
-	if (setup_serial_port(fd, &send_config) < 0) {
+	if (setup_serial_port(fd, config) < 0) {
 		close(fd);
 		return -1;
 	}
@@ -510,7 +535,7 @@ static int test_send(const struct test_config *config)
 		// Send message every second
 		if (current_time != last_send) {
 			char send_buffer[64];
-			snprintf(send_buffer, sizeof(send_buffer), "WK2132 Test #%d - Time: %ld\r\n",
+			snprintf(send_buffer, sizeof(send_buffer), "Serial Test #%d - Time: %ld\r\n",
 				++message_count, current_time);
 
 			size_t msg_len = strlen(send_buffer);
@@ -616,10 +641,197 @@ static int test_receive(const struct test_config *config)
 	return 0;
 }
 
-extern "C" __EXPORT int wk2132_test_main(int argc, char *argv[])
+/**
+ * Cross-channel test: send incremental pattern on one port, receive on
+ * another, then swap directions.  Requires external wiring between the
+ * two channels (TX1->RX2, TX2->RX1).
+ *
+ * Sends 128-byte blocks of incremental pattern data, reads them back on
+ * the other port, and verifies every byte.  Reports throughput and error
+ * rate for each direction.
+ */
+static int test_cross_channel(const struct test_config *config)
+{
+	const char *dev_a = config->device;
+	const char *dev_b = config->device2;
+
+	if (dev_b == nullptr) {
+		PX4_ERR("crosstest requires -r <device2>, e.g.: gen_serial_test crosstest -d /dev/ttyS10 -r /dev/ttyS11");
+		return -1;
+	}
+
+	PX4_INFO("Cross-channel test: %s <-> %s at %d baud, %d seconds per direction",
+		 dev_a, dev_b, config->baudrate, config->duration);
+
+	/* Run both directions */
+	const char *pairs[2][2] = { {dev_a, dev_b}, {dev_b, dev_a} };
+	const char *labels[2] = { "A->B", "B->A" };
+
+	for (int dir = 0; dir < 2; dir++) {
+		const char *tx_dev = pairs[dir][0];
+		const char *rx_dev = pairs[dir][1];
+
+		PX4_INFO("--- Direction %s: TX=%s  RX=%s ---", labels[dir], tx_dev, rx_dev);
+
+		int fd_tx = open(tx_dev, O_RDWR | O_NOCTTY);
+
+		if (fd_tx < 0) {
+			PX4_ERR("Failed to open TX %s: %s", tx_dev, strerror(errno));
+			return -1;
+		}
+
+		int fd_rx = open(rx_dev, O_RDWR | O_NOCTTY);
+
+		if (fd_rx < 0) {
+			PX4_ERR("Failed to open RX %s: %s", rx_dev, strerror(errno));
+			close(fd_tx);
+			return -1;
+		}
+
+		if (setup_serial_port(fd_tx, config) < 0 ||
+		    setup_serial_port(fd_rx, config) < 0) {
+			close(fd_tx);
+			close(fd_rx);
+			return -1;
+		}
+
+		/* Flush stale data */
+		tcflush(fd_tx, TCIOFLUSH);
+		tcflush(fd_rx, TCIOFLUSH);
+		usleep(50000);
+
+		const int BLOCK = 128;
+		uint8_t tx_buf[BLOCK];
+		uint8_t rx_buf[BLOCK];
+		int tx_counter = 0;
+		long total_sent = 0;
+		long total_recv = 0;
+		int errors = 0;
+		int blocks = 0;
+
+		time_t t_start = time(NULL);
+		time_t t_end = t_start + config->duration;
+		time_t t_last_report = t_start;
+
+		while (time(NULL) < t_end) {
+			/* Generate incremental pattern */
+			for (int j = 0; j < BLOCK; j++) {
+				tx_buf[j] = (uint8_t)(tx_counter++ & 0xFF);
+			}
+
+			ssize_t written = write(fd_tx, tx_buf, BLOCK);
+
+			if (written < 0) {
+				PX4_ERR("TX write error: %s", strerror(errno));
+				errors++;
+				continue;
+			}
+
+			total_sent += written;
+
+			/* Read back with retry loop */
+			ssize_t total_read = 0;
+			int attempts = 0;
+			const int max_attempts = 100; /* 100 * 2ms = 200ms */
+
+			usleep(2000); /* initial settle */
+
+			while (total_read < written && attempts < max_attempts) {
+				struct pollfd pfd;
+				pfd.fd = fd_rx;
+				pfd.events = POLLIN;
+				pfd.revents = 0;
+
+				int pr = poll(&pfd, 1, 5);
+
+				if (pr > 0 && (pfd.revents & POLLIN)) {
+					ssize_t n = read(fd_rx, rx_buf + total_read,
+							 written - total_read);
+
+					if (n > 0) {
+						total_read += n;
+					}
+				}
+
+				attempts++;
+			}
+
+			total_recv += total_read;
+
+			/* Verify received data */
+			ssize_t cmp_len = total_read < written ? total_read : written;
+
+			if (memcmp(tx_buf, rx_buf, cmp_len) != 0) {
+				errors++;
+
+				if (config->verbose) {
+					PX4_ERR("Block %d: data mismatch", blocks);
+
+					for (ssize_t k = 0; k < cmp_len; k++) {
+						if (tx_buf[k] != rx_buf[k]) {
+							PX4_ERR("  byte %zd: sent 0x%02X got 0x%02X",
+								k, tx_buf[k], rx_buf[k]);
+
+							if (k > 4) {
+								PX4_ERR("  ... (more mismatches)");
+								break;
+							}
+						}
+					}
+				}
+			}
+
+			if (total_read < written) {
+				errors++;
+
+				if (config->verbose) {
+					PX4_ERR("Block %d: short read %zd/%zd",
+						blocks, total_read, written);
+				}
+			}
+
+			blocks++;
+
+			/* Progress report every 5 seconds */
+			time_t now = time(NULL);
+
+			if (now - t_last_report >= 5) {
+				time_t elapsed = now - t_start;
+				PX4_INFO("  [%lds] sent=%ld recv=%ld (%.1f%%) errors=%d rate=%.0f B/s",
+					 elapsed, total_sent, total_recv,
+					 total_sent > 0 ? 100.0 * total_recv / total_sent : 0.0,
+					 errors,
+					 elapsed > 0 ? (double)total_recv / elapsed : 0.0);
+				t_last_report = now;
+			}
+		}
+
+		close(fd_tx);
+		close(fd_rx);
+
+		time_t elapsed = time(NULL) - t_start;
+
+		PX4_INFO("  %s result: %d blocks, sent=%ld recv=%ld (%.1f%%) errors=%d",
+			 labels[dir], blocks, total_sent, total_recv,
+			 total_sent > 0 ? 100.0 * total_recv / total_sent : 0.0,
+			 errors);
+		PX4_INFO("  throughput: TX=%.0f B/s  RX=%.0f B/s",
+			 elapsed > 0 ? (double)total_sent / elapsed : 0.0,
+			 elapsed > 0 ? (double)total_recv / elapsed : 0.0);
+
+		/* Brief pause between directions */
+		usleep(500000);
+	}
+
+	PX4_INFO("Cross-channel test complete");
+	return 0;
+}
+
+extern "C" __EXPORT int gen_serial_test_main(int argc, char *argv[])
 {
 	struct test_config config = {
 		.device = DEFAULT_DEVICE,
+		.device2 = nullptr,
 		.baudrate = DEFAULT_BAUDRATE,
 		.duration = DEFAULT_TEST_DURATION,
 		.loopback = false,
@@ -645,10 +857,13 @@ extern "C" __EXPORT int wk2132_test_main(int argc, char *argv[])
 	int myoptind = 2;
 	const char *myoptarg = nullptr;
 
-	while ((ch = px4_getopt(argc, argv, "d:b:t:p:vcD:S:P", &myoptind, &myoptarg)) != EOF) {
+	while ((ch = px4_getopt(argc, argv, "d:r:b:t:p:vcD:S:P", &myoptind, &myoptarg)) != EOF) {
 		switch (ch) {
 		case 'd':
 			config.device = myoptarg;
+			break;
+		case 'r':
+			config.device2 = myoptarg;
 			break;
 		case 'b':
 			config.baudrate = atoi(myoptarg);
@@ -697,6 +912,8 @@ extern "C" __EXPORT int wk2132_test_main(int argc, char *argv[])
 		return test_send(&config);
 	} else if (strcmp(command, "receive") == 0) {
 		return test_receive(&config);
+	} else if (strcmp(command, "crosstest") == 0) {
+		return test_cross_channel(&config);
 	} else {
 		PX4_ERR("Unknown command: %s", command);
 		usage();
