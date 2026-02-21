@@ -184,7 +184,6 @@
  */
 
 #define RC_SERIAL_PORT          "/dev/ttyS3"
-#define RC_SERIAL_SINGLEWIRE
 
 /**
  * GPIO PPM_IN on PB4 T3C1
