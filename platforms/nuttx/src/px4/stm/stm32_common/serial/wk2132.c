@@ -431,21 +431,21 @@ static int wk2132_set_baud(FAR struct wk2132_dev_s *priv, uint32_t baud)
 
 	if (ret < 0) {
 		syslog(LOG_ERR, "WK2132: Failed to write BAUD1 register for port %d: %d\n", priv->port, ret);
-		return ret;
+		goto errout;
 	}
 
 	ret = wk2132_i2c_write_reg(priv, WK2132_BAUD0, baud0);
 
 	if (ret < 0) {
 		syslog(LOG_ERR, "WK2132: Failed to write BAUD0 register for port %d: %d\n", priv->port, ret);
-		return ret;
+		goto errout;
 	}
 
 	ret = wk2132_i2c_write_reg(priv, WK2132_PRES, pres);
 
 	if (ret < 0) {
 		syslog(LOG_ERR, "WK2132: Failed to write PRES register for port %d: %d\n", priv->port, ret);
-		return ret;
+		goto errout;
 	}
 
 	/* Read back the baud rate registers for verification */
