@@ -173,6 +173,20 @@ void CdcAcmAutostart::state_connected()
 void CdcAcmAutostart::state_disconnected()
 {
 	if (_vbus_present && _vbus_present_prev) {
+		/* Check if CDC/ACM device is already registered (e.g., an
+		 * external tool like MCP NSH client opened the USB port first,
+		 * causing sercon to have been called already). Skip sercon_main
+		 * to avoid "Already connected" error flooding the console. */
+		int fd = px4_open(USB_DEVICE_PATH, O_RDONLY | O_NONBLOCK);
+
+		if (fd >= 0) {
+			px4_close(fd);
+			_state = UsbAutoStartState::connecting;
+			PX4_DEBUG("CDC/ACM already registered, state connecting");
+			_reschedule_time = 1_s;
+			return;
+		}
+
 		PX4_DEBUG("starting sercon");
 
 		if (sercon_main(0, nullptr) == EXIT_SUCCESS) {

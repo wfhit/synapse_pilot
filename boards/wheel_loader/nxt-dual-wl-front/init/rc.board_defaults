@@ -30,7 +30,7 @@ param set-default SYS_USB_AUTO 1
 # --- Wheel loader params commented out for incremental bringup ---
 
 # uORB UART Proxy Configuration for Front Board
-param set-default UORB_PX_EN 1         # Enable uORB UART Proxy
+param set-default UORB_PX_EN 0         # Disable uORB UART Proxy (enable manually after UART test)
 param set-default UORB_PX_UART 1       # USART1 = ttyS1 on this board (UART8 first, then USART1)
 param set-default UORB_PX_BAUD 921600  # 921600 baud for high-speed communication
 param set-default UORB_PX_NODE_ID 2    # Front NXT Board (Node ID 2)

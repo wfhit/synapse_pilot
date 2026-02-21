@@ -7,7 +7,7 @@
 nav_lamp_controller start
 
 # Start health monitor
-health_monitor start
+#health_monitor start
 
 # Start operation mode manager
 operation_mode start
@@ -19,7 +19,7 @@ arm_manager start
 operator_interface start
 
 # Start uORB UART bridge
-uorb_uart_bridge start
+#uorb_uart_bridge start
 
 # Start strategy executor
-strategy_executor start
+#strategy_executor start
