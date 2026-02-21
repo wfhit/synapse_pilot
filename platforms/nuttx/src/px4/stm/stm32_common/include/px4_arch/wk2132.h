@@ -209,7 +209,7 @@ struct wk2132_dev_s {
 	uint32_t                 nbits;    /* Number of bits */
 	bool                     stopbits2; /* Two stop bits */
 	sem_t                    exclsem;  /* Mutual exclusion */
-	bool                     enabled;  /* Port enabled flag */
+	volatile bool            enabled;  /* Port enabled flag (volatile: read by poll worker without exclsem) */
 
 	/* RX staging buffer: filled by poll worker via bulk I2C FIFO read,
 	 * consumed by uart_recvchars() via rxavailable()/receive() callbacks.
@@ -228,6 +228,10 @@ struct wk2132_dev_s {
 
 	/* Track TX interrupt enable state locally (no I2C in txint callback) */
 	bool                     txint_enabled;
+
+	/* Cached FSR from RX phase, reused by TX phase to skip redundant I2C reads */
+	uint8_t                  cached_fsr;
+	bool                     fsr_valid;
 };
 
 /* Public Functions */

@@ -209,7 +209,7 @@ struct wk2132_dev_s {
 	uint32_t                 nbits;    /* Number of bits */
 	bool                     stopbits2; /* Two stop bits */
 	sem_t                    exclsem;  /* Mutual exclusion */
-	bool                     enabled;  /* Port enabled flag */
+	volatile bool            enabled;  /* Port enabled flag (volatile: read by poll worker without exclsem) */
 };
 
 /* Public Functions */
