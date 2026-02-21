@@ -295,7 +295,9 @@ void UorbUartBridge::check_connections()
 {
 	const hrt_abstime now = hrt_absolute_time();
 
-	for (auto &conn : _connections) {
+	for (size_t i = 0; i < _connection_count; i++) {
+		RemoteNodeConnection &conn = _connections[i];
+
 		if (!open_connection(conn)) {
 			continue;
 		}
@@ -313,8 +315,8 @@ void UorbUartBridge::check_connections()
 	// Update overall connection status
 	_all_connections_ready = true;
 
-	for (const auto &conn : _connections) {
-		if (!conn.is_connected) {
+	for (size_t i = 0; i < _connection_count; i++) {
+		if (!_connections[i].is_connected) {
 			_all_connections_ready = false;
 			break;
 		}
@@ -338,7 +340,9 @@ void UorbUartBridge::send_heartbeat()
 	payload.rx_errors = _stats.rx_errors;
 
 	if ((now - _last_heartbeat_time) >= (HEARTBEAT_INTERVAL_MS * 1000)) {
-		for (auto &conn : _connections) {
+		for (size_t i = 0; i < _connection_count; i++) {
+			RemoteNodeConnection &conn = _connections[i];
+
 			if (!conn.is_connected) {
 				continue;
 			}
@@ -417,7 +421,9 @@ void UorbUartBridge::process_outgoing_messages()
 
 			if (sub->copy(data)) {
 				// Send to all connected nodes
-				for (auto &conn : _connections) {
+				for (size_t j = 0; j < _connection_count; j++) {
+					RemoteNodeConnection &conn = _connections[j];
+
 					if (!conn.is_connected) {
 						continue;
 					}
@@ -447,9 +453,9 @@ void UorbUartBridge::process_outgoing_messages()
 
 void UorbUartBridge::process_incoming_messages()
 {
-	for (auto &conn : _connections) {
-		if (conn.is_connected) {
-			receive_frames(conn);
+	for (size_t i = 0; i < _connection_count; i++) {
+		if (_connections[i].is_connected) {
+			receive_frames(_connections[i]);
 		}
 	}
 }
@@ -557,13 +563,14 @@ bool UorbUartBridge::publish_to_local_topic(uint16_t topic_id, uint8_t instance,
 	}
 
 	// Find or create topic handler
-	TopicHandler *handler = find_topic_handler(topic_id);
+	TopicHandler *handler = find_topic_handler(topic_id, instance);
 
 	if (handler == nullptr) {
 		// Create new handler if we have space
 		if (_topic_handler_count < MAX_TOPIC_HANDLERS) {
 			TopicHandler *new_handler = &_topic_handlers[_topic_handler_count];
 			new_handler->topic_id = topic_id;
+			new_handler->instance = instance;
 			new_handler->meta = meta;
 			new_handler->subscription = nullptr;
 			int instance_int = static_cast<int>(instance);
@@ -590,10 +597,10 @@ bool UorbUartBridge::publish_to_local_topic(uint16_t topic_id, uint8_t instance,
 	return true;
 }
 
-TopicHandler *UorbUartBridge::find_topic_handler(uint16_t topic_id)
+TopicHandler *UorbUartBridge::find_topic_handler(uint16_t topic_id, uint8_t instance)
 {
 	for (size_t i = 0; i < _topic_handler_count; i++) {
-		if (_topic_handlers[i].topic_id == topic_id) {
+		if (_topic_handlers[i].topic_id == topic_id && _topic_handlers[i].instance == instance) {
 			return &_topic_handlers[i];
 		}
 	}
@@ -619,8 +626,8 @@ void UorbUartBridge::update_statistics()
 	if ((now - _last_statistics_time) >= (STATISTICS_INTERVAL_MS * 1000)) {
 		PX4_INFO("=== uORB UART Bridge Statistics ===");
 
-		for (const auto &conn : _connections) {
-			print_connection_status(conn);
+		for (size_t i = 0; i < _connection_count; i++) {
+			print_connection_status(_connections[i]);
 		}
 
 		PX4_INFO("Topic handlers: %zu", _topic_handler_count);
@@ -642,12 +649,12 @@ void UorbUartBridge::print_connection_status(const RemoteNodeConnection &conn) c
 int UorbUartBridge::print_status()
 {
 	PX4_INFO("uORB UART Bridge status:");
-	PX4_INFO("  Connections: %zu", MAX_CONNECTIONS);
+	PX4_INFO("  Connections: %zu", _connection_count);
 	PX4_INFO("  All ready: %s", _all_connections_ready ? "YES" : "NO");
 	PX4_INFO("  Topic handlers: %zu", _topic_handler_count);
 
-	for (const auto &conn : _connections) {
-		print_connection_status(conn);
+	for (size_t i = 0; i < _connection_count; i++) {
+		print_connection_status(_connections[i]);
 	}
 
 	return 0;

@@ -106,6 +106,7 @@ struct RemoteNodeConnection {
  */
 struct TopicHandler {
 	uint16_t topic_id;
+	uint8_t instance;
 	const orb_metadata *meta;
 	uORB::Subscription *subscription;
 	orb_advert_t publication;
@@ -147,7 +148,7 @@ private:
 	// Topic management
 	bool setup_topic_handlers();
 	void cleanup_topic_handlers();
-	TopicHandler *find_topic_handler(uint16_t topic_id);
+	TopicHandler *find_topic_handler(uint16_t topic_id, uint8_t instance);
 	bool publish_to_local_topic(uint16_t topic_id, uint8_t instance, const void *data, size_t data_size);
 
 	// Communication utilities
