@@ -306,12 +306,36 @@ static int test_loopback(const struct test_config *config)
 			continue;
 		}
 
-		// Read back data
-		usleep(10000); // 10ms delay for data to loop back
-		ssize_t bytes_read = read(fd, read_data, test_size);
+		// Read back data — accumulate partial reads since NuttX
+		// uart_read() returns short counts when recv buffer empties
+		ssize_t total_read = 0;
+		int read_attempts = 0;
+		const int max_attempts = 50; // 50 * 2ms = 100ms max wait
 
-		if (bytes_read != (ssize_t)test_size) {
-			PX4_ERR("Read size mismatch: expected %zu, got %zd", test_size, bytes_read);
+		usleep(5000); // 5ms initial delay for data to start arriving
+
+		while (total_read < (ssize_t)test_size && read_attempts < max_attempts) {
+			ssize_t bytes_read = read(fd, read_data + total_read,
+						  test_size - total_read);
+
+			if (bytes_read > 0) {
+				total_read += bytes_read;
+
+			} else if (bytes_read < 0 && errno != EAGAIN) {
+				PX4_ERR("Read error: %s", strerror(errno));
+				break;
+			}
+
+			if (total_read < (ssize_t)test_size) {
+				usleep(2000); // 2ms between retries (matches poll interval)
+			}
+
+			read_attempts++;
+		}
+
+		if (total_read != (ssize_t)test_size) {
+			PX4_ERR("Read size mismatch: expected %zu, got %zd after %d attempts",
+				test_size, total_read, read_attempts);
 			errors++;
 			continue;
 		}
@@ -320,15 +344,20 @@ static int test_loopback(const struct test_config *config)
 		if (memcmp(test_data, read_data, test_size) != 0) {
 			PX4_ERR("Data mismatch on test %d", tests);
 			errors++;
+
 			if (config->verbose) {
 				printf("Expected: ");
+
 				for (size_t i = 0; i < test_size; i++) {
 					printf("%02X ", test_data[i]);
 				}
+
 				printf("\nReceived: ");
-				for (size_t i = 0; i < test_size; i++) {
+
+				for (ssize_t i = 0; i < total_read; i++) {
 					printf("%02X ", read_data[i]);
 				}
+
 				printf("\n");
 			}
 		}

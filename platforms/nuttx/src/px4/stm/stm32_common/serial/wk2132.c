@@ -108,8 +108,10 @@ static int  wk2132_i2c_write_reg(FAR struct wk2132_dev_s *priv, uint8_t reg,
 static int  wk2132_i2c_read_reg(FAR struct wk2132_dev_s *priv, uint8_t reg,
 				FAR uint8_t *value);
 
-static int  wk2132_i2c_write_fifo(FAR struct wk2132_dev_s *priv, uint8_t value);
-static int  wk2132_i2c_read_fifo(FAR struct wk2132_dev_s *priv, FAR uint8_t *value);
+static int  wk2132_i2c_read_fifo_bulk(FAR struct wk2132_dev_s *priv,
+				       FAR uint8_t *buffer, uint16_t count);
+static int  wk2132_i2c_write_fifo_bulk(FAR struct wk2132_dev_s *priv,
+					FAR const uint8_t *buffer, uint16_t count);
 
 static int  wk2132_set_baud(FAR struct wk2132_dev_s *priv, uint32_t baud);
 static int  wk2132_reconfigure(FAR struct uart_dev_s *dev);
@@ -322,55 +324,63 @@ static int wk2132_i2c_read_reg(FAR struct wk2132_dev_s *priv, uint8_t reg,
 }
 
 /**
- * @brief Write to FIFO via I2C (single byte)
+ * @brief Read multiple bytes from FIFO via I2C (bulk read)
  *
- * As shown in timing diagram 11.2.3, FIFO write operations send data directly
- * to the FIFO without specifying a register address.
+ * Reads up to 'count' bytes in a single I2C transaction for efficiency.
+ * The WK2132 auto-increments through the FIFO on consecutive reads.
  */
-static int wk2132_i2c_write_fifo(FAR struct wk2132_dev_s *priv, uint8_t value)
+static int wk2132_i2c_read_fifo_bulk(FAR struct wk2132_dev_s *priv,
+				      FAR uint8_t *buffer, uint16_t count)
 {
 	struct i2c_msg_s msg;
 	uint8_t i2c_addr;
 	int ret;
 
-	/* Construct I2C address: base_addr in bits 6-3, channel in bits 2-1, FIFO access in bit 0 */
+	if (count == 0) {
+		return OK;
+	}
+
+	/* Construct I2C address for FIFO access */
 	i2c_addr = WK2132_MAKE_I2C_ADDR(priv->base_addr, priv->port, true);
 
-	/* Setup I2C message - direct data write to FIFO */
+	/* Single I2C read transaction for all bytes */
 	msg.frequency = WK2132_I2C_FREQUENCY;
 	msg.addr      = i2c_addr;
-	msg.flags     = 0;
-	msg.buffer    = &value;
-	msg.length    = 1;
+	msg.flags     = I2C_M_READ;
+	msg.buffer    = buffer;
+	msg.length    = count;
 
-	/* Perform the transfer */
 	ret = I2C_TRANSFER(priv->i2c, &msg, 1);
 	return (ret >= 0) ? OK : ret;
 }
 
 /**
- * @brief Read from FIFO via I2C (single byte)
+ * @brief Write multiple bytes to FIFO via I2C (bulk write)
  *
- * As shown in timing diagram 11.2.4, FIFO read operations read data directly
- * from the FIFO without specifying a register address.
+ * Writes up to 'count' bytes in a single I2C transaction for efficiency.
+ * The WK2132 auto-increments through the TX FIFO on consecutive writes.
  */
-static int wk2132_i2c_read_fifo(FAR struct wk2132_dev_s *priv, FAR uint8_t *value)
+static int wk2132_i2c_write_fifo_bulk(FAR struct wk2132_dev_s *priv,
+				       FAR const uint8_t *buffer, uint16_t count)
 {
 	struct i2c_msg_s msg;
 	uint8_t i2c_addr;
 	int ret;
 
-	/* Construct I2C address: base_addr in bits 6-3, channel in bits 2-1, FIFO access in bit 0 */
+	if (count == 0) {
+		return OK;
+	}
+
+	/* Construct I2C address for FIFO access */
 	i2c_addr = WK2132_MAKE_I2C_ADDR(priv->base_addr, priv->port, true);
 
-	/* Setup I2C read message - direct data read from FIFO */
+	/* Single I2C write transaction for all bytes */
 	msg.frequency = WK2132_I2C_FREQUENCY;
 	msg.addr      = i2c_addr;
-	msg.flags     = I2C_M_READ;
-	msg.buffer    = value;
-	msg.length    = 1;
+	msg.flags     = 0;
+	msg.buffer    = (FAR uint8_t *)buffer;
+	msg.length    = count;
 
-	/* Perform the transfer */
 	ret = I2C_TRANSFER(priv->i2c, &msg, 1);
 	return (ret >= 0) ? OK : ret;
 }
@@ -554,6 +564,16 @@ errout:
 
 /**
  * @brief Polling worker function
+ *
+ * RX path: reads RFCNT to check byte count, then does a single bulk I2C
+ * FIFO read into a per-port staging buffer.  uart_recvchars() is called
+ * afterwards; its rxavailable()/receive() callbacks pull from the staging
+ * buffer with zero I2C — safe even if the NuttX serial framework calls
+ * them from a critical section.
+ *
+ * TX path: first flushes any data in the TX staging ring buffer to the
+ * WK2132 TX FIFO via a single bulk I2C write, then calls uart_xmitchars()
+ * to refill the staging buffer via send()/txready() — also zero I2C.
  */
 static void wk2132_poll_worker(FAR void *arg)
 {
@@ -575,14 +595,86 @@ static void wk2132_poll_worker(FAR void *arg)
 
 			/* Only poll enabled devices */
 			if (priv->enabled) {
-				/* Check for received data */
-				if (wk2132_rxavailable(dev)) {
+				/* --- RX: drain staging buffer, then read new FIFO data --- */
+
+				/* If staging has unconsumed data (e.g. NuttX recv buffer
+				 * was full last time), try to drain it first. */
+				if (priv->rx_staging_pos < priv->rx_staging_count) {
 					uart_recvchars(dev);
 				}
 
-				/* Check for transmit ready */
-				if (dev->xmit.head != dev->xmit.tail && wk2132_txready(dev)) {
+				/* Read new FIFO data only when staging is fully consumed */
+				if (priv->rx_staging_pos >= priv->rx_staging_count) {
+					uint8_t rfcnt = 0;
+
+					if (wk2132_i2c_read_reg(priv, WK2132_RFCNT, &rfcnt) >= 0) {
+						uint16_t rx_count = rfcnt;
+
+						/* RFCNT is 8-bit; a full 256-byte FIFO wraps to 0.
+						 * Detect this by checking FSR.RDAT when count is 0. */
+						if (rx_count == 0) {
+							uint8_t fsr = 0;
+
+							if (wk2132_i2c_read_reg(priv, WK2132_FSR, &fsr) >= 0
+							    && (fsr & WK2132_FSR_RDAT)) {
+								rx_count = WK2132_FIFO_SIZE;
+							}
+						}
+
+						if (rx_count > 0) {
+							if (wk2132_i2c_read_fifo_bulk(priv, priv->rx_staging, rx_count) >= 0) {
+								priv->rx_staging_count = rx_count;
+								priv->rx_staging_pos = 0;
+								uart_recvchars(dev);
+							}
+						}
+					}
+				}
+
+				/* --- TX: refill staging from NuttX xmit buffer first --- */
+				if (priv->txint_enabled && dev->xmit.head != dev->xmit.tail) {
 					uart_xmitchars(dev);
+				}
+
+				/* --- TX: flush staging ring buffer to WK2132 TX FIFO --- */
+				uint16_t tx_head = priv->tx_staging_head;
+				uint16_t tx_tail = priv->tx_staging_tail;
+
+				if (tx_head != tx_tail) {
+					uint16_t tx_count;
+
+					if (tx_head > tx_tail) {
+						tx_count = tx_head - tx_tail;
+					} else {
+						tx_count = WK2132_FIFO_SIZE - tx_tail;
+					}
+
+					uint8_t tfcnt = 0;
+
+					if (wk2132_i2c_read_reg(priv, WK2132_TFCNT, &tfcnt) >= 0) {
+						uint16_t space = WK2132_FIFO_SIZE - (uint16_t)tfcnt;
+
+						if (tfcnt == 0) {
+							uint8_t fsr = 0;
+
+							if (wk2132_i2c_read_reg(priv, WK2132_FSR, &fsr) >= 0
+							    && (fsr & WK2132_FSR_TFULL)) {
+								space = 0;
+							}
+						}
+
+						if (tx_count > space) {
+							tx_count = space;
+						}
+
+						if (tx_count > 0) {
+							wk2132_i2c_write_fifo_bulk(priv,
+										   &priv->tx_staging[tx_tail],
+										   tx_count);
+							priv->tx_staging_tail = (tx_tail + tx_count)
+										& (WK2132_FIFO_SIZE - 1);
+						}
+					}
 				}
 			}
 		}
@@ -593,10 +685,10 @@ static void wk2132_poll_worker(FAR void *arg)
 	should_continue = g_wk2132_poll_started;
 	nxsem_post(&g_wk2132_poll_sem);
 
-	/* Schedule next poll - reduced frequency to lower I2C burden */
+	/* Schedule next poll */
 	if (should_continue) {
 		work_queue(LPWORK, &g_wk2132_poll_work, wk2132_poll_worker, NULL,
-			   MSEC2TICK(5));  /* Poll every 5ms instead of 1ms to reduce I2C burden */
+			   MSEC2TICK(1));
 	}
 }
 
@@ -1074,186 +1166,120 @@ static int wk2132_ioctl(FAR struct file *filep, int cmd, unsigned long arg)
 }
 
 /**
- * @brief Receive character
+ * @brief Receive character from staging buffer
+ *
+ * Called by uart_recvchars() after the poll worker has filled the staging
+ * buffer via bulk I2C FIFO read.  No I2C happens here — purely a memory
+ * read from the staging buffer.
  */
 static int wk2132_receive(FAR struct uart_dev_s *dev, unsigned int *status)
 {
 	FAR struct wk2132_dev_s *priv = (FAR struct wk2132_dev_s *)dev->priv;
-	uint8_t fsr;
-	uint8_t rxdata;
-	int ret;
 
-	/* Check if device is enabled */
-	if (!priv->enabled) {
-		*status = 0;
-		return -EIO;
+	*status = 0;
+
+	if (priv->rx_staging_pos >= priv->rx_staging_count) {
+		return -EAGAIN;
 	}
 
-	/* Get FIFO status */
-	ret = wk2132_i2c_read_reg(priv, WK2132_FSR, &fsr);
-
-	if (ret < 0) {
-		syslog(LOG_WARNING, "WK2132: Failed to read FSR for port %d: %d\n", priv->port, ret);
-		*status = 0;
-		return -EIO;
-	}
-
-	/* Check if data is actually available before reading */
-	if ((fsr & WK2132_FSR_RDAT) == 0) {
-		*status = fsr << 8;
-		return -EAGAIN;  /* No data available */
-	}
-
-	*status = fsr << 8;
-
-	/* Read data from FIFO */
-	ret = wk2132_i2c_read_fifo(priv, &rxdata);
-
-	if (ret < 0) {
-		syslog(LOG_WARNING, "WK2132: Failed to read RX FIFO for port %d: %d\n", priv->port, ret);
-		return -EIO;
-	}
-
-	return rxdata;
+	return priv->rx_staging[priv->rx_staging_pos++];
 }
 
 /**
- * @brief Enable/disable RX interrupt
+ * @brief Enable/disable RX interrupt (no-op for polled driver)
+ *
+ * The NuttX serial framework calls this from within a critical section
+ * (interrupts disabled) during uart_read().  I2C transactions inside a
+ * critical section would deadlock if the I2C driver uses interrupts.
+ * Since we use polling (not interrupts), this is safely a no-op.
  */
 static void wk2132_rxint(FAR struct uart_dev_s *dev, bool enable)
 {
-	FAR struct wk2132_dev_s *priv = (FAR struct wk2132_dev_s *)dev->priv;
-	uint8_t sier;
-	int ret;
-
-	/* Check if device is enabled */
-	if (!priv->enabled) {
-		return;
-	}
-
-	/* Read current interrupt enable register */
-	ret = wk2132_i2c_read_reg(priv, WK2132_SIER, &sier);
-
-	if (ret < 0) {
-		syslog(LOG_WARNING, "WK2132: Failed to read SIER for port %d: %d\n", priv->port, ret);
-		return;
-	}
-
-	/* Enable/disable RX interrupt */
-	if (enable) {
-		sier |= WK2132_SIER_RFTRIG_IEN;
-
-	} else {
-		sier &= ~WK2132_SIER_RFTRIG_IEN;
-	}
-
-	ret = wk2132_i2c_write_reg(priv, WK2132_SIER, sier);
-
-	if (ret < 0) {
-		syslog(LOG_WARNING, "WK2132: Failed to write SIER for port %d: %d\n", priv->port, ret);
-	}
+	/* Polled mode — RX is always active via the poll worker */
 }
 
 /**
- * @brief Check if RX data available
+ * @brief Check if RX data available in staging buffer
+ *
+ * No I2C — checks the staging buffer that was filled by the poll worker.
  */
 static bool wk2132_rxavailable(FAR struct uart_dev_s *dev)
 {
 	FAR struct wk2132_dev_s *priv = (FAR struct wk2132_dev_s *)dev->priv;
-	uint8_t fsr;
-
-	if (!priv->enabled) {
-		return false;
-	}
-
-	/* Check FIFO status register for available data */
-	if (wk2132_i2c_read_reg(priv, WK2132_FSR, &fsr) < 0) {
-		return false;
-	}
-
-	return (fsr & WK2132_FSR_RDAT) != 0;
+	return priv->rx_staging_pos < priv->rx_staging_count;
 }
 
 /**
- * @brief Send character
+ * @brief Send character to TX staging ring buffer
+ *
+ * No I2C here — bytes are accumulated in the staging buffer and
+ * bulk-written to the WK2132 TX FIFO by the poll worker.
  */
 static void wk2132_send(FAR struct uart_dev_s *dev, int ch)
 {
 	FAR struct wk2132_dev_s *priv = (FAR struct wk2132_dev_s *)dev->priv;
-	int ret;
 
-	/* Check if device is enabled */
 	if (!priv->enabled) {
 		return;
 	}
 
-	/* Write data to FIFO */
-	ret = wk2132_i2c_write_fifo(priv, (uint8_t)ch);
+	uint16_t next_head = (priv->tx_staging_head + 1) & (WK2132_FIFO_SIZE - 1);
 
-	if (ret < 0) {
-		syslog(LOG_WARNING, "WK2132: Failed to send character 0x%02x to port %d: %d\n",
-		       (uint8_t)ch, priv->port, ret);
+	if (next_head != priv->tx_staging_tail) {
+		priv->tx_staging[priv->tx_staging_head] = (uint8_t)ch;
+		priv->tx_staging_head = next_head;
 	}
 }
 
 /**
  * @brief Enable/disable TX interrupt
+ *
+ * In polled mode, txint(true) means "there is data ready to transmit".
+ * We track the flag locally so the poll worker knows when to call
+ * uart_xmitchars().  No I2C here — safe to call from critical sections.
  */
 static void wk2132_txint(FAR struct uart_dev_s *dev, bool enable)
 {
 	FAR struct wk2132_dev_s *priv = (FAR struct wk2132_dev_s *)dev->priv;
 
-	/* Check if device is enabled */
 	if (!priv->enabled) {
 		return;
 	}
 
-	/* In polled mode, directly drain the TX buffer when enabled */
-	if (enable) {
-		uart_xmitchars(dev);
-	}
+	priv->txint_enabled = enable;
 }
 
 /**
- * @brief Check if TX ready
+ * @brief Check if TX staging ring buffer has space
+ *
+ * No I2C — checks local ring buffer only.
  */
 static bool wk2132_txready(FAR struct uart_dev_s *dev)
 {
 	FAR struct wk2132_dev_s *priv = (FAR struct wk2132_dev_s *)dev->priv;
-	uint8_t fsr;
 
 	if (!priv->enabled) {
 		return false;
 	}
 
-	/* Check FIFO status register */
-	if (wk2132_i2c_read_reg(priv, WK2132_FSR, &fsr) < 0) {
-		return false;
-	}
-
-	/* Return true if TX FIFO is not full */
-	return (fsr & WK2132_FSR_TFULL) == 0;
+	uint16_t next_head = (priv->tx_staging_head + 1) & (WK2132_FIFO_SIZE - 1);
+	return next_head != priv->tx_staging_tail;
 }
 
 /**
- * @brief Check if TX empty
+ * @brief Check if TX staging ring buffer is empty
+ *
+ * No I2C — checks local ring buffer only.
  */
 static bool wk2132_txempty(FAR struct uart_dev_s *dev)
 {
 	FAR struct wk2132_dev_s *priv = (FAR struct wk2132_dev_s *)dev->priv;
-	uint8_t fsr;
 
 	if (!priv->enabled) {
 		return true;
 	}
 
-	/* Check FIFO status register */
-	if (wk2132_i2c_read_reg(priv, WK2132_FSR, &fsr) < 0) {
-		return false;
-	}
-
-	/* Return true if TX is not busy and no data available */
-	return ((fsr & WK2132_FSR_TBUSY) == 0) && ((fsr & WK2132_FSR_TDAT) == 0);
+	return priv->tx_staging_head == priv->tx_staging_tail;
 }
 
 /****************************************************************************
@@ -1308,6 +1334,11 @@ FAR struct uart_dev_s *wk2132_uart_init(FAR struct i2c_master_s *i2c,
 	priv->nbits     = 8;       /* 8 data bits */
 	priv->stopbits2 = false;   /* 1 stop bit */
 	priv->enabled   = false;
+	priv->rx_staging_count = 0;
+	priv->rx_staging_pos   = 0;
+	priv->tx_staging_head  = 0;
+	priv->tx_staging_tail  = 0;
+	priv->txint_enabled    = false;
 
 	nxsem_init(&priv->exclsem, 0, 1);
 
