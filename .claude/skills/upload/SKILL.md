@@ -50,13 +50,16 @@ The uploader automatically sends a reboot-to-bootloader command over MAVLink/ser
 
 1. Log: `[upload] Scanning USB for connected wheel loader boards...`
 2. Check which board is connected via USB (lsusb + /dev/ttyACM*); log detected board and VID:PID
-3. Resolve the firmware `.px4` file path (from argument or auto-detect); log: `[upload] Firmware: <path> (<size> bytes)`
-4. Verify the `.px4` file exists; if not, log `[upload] ✗ Firmware not found — run /build <board> first` and stop
-5. Log: `[upload] Starting upload to <port> at <timestamp>...`
-6. Run `px_uploader.py` with a 2-minute timeout; stream its output so erase/program progress is visible
-7. Log each phase as it appears in uploader output: `[upload] Erasing...`, `[upload] Programming... <N>%`, `[upload] Verifying...`
-8. On completion: Log `[upload] ✓ Upload complete — elapsed <duration>s` or `[upload] ✗ Upload failed — exit code <N>`
-9. Wait 10 seconds, then check if USB re-enumerates
+3. **Check NSH is responsive** before uploading — use the MCP NSH tool or `nsh_client.py` to send a `ver all` command with a 10s timeout:
+   - If NSH responds: log `[upload] NSH responsive — proceeding with upload`
+   - If NSH times out or fails: log `[upload] ✗ NSH not responding — please repower the board, then run /upload again` and **stop** (do not attempt upload)
+4. Resolve the firmware `.px4` file path (from argument or auto-detect); log: `[upload] Firmware: <path> (<size> bytes)`
+5. Verify the `.px4` file exists; if not, log `[upload] ✗ Firmware not found — run /build <board> first` and stop
+6. Log: `[upload] Starting upload to <port> at <timestamp>...`
+7. Run `px_uploader.py` with a 2-minute timeout; stream its output so erase/program progress is visible
+8. Log each phase as it appears in uploader output: `[upload] Erasing...`, `[upload] Programming... <N>%`, `[upload] Verifying...`
+9. On completion: Log `[upload] ✓ Upload complete — elapsed <duration>s` or `[upload] ✗ Upload failed — exit code <N>`
+10. Wait 10 seconds, then check if USB re-enumerates
 
 ## Post-Upload Verification
 

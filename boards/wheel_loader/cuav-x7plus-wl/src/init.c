@@ -62,16 +62,29 @@
 #include <px4_platform/board_dma_alloc.h>
 
 #include <mpu.h>
+#include <nuttx/wqueue.h>
+#include <nuttx/clock.h>
 
 
 __BEGIN_DECLS
 extern void led_init(void);
 extern void led_on(int led);
 extern void led_off(int led);
+extern void led_toggle(int led);
 #ifdef CONFIG_CAN
 extern int can_devinit(void);
 #endif
 __END_DECLS
+
+static struct work_s g_heartbeat_work;
+
+static void heartbeat_worker(FAR void *arg)
+{
+	static bool state = false;
+	state = !state;
+	if (state) { led_on(LED_BLUE); } else { led_off(LED_BLUE); }
+	work_queue(LPWORK, &g_heartbeat_work, heartbeat_worker, NULL, MSEC2TICK(500));
+}
 
 /************************************************************************************
  * Name: board_peripheral_reset
@@ -190,10 +203,16 @@ __EXPORT int board_app_initialize(uintptr_t arg)
 	}
 
 	/* initial LED state */
+	led_init();
 	drv_led_start();
 	led_off(LED_RED);
 	led_on(LED_GREEN); // Indicate Power.
 	led_off(LED_BLUE);
+
+	/* heartbeat: blinks blue LED (PI7) every 500ms — stops if firmware crashes.
+	 * rgbled_pwm and safety_button are NOT started on the wheel loader,
+	 * so the heartbeat has exclusive GPIO control of the RGB LEDs. */
+	work_queue(LPWORK, &g_heartbeat_work, heartbeat_worker, NULL, MSEC2TICK(500));
 
 	if (board_hardfault_init(2, true) != 0) {
 		led_on(LED_RED);

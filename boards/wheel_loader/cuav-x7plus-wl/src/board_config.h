@@ -253,6 +253,9 @@
 		GPIO_OTGFS_VBUS,                  \
 		PX4_GPIO_PIN_OFF(GPIO_HS_USB_EN), \
 		GPIO_RSSI_IN,                     \
+		GPIO_nLED_RED,                    \
+		GPIO_nLED_GREEN,                  \
+		GPIO_nLED_BLUE,                   \
 		FMU_LED_AMBER,                    \
 		GPIO_BTN_SAFETY,                  \
 	}

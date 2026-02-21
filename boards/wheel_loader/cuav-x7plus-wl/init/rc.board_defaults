@@ -20,12 +20,8 @@ param set-default SENS_TEMP_ID 6946850
 # VLA proxy on TEL1 (index 101)
 param set-default VLA_CONFIG 101
 
-rgbled_pwm start
-safety_button start
-
-# RC channel mapping for CRSF receiver on TELEM2
-param set-default RC_MAP_ROLL 1
-param set-default RC_MAP_PITCH 2
-param set-default RC_MAP_THROTTLE 3
-param set-default RC_MAP_YAW 4
-param set-default RC_CHAN_CNT 16
+# RGB LED and safety button are NOT started on the wheel loader.
+# The wheel loader uses its own arm_manager (not PX4 safety switch)
+# and a heartbeat GPIO blink on the blue LED for crash detection.
+# rgbled_pwm would claim PI5-7 as Timer 8 PWM, blocking GPIO control.
+# safety_button would override PE12 at 30Hz, masking the heartbeat.

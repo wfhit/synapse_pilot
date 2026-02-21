@@ -66,9 +66,7 @@ def _wait_for_prompt(ser: serial.Serial, timeout: float = 30) -> str:
         else:
             if time.monotonic() > timeout_start + timeout:
                 raise NshTimeoutError(
-                    "Timeout waiting for NSH prompt. "
-                    "Board may be in bootloader mode or "
-                    "SYS_USB_AUTO may not be set to 1 (auto-detect)."
+                    "Timeout waiting for NSH prompt."
                 )
             ser.write(b"\r")
 

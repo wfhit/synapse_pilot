@@ -336,7 +336,7 @@ static int wk2132_i2c_write_fifo(FAR struct wk2132_dev_s *priv, uint8_t value)
 	/* Construct I2C address: base_addr in bits 6-3, channel in bits 2-1, FIFO access in bit 0 */
 	i2c_addr = WK2132_MAKE_I2C_ADDR(priv->base_addr, priv->port, true);
 
-	/* Setup I2C message - direct data write to FIFO as per timing diagram */
+	/* Setup I2C message - direct data write to FIFO */
 	msg.frequency = WK2132_I2C_FREQUENCY;
 	msg.addr      = i2c_addr;
 	msg.flags     = 0;
@@ -363,7 +363,7 @@ static int wk2132_i2c_read_fifo(FAR struct wk2132_dev_s *priv, FAR uint8_t *valu
 	/* Construct I2C address: base_addr in bits 6-3, channel in bits 2-1, FIFO access in bit 0 */
 	i2c_addr = WK2132_MAKE_I2C_ADDR(priv->base_addr, priv->port, true);
 
-	/* Setup I2C read message - direct data read from FIFO as per timing diagram */
+	/* Setup I2C read message - direct data read from FIFO */
 	msg.frequency = WK2132_I2C_FREQUENCY;
 	msg.addr      = i2c_addr;
 	msg.flags     = I2C_M_READ;
@@ -668,17 +668,29 @@ static int wk2132_setup(FAR struct uart_dev_s *dev)
 	uint8_t grst_bit = 1 << (priv->port - 1);
 	grst |= grst_bit;
 	ret = wk2132_i2c_write_global(priv, WK2132_GRST, grst);
-	nxsem_post(&g_wk2132_poll_sem);
 
 	if (ret < 0) {
 		syslog(LOG_ERR, "WK2132: Failed to write GRST register for port %d\n", priv->port);
+		nxsem_post(&g_wk2132_poll_sem);
 		goto errout;
 	}
 
-	syslog(LOG_DEBUG, "WK2132: Reset completed for port %d, GRST=0x%02x\n", priv->port, grst);
-
 	/* Allow reset to complete */
-	usleep(100000);  /* 100ms delay after reset */
+	usleep(10000);  /* 10ms delay */
+
+	/* Clear reset bit to deassert reset */
+	grst &= ~grst_bit;
+	ret = wk2132_i2c_write_global(priv, WK2132_GRST, grst);
+	nxsem_post(&g_wk2132_poll_sem);
+
+	if (ret < 0) {
+		syslog(LOG_ERR, "WK2132: Failed to clear GRST for port %d\n", priv->port);
+		goto errout;
+	}
+
+	syslog(LOG_DEBUG, "WK2132: Reset completed for port %d\n", priv->port);
+
+	usleep(10000);  /* 10ms settle */
 
 //  /* Step 3: Sub UART global interrupt enable (DFRobot: subSerialGlobalRegEnable(subUartChannel, intrpt)) */
 //  syslog(LOG_DEBUG, "WK2132: Sub UART global interrupt enable for port %d\n", priv->port);
@@ -756,6 +768,18 @@ static int wk2132_setup(FAR struct uart_dev_s *dev)
 
 	if (ret < 0) {
 		syslog(LOG_ERR, "WK2132: Failed to write FCR register for port %d\n", priv->port);
+		goto errout;
+	}
+
+	/* Allow FIFO reset to complete, then clear reset bits.
+	 * Reset bits may not be auto-clearing on all WK2132 variants —
+	 * leaving them set would keep the FIFOs in reset state. */
+	usleep(1000);
+	uint8_t fcr_enable = WK2132_FCR_RFEN | WK2132_FCR_TFEN;
+	ret = wk2132_i2c_write_reg(priv, WK2132_FCR, fcr_enable);
+
+	if (ret < 0) {
+		syslog(LOG_ERR, "WK2132: Failed to clear FCR reset bits for port %d\n", priv->port);
 		goto errout;
 	}
 
@@ -850,6 +874,25 @@ static int wk2132_setup(FAR struct uart_dev_s *dev)
 	usleep(50000);  /* 50ms delay */
 
 	syslog(LOG_INFO, "WK2132: Setup completed successfully for port %d\n", priv->port);
+
+	/* Diagnostic: read back key registers to verify setup */
+	{
+		uint8_t v;
+		wk2132_i2c_read_global(priv, WK2132_GENA, &v);
+		syslog(LOG_DEBUG, "WK2132: port %d GENA=0x%02x\n", priv->port, v);
+		wk2132_i2c_read_global(priv, WK2132_GRST, &v);
+		syslog(LOG_DEBUG, "WK2132: port %d GRST=0x%02x\n", priv->port, v);
+		wk2132_i2c_read_reg(priv, WK2132_SCR, &v);
+		syslog(LOG_DEBUG, "WK2132: port %d SCR=0x%02x\n", priv->port, v);
+		wk2132_i2c_read_reg(priv, WK2132_FCR, &v);
+		syslog(LOG_DEBUG, "WK2132: port %d FCR=0x%02x\n", priv->port, v);
+		wk2132_i2c_read_reg(priv, WK2132_LCR, &v);
+		syslog(LOG_DEBUG, "WK2132: port %d LCR=0x%02x\n", priv->port, v);
+		wk2132_i2c_read_reg(priv, WK2132_FSR, &v);
+		syslog(LOG_DEBUG, "WK2132: port %d FSR=0x%02x\n", priv->port, v);
+		wk2132_i2c_read_reg(priv, WK2132_SPAGE, &v);
+		syslog(LOG_DEBUG, "WK2132: port %d SPAGE=0x%02x\n", priv->port, v);
+	}
 
 	/* Step 10: Enable polling for this port */
 	/* Start polling if not already started (with proper synchronization) */
@@ -1037,7 +1080,6 @@ static int wk2132_receive(FAR struct uart_dev_s *dev, unsigned int *status)
 {
 	FAR struct wk2132_dev_s *priv = (FAR struct wk2132_dev_s *)dev->priv;
 	uint8_t fsr;
-	uint8_t lsr;
 	uint8_t rxdata;
 	int ret;
 
@@ -1062,16 +1104,7 @@ static int wk2132_receive(FAR struct uart_dev_s *dev, unsigned int *status)
 		return -EAGAIN;  /* No data available */
 	}
 
-	/* Get line status */
-	ret = wk2132_i2c_read_reg(priv, WK2132_LSR, &lsr);
-
-	if (ret < 0) {
-		syslog(LOG_WARNING, "WK2132: Failed to read LSR for port %d: %d\n", priv->port, ret);
-		*status = fsr << 8;
-		return -EIO;
-	}
-
-	*status = (fsr << 8) | lsr;
+	*status = fsr << 8;
 
 	/* Read data from FIFO */
 	ret = wk2132_i2c_read_fifo(priv, &rxdata);
@@ -1169,34 +1202,15 @@ static void wk2132_send(FAR struct uart_dev_s *dev, int ch)
 static void wk2132_txint(FAR struct uart_dev_s *dev, bool enable)
 {
 	FAR struct wk2132_dev_s *priv = (FAR struct wk2132_dev_s *)dev->priv;
-	uint8_t sier;
-	int ret;
 
 	/* Check if device is enabled */
 	if (!priv->enabled) {
 		return;
 	}
 
-	/* Read current interrupt enable register */
-	ret = wk2132_i2c_read_reg(priv, WK2132_SIER, &sier);
-
-	if (ret < 0) {
-		syslog(LOG_WARNING, "WK2132: Failed to read SIER for port %d: %d\n", priv->port, ret);
-		return;
-	}
-
-	/* Enable/disable TX interrupt */
+	/* In polled mode, directly drain the TX buffer when enabled */
 	if (enable) {
-		sier |= WK2132_SIER_TFTRIG_IEN;
-
-	} else {
-		sier &= ~WK2132_SIER_TFTRIG_IEN;
-	}
-
-	ret = wk2132_i2c_write_reg(priv, WK2132_SIER, sier);
-
-	if (ret < 0) {
-		syslog(LOG_WARNING, "WK2132: Failed to write SIER for port %d: %d\n", priv->port, ret);
+		uart_xmitchars(dev);
 	}
 }
 
@@ -1255,9 +1269,6 @@ FAR struct uart_dev_s *wk2132_uart_init(FAR struct i2c_master_s *i2c,
 	FAR struct wk2132_dev_s *priv;
 	FAR struct uart_dev_s *dev;
 	int ret;
-
-	/* Enable debug logging for WK2132 driver */
-	setlogmask(LOG_UPTO(LOG_DEBUG));
 
 	syslog(LOG_INFO, "WK2132: Initializing port %d with base_addr 0x%02x\n", port, base_addr);
 
