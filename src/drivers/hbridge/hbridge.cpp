@@ -79,14 +79,9 @@ HBridge::HBridge(uint8_t instance) :
 	// Set manager instance if this is the manager
 	if (_instance == MANAGER_INSTANCE) {
 		_manager_instance = this;
-
-	} else {
-		// Register regular instances
-		if (_instance < MAX_INSTANCES) {
-			_instances[_instance] = this;
-			_num_instances.fetch_add(1);
-		}
 	}
+
+	// Note: Regular instances are registered in start_instance() after successful init
 }
 
 HBridge::~HBridge()
@@ -323,6 +318,8 @@ void HBridge::process_commands()
 
 	if (_command_sub[_instance].updated() &&
 	    _command_sub[_instance].copy(&cmd)) {
+		_last_command_time = hrt_absolute_time();
+
 		// Process duty cycle command for this instance
 		if (cmd.enable) {
 			float duty_cycle = math::constrain(cmd.duty_cycle, -1.0f, 1.0f);
@@ -333,6 +330,14 @@ void HBridge::process_commands()
 			// Disable command - stop the motor
 			_current_duty_cycle = 0.0f;
 		}
+
+	} else if (!_manual_mode && _last_command_time > 0 &&
+		   hrt_elapsed_time(&_last_command_time) > COMMAND_TIMEOUT_US) {
+		// Command timeout - stop motor for safety
+		if (fabsf(_current_duty_cycle) > 0.001f) {
+			PX4_WARN("HBridge %d: command timeout, stopping motor", _instance);
+			_current_duty_cycle = 0.0f;
+		}
 	}
 
 	perf_end(_command_perf);
@@ -340,24 +345,22 @@ void HBridge::process_commands()
 
 void HBridge::process_limit_sensors()
 {
-	sensor_limit_switch_s limit_msg;
+	uint8_t forward_limit_func = get_fwd_limit();
+	uint8_t reverse_limit_func = get_rev_limit();
 
-	// Check forward limit sensor for this instance
-	uint8_t forward_limit_id = get_fwd_limit();
+	// Iterate all limit sensor subscription instances and match by function field
+	for (uint8_t i = 0; i < _limit_sensor_sub.size(); i++) {
+		sensor_limit_switch_s limit_msg;
 
-	if (forward_limit_id != 255 &&
-	    _limit_sensor_sub[forward_limit_id].updated() &&
-	    _limit_sensor_sub[forward_limit_id].copy(&limit_msg)) {
-		_forward_limit_active = limit_msg.state;
-	}
+		if (_limit_sensor_sub[i].updated() && _limit_sensor_sub[i].copy(&limit_msg)) {
+			if (forward_limit_func != 255 && limit_msg.function == forward_limit_func) {
+				_forward_limit_active = limit_msg.state;
+			}
 
-	// Check reverse limit sensor for this instance
-	uint8_t reverse_limit_id = get_rev_limit();
-
-	if (reverse_limit_id != 255 &&
-	    _limit_sensor_sub[reverse_limit_id].updated() &&
-	    _limit_sensor_sub[reverse_limit_id].copy(&limit_msg)) {
-		_reverse_limit_active = limit_msg.state;
+			if (reverse_limit_func != 255 && limit_msg.function == reverse_limit_func) {
+				_reverse_limit_active = limit_msg.state;
+			}
+		}
 	}
 }
 
@@ -467,12 +470,18 @@ int HBridge::task_spawn(int argc, char *argv[])
 		}
 	}
 
-	// Create manager instance if needed
+	// Create and initialize manager instance if needed
 	if (_manager_instance == nullptr) {
 		HBridge *manager = new HBridge(MANAGER_INSTANCE);
 
 		if (manager == nullptr) {
 			PX4_ERR("Failed to allocate manager instance");
+			return PX4_ERROR;
+		}
+
+		if (!manager->init()) {
+			PX4_ERR("Failed to initialize manager instance");
+			delete manager;
 			return PX4_ERROR;
 		}
 
@@ -500,15 +509,8 @@ int HBridge::task_spawn(int argc, char *argv[])
 	}
 
 	if (any_started) {
-		// Set the first instance as the primary object for status
-		for (int i = 0; i < MAX_INSTANCES; i++) {
-			if (_instances[i] != nullptr) {
-				_object.store(_instances[i]);
-				_task_id = task_id_is_work_queue;
-				break;
-			}
-		}
-
+		// Keep manager as the primary object — it owns all instances
+		// and must be cleaned up on stop
 		return PX4_OK;
 
 	} else {
@@ -540,6 +542,9 @@ bool HBridge::start_instance(int instance)
 
 	// Initialize instance
 	if (obj->init()) {
+		// Register instance after successful init
+		_instances[instance] = obj;
+		_num_instances.fetch_add(1);
 		PX4_INFO("Started HBridge instance %d", instance);
 		return true;
 
@@ -837,16 +842,18 @@ void HBridge::updateParams()
 		PX4_DEBUG("  Forward limit sensor: %d", get_fwd_limit());
 		PX4_DEBUG("  Reverse limit sensor: %d", get_rev_limit());
 
-		// Validate limit sensor parameters
+		// Validate limit sensor function parameters
 		int fwd_limit = get_fwd_limit();
 		int rev_limit = get_rev_limit();
 
-		if (fwd_limit < 0 || fwd_limit > 255) {
-			PX4_WARN("Invalid forward limit sensor ID %d for instance %d (valid: 0-255)", fwd_limit, _instance);
+		if (fwd_limit != 255 && fwd_limit > 5) {
+			PX4_WARN("Invalid forward limit sensor function %d for instance %d (valid: 0-5 or 255=disabled)",
+				 fwd_limit, _instance);
 		}
 
-		if (rev_limit < 0 || rev_limit > 255) {
-			PX4_WARN("Invalid reverse limit sensor ID %d for instance %d (valid: 0-255)", rev_limit, _instance);
+		if (rev_limit != 255 && rev_limit > 5) {
+			PX4_WARN("Invalid reverse limit sensor function %d for instance %d (valid: 0-5 or 255=disabled)",
+				 rev_limit, _instance);
 		}
 	}
 }

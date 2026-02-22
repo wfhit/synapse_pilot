@@ -66,9 +66,18 @@ LimitSensor::LimitSensor(uint8_t instance) :
 	ScheduledWorkItem(MODULE_NAME, px4::wq_configurations::hp_default),
 	_instance(instance),
 	_parameter_update_sub(ORB_ID(parameter_update)),
-	_cycle_perf(perf_alloc(PC_ELAPSED, MODULE_NAME": cycle")),
-	_sample_perf(perf_alloc(PC_ELAPSED, MODULE_NAME": sample")),
-	_fault_perf(perf_alloc(PC_COUNT, MODULE_NAME": fault"))
+	_cycle_perf(perf_alloc(PC_ELAPSED, instance == MANAGER_INSTANCE ? MODULE_NAME": cycle" :
+			       (instance == 0 ? MODULE_NAME"0: cycle" :
+				(instance == 1 ? MODULE_NAME"1: cycle" :
+				 (instance == 2 ? MODULE_NAME"2: cycle" : MODULE_NAME"3: cycle"))))),
+	_sample_perf(perf_alloc(PC_ELAPSED, instance == MANAGER_INSTANCE ? MODULE_NAME": sample" :
+				(instance == 0 ? MODULE_NAME"0: sample" :
+				 (instance == 1 ? MODULE_NAME"1: sample" :
+				  (instance == 2 ? MODULE_NAME"2: sample" : MODULE_NAME"3: sample"))))),
+	_fault_perf(perf_alloc(PC_COUNT, instance == MANAGER_INSTANCE ? MODULE_NAME": fault" :
+			       (instance == 0 ? MODULE_NAME"0: fault" :
+				(instance == 1 ? MODULE_NAME"1: fault" :
+				 (instance == 2 ? MODULE_NAME"2: fault" : MODULE_NAME"3: fault")))))
 {
 	// Initialize switch states
 	_switch_1 = {};
@@ -411,11 +420,16 @@ void LimitSensor::updateParams()
 	int32_t poll_rate = _param_poll_rate.get();
 
 	if (poll_rate > 0 && poll_rate <= 1000) {
-		_run_interval_us = 1000000 / poll_rate;
+		uint32_t new_interval = 1000000 / poll_rate;
 
-		// Update schedule if already running
-		if (_board_config != nullptr) {
-			ScheduleOnInterval(_run_interval_us);
+		// Only reschedule if the interval actually changed
+		if (new_interval != _run_interval_us) {
+			_run_interval_us = new_interval;
+
+			// Update schedule if already running
+			if (_board_config != nullptr) {
+				ScheduleOnInterval(_run_interval_us);
+			}
 		}
 	}
 
@@ -472,8 +486,16 @@ void LimitSensor::Run()
 		update_combined_state();
 	}
 
-	// Publish state
-	publish_state();
+	// Publish only on state change or at heartbeat interval
+	uint64_t now = hrt_absolute_time();
+	bool state_changed = (_sensor_state.combined_state != _last_published_state);
+	bool heartbeat_due = (now - _last_publish_time) >= HEARTBEAT_PUBLISH_INTERVAL_US;
+
+	if (state_changed || heartbeat_due) {
+		publish_state();
+		_last_published_state = _sensor_state.combined_state;
+		_last_publish_time = now;
+	}
 
 	perf_end(_sample_perf);
 	perf_end(_cycle_perf);

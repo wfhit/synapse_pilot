@@ -168,6 +168,15 @@ const char *TopicRegistry::get_topic_name(uint16_t topic_id) const
 	return info ? info->name : nullptr;
 }
 
+const TopicInfo *TopicRegistry::get_topic_by_index(size_t index) const
+{
+	if (index < _topic_count) {
+		return &_topics[index];
+	}
+
+	return nullptr;
+}
+
 void TopicRegistry::print_statistics() const
 {
 	PX4_INFO("Topic Registry Statistics:");

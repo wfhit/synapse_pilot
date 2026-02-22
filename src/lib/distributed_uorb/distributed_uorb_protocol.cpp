@@ -227,6 +227,49 @@ size_t FrameBuilder::build_heartbeat_frame(uint8_t *buffer, size_t buffer_size,
 	return total_size;
 }
 
+size_t FrameBuilder::build_time_sync_frame(uint8_t *buffer, size_t buffer_size,
+					   NodeId source, NodeId dest,
+					   const TimeSyncPayload &payload,
+					   uint16_t sequence)
+{
+	size_t payload_size = sizeof(TimeSyncPayload);
+	size_t total_size = sizeof(ProtocolFrame) + payload_size + sizeof(uint32_t);
+
+	if (buffer_size < total_size) {
+		return 0;
+	}
+
+	ProtocolFrame *frame = reinterpret_cast<ProtocolFrame *>(buffer);
+
+	// Header
+	frame->sync1 = SYNC_BYTE1;
+	frame->sync2 = SYNC_BYTE2;
+	frame->protocol_version = PROTOCOL_VERSION;
+	frame->message_type = static_cast<uint8_t>(MessageType::TIME_SYNC);
+	frame->frame_length = total_size;
+
+	// Metadata
+	frame->topic_id = 0;
+	frame->instance = 0;
+	frame->source_node = static_cast<uint8_t>(source);
+	frame->dest_node = static_cast<uint8_t>(dest);
+	frame->sequence_num = sequence;
+	frame->flags = encode_flags(Priority::HIGH, Reliability::BEST_EFFORT, Compression::NONE);
+
+	// QoS
+	frame->payload_length = payload_size;
+	frame->ttl_ms = 500;
+
+	// Copy payload
+	std::memcpy(frame->payload, &payload, payload_size);
+
+	// Calculate and append CRC32
+	uint32_t crc = calculate_crc32(buffer, total_size - sizeof(uint32_t));
+	std::memcpy(buffer + total_size - sizeof(uint32_t), &crc, sizeof(uint32_t));
+
+	return total_size;
+}
+
 size_t FrameBuilder::build_error_frame(uint8_t *buffer, size_t buffer_size,
 				       NodeId source, NodeId dest,
 				       const ErrorPayload &payload,

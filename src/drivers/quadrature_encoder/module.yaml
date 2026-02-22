@@ -18,13 +18,8 @@ parameters:
               description:
                   short: Enable encoder 0
                   long: Enable or disable encoder channel 0
-              type: int32
-              min: 0
-              max: 1
+              type: boolean
               default: 1
-              values:
-                  0: Disabled
-                  1: Enabled
           QE_0_OVERFLOW:
               description:
                   short: Encoder 0 counter overflow value
@@ -58,26 +53,16 @@ parameters:
                       Reverse encoder 0 direction - when enabled, positive movement will
                       be interpreted as negative and vice versa. Useful for correcting
                       encoder mounting orientation without hardware changes.
-              type: int32
-              min: 0
-              max: 1
+              type: boolean
               default: 0
-              values:
-                  0: Normal direction
-                  1: Reversed direction
     - group: Quadrature Encoder 1
       definitions:
           QE_1_ENABLE:
               description:
                   short: Enable encoder 1
                   long: Enable or disable encoder channel 1
-              type: int32
-              min: 0
-              max: 1
+              type: boolean
               default: 1
-              values:
-                  0: Disabled
-                  1: Enabled
           QE_1_OVERFLOW:
               description:
                   short: Encoder 1 counter overflow value
@@ -111,10 +96,5 @@ parameters:
                       Reverse encoder 1 direction - when enabled, positive movement will
                       be interpreted as negative and vice versa. Useful for correcting
                       encoder mounting orientation without hardware changes.
-              type: int32
-              min: 0
-              max: 1
+              type: boolean
               default: 0
-              values:
-                  0: Normal direction
-                  1: Reversed direction

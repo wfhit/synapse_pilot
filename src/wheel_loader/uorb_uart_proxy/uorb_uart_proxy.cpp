@@ -37,6 +37,7 @@
 #include <termios.h>
 #include <unistd.h>
 #include <poll.h>
+#include <cstring>
 #include <drivers/drv_hrt.h>
 
 UorbUartProxy::UorbUartProxy() :
@@ -77,8 +78,8 @@ bool UorbUartProxy::open_uart()
 	int32_t uart_port = _param_uart_port.get();
 	snprintf(_uart_device, sizeof(_uart_device), "/dev/ttyS%ld", (long)uart_port);
 
-	// Open UART
-	_uart_fd = ::open(_uart_device, O_RDWR | O_NOCTTY | O_NONBLOCK);
+	// Open UART (no O_NONBLOCK: this is a dedicated task, blocking writes are OK)
+	_uart_fd = ::open(_uart_device, O_RDWR | O_NOCTTY);
 
 	if (_uart_fd < 0) {
 		PX4_ERR("Failed to open %s: %d", _uart_device, errno);
@@ -260,11 +261,11 @@ void UorbUartProxy::send_outgoing()
 				continue;
 			}
 
-			// Send frame
+			// Send frame (blocking write — waits for TX buffer space)
 			ssize_t written = ::write(_uart_fd, _tx_buf, frame_size);
 
 			if (written != (ssize_t)frame_size) {
-				_rx_errors++;
+				_tx_errors++;
 			} else {
 				_tx_frames++;
 				_tx_bytes += frame_size;
@@ -277,6 +278,17 @@ void UorbUartProxy::receive_incoming()
 {
 	if (_uart_fd < 0) {
 		return;
+	}
+
+	// Poll for available data (non-blocking check since UART is opened blocking)
+	struct pollfd fds{};
+	fds.fd = _uart_fd;
+	fds.events = POLLIN;
+
+	int ret = ::poll(&fds, 1, 0);  // timeout=0: non-blocking check
+
+	if (ret <= 0 || !(fds.revents & POLLIN)) {
+		return;  // No data available
 	}
 
 	// Read available data into RX buffer
@@ -389,7 +401,16 @@ void UorbUartProxy::dispatch_frame(const ProtocolFrame *frame, const uint8_t *pa
 		break;
 
 	case static_cast<uint8_t>(MessageType::HEARTBEAT):
-		// Just update last RX time (already done in receive_incoming)
+		if (frame->payload_length >= sizeof(HeartbeatPayload)) {
+			const HeartbeatPayload *hb =
+				reinterpret_cast<const HeartbeatPayload *>(payload);
+			process_heartbeat_time_sync(*hb);
+		}
+
+		break;
+
+	case static_cast<uint8_t>(MessageType::TIME_SYNC):
+		// Time sync is now handled via heartbeat, ignore legacy TIME_SYNC frames
 		break;
 
 	default:
@@ -411,6 +432,30 @@ void UorbUartProxy::publish_incoming(uint16_t topic_id, uint8_t instance, const 
 	if (size != meta->o_size) {
 		PX4_WARN("Size mismatch for topic_id=0x%04x: got %zu, expected %zu", topic_id, size, meta->o_size);
 		return;
+	}
+
+	// Apply timestamp correction if time is synced
+	// The first 8 bytes of every uORB message is uint64_t timestamp
+	uint8_t corrected_data[MSG_BUF_SIZE];
+	const uint8_t *publish_data = data;
+
+	if (_time_synced && size >= sizeof(uint64_t) && size <= MSG_BUF_SIZE) {
+		std::memcpy(corrected_data, data, size);
+
+		// Read master timestamp
+		uint64_t master_ts;
+		std::memcpy(&master_ts, corrected_data, sizeof(uint64_t));
+
+		// Convert master time to slave (local) time:
+		// slave_time = master_time + offset
+		int64_t local_ts = static_cast<int64_t>(master_ts) + _time_offset_us;
+
+		if (local_ts > 0) {
+			uint64_t corrected_ts = static_cast<uint64_t>(local_ts);
+			std::memcpy(corrected_data, &corrected_ts, sizeof(uint64_t));
+		}
+
+		publish_data = corrected_data;
 	}
 
 	// Find or create publication
@@ -437,7 +482,7 @@ void UorbUartProxy::publish_incoming(uint16_t topic_id, uint8_t instance, const 
 
 		// Advertise with specific instance
 		int instance_copy = instance;
-		pub->handle = orb_advertise_multi(meta, data, &instance_copy);
+		pub->handle = orb_advertise_multi(meta, publish_data, &instance_copy);
 
 		if (pub->handle == nullptr) {
 			PX4_ERR("Failed to advertise topic_id=0x%04x instance=%u", topic_id, instance);
@@ -448,7 +493,7 @@ void UorbUartProxy::publish_incoming(uint16_t topic_id, uint8_t instance, const 
 		PX4_INFO("Created publication for topic_id=0x%04x instance=%u", topic_id, instance);
 	} else {
 		// Publish to existing handle
-		orb_publish(meta, pub->handle, data);
+		orb_publish(meta, pub->handle, publish_data);
 	}
 }
 
@@ -464,6 +509,27 @@ const orb_metadata *UorbUartProxy::get_topic_meta(uint16_t topic_id)
 
 	default:
 		return nullptr;
+	}
+}
+
+void UorbUartProxy::process_heartbeat_time_sync(const HeartbeatPayload &hb)
+{
+	// Store master's t1 and local receive time for echo in our next heartbeat
+	_master_ts_t1 = hb.ts_t1;
+	_master_hb_rx_time = static_cast<int64_t>(hrt_absolute_time());
+	_master_ts_seq = hb.ts_seq;
+
+	// Apply received offset from master (computed in previous round)
+	if (hb.ts_quality > 0) {
+		_time_offset_us = hb.ts_offset_us;
+		_time_sync_quality = hb.ts_quality;
+		_last_time_sync_rx = hrt_absolute_time();
+
+		if (!_time_synced && _time_sync_quality >= 30) {
+			_time_synced = true;
+			PX4_INFO("Time synced: offset=%lld us, quality=%u%%",
+				 (long long)_time_offset_us, (unsigned)_time_sync_quality);
+		}
 	}
 }
 
@@ -489,8 +555,17 @@ void UorbUartProxy::send_heartbeat()
 	hb.free_memory_kb = 0;
 	hb.tx_packets = _tx_frames;
 	hb.rx_packets = _rx_frames;
-	hb.tx_errors = 0;
+	hb.tx_errors = _tx_errors;
 	hb.rx_errors = _rx_errors;
+
+	// Time sync echo: send back master's timestamps for round-trip calculation
+	hb.ts_t1 = _master_ts_t1;
+	hb.ts_t2 = _master_hb_rx_time;
+	hb.ts_t3 = static_cast<int64_t>(hrt_absolute_time());
+	hb.ts_seq = _master_ts_seq;
+	hb.ts_offset_us = 0;
+	hb.ts_rtt_us = 0;
+	hb.ts_quality = 0;
 
 	size_t frame_size = _frame_builder.build_heartbeat_frame(
 				    _tx_buf, TX_BUF_SIZE,
@@ -522,6 +597,16 @@ int UorbUartProxy::print_status()
 
 	PX4_INFO("  Connected: %s (last RX: %.1fs ago)", connected ? "yes" : "no", (double)rx_age / 1e6);
 
+	PX4_INFO("  Time sync: %s, offset=%lld us, quality=%u%%",
+		 _time_synced ? "SYNCED" : "NOT_SYNCED",
+		 (long long)_time_offset_us,
+		 (unsigned)_time_sync_quality);
+
+	if (_last_time_sync_rx > 0) {
+		hrt_abstime ts_age = now - _last_time_sync_rx;
+		PX4_INFO("  Last time sync: %.1fs ago", (double)ts_age / 1e6);
+	}
+
 	PX4_INFO("Memory usage:");
 	size_t out_subs_mem = sizeof(_out_subs);
 	size_t in_pubs_mem = sizeof(_in_pubs);
@@ -538,7 +623,8 @@ int UorbUartProxy::print_status()
 	PX4_INFO("Statistics:");
 	PX4_INFO("  TX: %lu frames, %lu bytes", (unsigned long)_tx_frames, (unsigned long)_tx_bytes);
 	PX4_INFO("  RX: %lu frames, %lu bytes", (unsigned long)_rx_frames, (unsigned long)_rx_bytes);
-	PX4_INFO("  Errors: RX=%lu, Parse=%lu", (unsigned long)_rx_errors, (unsigned long)_parse_errors);
+	PX4_INFO("  Errors: TX=%lu, RX=%lu, Parse=%lu",
+		 (unsigned long)_tx_errors, (unsigned long)_rx_errors, (unsigned long)_parse_errors);
 
 	PX4_INFO("Outgoing subscriptions: %zu", _out_sub_count);
 

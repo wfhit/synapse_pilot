@@ -91,6 +91,11 @@ private:
 		uint64_t last_activation_time{0};
 	} _sensor_state;
 
+	// Track last published state for change-based publishing
+	bool _last_published_state{false};
+	uint64_t _last_publish_time{0};
+	static constexpr uint64_t HEARTBEAT_PUBLISH_INTERVAL_US = 1000000; // 1s heartbeat
+
 	// Publications
 	orb_advert_t _pub_handle{nullptr};
 

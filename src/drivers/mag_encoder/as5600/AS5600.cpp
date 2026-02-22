@@ -284,7 +284,12 @@ int AS5600::readReg(uint8_t addr, uint8_t *buf, size_t len)
 
 int AS5600::writeReg(uint8_t addr, uint8_t *buf, size_t len)
 {
-	uint8_t cmd[len + 1];
+	// AS5600 registers are at most 2 bytes, so 4 is sufficient
+	if (len > 3) {
+		return PX4_ERROR;
+	}
+
+	uint8_t cmd[4];
 	cmd[0] = addr;
 	memcpy(&cmd[1], buf, len);
 

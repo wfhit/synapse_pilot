@@ -150,6 +150,11 @@ public:
 	size_t get_all_topics(const TopicInfo **topics, size_t max_topics) const;
 
 	/**
+	 * Get topic info by index (for stack-safe iteration)
+	 */
+	const TopicInfo *get_topic_by_index(size_t index) const;
+
+	/**
 	 * Get number of registered topics
 	 */
 	size_t get_topic_count() const { return _topic_count; }

@@ -111,7 +111,8 @@ private:
 	struct EncoderState {
 		int32_t last_counter{0};          // Previous raw counter value for delta calculation
 		double position{0.0};             // Accumulated position in configured units
-		double velocity{0.0};             // Instantaneous velocity in configured units/sec
+		double velocity{0.0};             // Filtered velocity in configured units/sec
+		double velocity_raw{0.0};         // Instantaneous velocity before filtering
 		uint64_t last_update_time{0};     // Last successful update timestamp
 	} _encoder_state;
 

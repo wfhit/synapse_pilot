@@ -66,6 +66,7 @@ public:
 	static constexpr uint8_t MAX_INSTANCES = 2;  // Support 2 H-bridge channels
 	static constexpr unsigned SCHEDULE_INTERVAL = 10000;  // 10ms = 100Hz update rate
 	static constexpr uint8_t MANAGER_INSTANCE = 255;        // Instance 255 manages shared enable
+	static constexpr uint64_t COMMAND_TIMEOUT_US = 500000;  // 500ms command timeout
 
 	HBridge(uint8_t instance);
 	~HBridge() override;
@@ -98,6 +99,7 @@ private:
 	bool _reverse_limit_active{false};
 	bool _initialized{false};
 	bool _manual_mode{false};
+	uint64_t _last_command_time{0};  // Last valid setpoint timestamp for timeout
 
 	// Publications
 	orb_advert_t _pub_handle{nullptr};
@@ -105,7 +107,7 @@ private:
 	// Subscriptions (instance-specific command subscription)
 	uORB::Subscription _parameter_update_sub{ORB_ID(parameter_update)};
 	uORB::SubscriptionMultiArray<hbridge_setpoint_s> _command_sub{ORB_ID::hbridge_setpoint};
-	uORB::SubscriptionMultiArray<sensor_limit_switch_s> _limit_sensor_sub{ORB_ID::sensor_limit_switch};
+	uORB::SubscriptionMultiArray<sensor_limit_switch_s, 4> _limit_sensor_sub{ORB_ID::sensor_limit_switch};
 
 	// Performance counters
 	perf_counter_t _loop_perf{nullptr};

@@ -175,6 +175,14 @@ inline void decode_flags(uint8_t flags, Priority &priority, Reliability &reliabi
 
 /**
  * Heartbeat message payload
+ *
+ * Time sync is piggybacked on heartbeat for reliability.
+ * Uses NTP-like 4-timestamp algorithm:
+ *   1. Master heartbeat carries ts_t1 (master send time) + ts_seq
+ *   2. Slave stores ts_t1 and records ts_t2 (local receive time)
+ *   3. Slave heartbeat echoes ts_t1, ts_t2, and sets ts_t3 (slave send time)
+ *   4. Master receives, records t4, computes offset and RTT
+ *   5. Master sends computed offset/quality in next heartbeat to slave
  */
 struct __attribute__((packed)) HeartbeatPayload {
 	uint64_t timestamp;         // Current timestamp
@@ -186,6 +194,14 @@ struct __attribute__((packed)) HeartbeatPayload {
 	uint32_t rx_packets;        // Total received packets
 	uint32_t tx_errors;         // Transmission error count
 	uint32_t rx_errors;         // Reception error count
+	// Time sync (piggybacked on heartbeat)
+	int64_t ts_t1;              // Master send time (master sets, slave echoes)
+	int64_t ts_t2;              // Slave receive time of master heartbeat
+	int64_t ts_t3;              // Slave send time of this heartbeat
+	int64_t ts_offset_us;       // Computed clock offset (master to slave)
+	uint32_t ts_rtt_us;         // Computed RTT (master to slave)
+	uint8_t ts_quality;         // Sync quality 0-100 (master to slave)
+	uint8_t ts_seq;             // Sequence counter
 };
 
 /**
@@ -201,6 +217,40 @@ struct __attribute__((packed)) TopicInfoPayload {
 	uint32_t publish_rate_hz;   // Publishing rate in Hz
 	uint64_t last_published;    // Last publish timestamp
 };
+
+/**
+ * Time synchronization payload
+ *
+ * Uses a 4-timestamp NTP-like round trip algorithm:
+ *   1. Master sends TIME_SYNC_REQUEST with t1 (master send time)
+ *   2. Slave receives, records t2 (slave receive time), replies with
+ *      TIME_SYNC_RESPONSE carrying {t1, t2, t3} where t3 = slave send time
+ *   3. Master receives, records t4 (master receive time), computes:
+ *      - Round-trip time:  rtt    = (t4 - t1) - (t3 - t2)
+ *      - Clock offset:     offset = ((t2 - t1) + (t3 - t4)) / 2
+ *   4. Master sends TIME_SYNC_OFFSET with computed offset to slave
+ *   5. Slave stores offset for timestamp correction
+ */
+struct __attribute__((packed)) TimeSyncPayload {
+	uint8_t phase;              // 0=request, 1=response, 2=offset
+	uint8_t reserved;
+	int64_t t1;                 // Master send time (us)
+	int64_t t2;                 // Slave receive time (us)
+	int64_t t3;                 // Slave send time (us)
+	int64_t offset_us;          // Computed clock offset (us), master−slave
+	uint32_t rtt_us;            // Round-trip time (us)
+	uint8_t quality;            // Sync quality 0-100 (filtered)
+	uint8_t sequence_id;        // Matches request→response→offset
+};
+
+static constexpr uint8_t TIME_SYNC_PHASE_REQUEST  = 0;
+static constexpr uint8_t TIME_SYNC_PHASE_RESPONSE = 1;
+static constexpr uint8_t TIME_SYNC_PHASE_OFFSET   = 2;
+
+// Time sync constants
+static constexpr uint32_t TIME_SYNC_INTERVAL_MS = 2000;   // Send request every 2s
+static constexpr uint32_t TIME_SYNC_RTT_MAX_US = 500000;  // Discard if RTT > 500ms (accounts for UART queuing)
+static constexpr uint8_t TIME_SYNC_FILTER_SIZE = 8;       // Median filter window
 
 /**
  * Error notification payload
@@ -247,6 +297,14 @@ public:
 	 */
 	size_t build_heartbeat_frame(uint8_t *buffer, size_t buffer_size,
 				     NodeId source, const HeartbeatPayload &payload,
+				     uint16_t sequence = 0);
+
+	/**
+	 * Build a time sync frame
+	 */
+	size_t build_time_sync_frame(uint8_t *buffer, size_t buffer_size,
+				     NodeId source, NodeId dest,
+				     const TimeSyncPayload &payload,
 				     uint16_t sequence = 0);
 
 	/**
