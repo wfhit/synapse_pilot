@@ -67,6 +67,7 @@
 // Incoming topics (X7+ -> NXT)
 #include <uORB/topics/boom_control_setpoint.h>
 #include <uORB/topics/tilt_control_setpoint.h>
+#include <uORB/topics/traction_setpoint.h>
 
 using namespace time_literals;
 using namespace distributed_uorb;

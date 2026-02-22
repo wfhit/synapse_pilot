@@ -62,6 +62,7 @@
 #include <uORB/topics/sensor_limit_switch.h>
 #include <uORB/topics/sensor_quad_encoder.h>
 #include <uORB/topics/hbridge_status.h>
+#include <uORB/topics/traction_setpoint.h>
 #include <uORB/topics/vehicle_status.h>
 
 #include <poll.h>

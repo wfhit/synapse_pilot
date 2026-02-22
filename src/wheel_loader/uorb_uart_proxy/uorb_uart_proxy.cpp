@@ -507,6 +507,9 @@ const orb_metadata *UorbUartProxy::get_topic_meta(uint16_t topic_id)
 	case TopicIdRange::TILT_CONTROL_SETPOINT:
 		return ORB_ID(tilt_control_setpoint);
 
+	case TopicIdRange::TRACTION_SETPOINT:
+		return ORB_ID(traction_setpoint);
+
 	default:
 		return nullptr;
 	}
