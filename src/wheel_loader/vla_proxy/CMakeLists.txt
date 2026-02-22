@@ -39,7 +39,6 @@ px4_add_module(
 	SRCS
 		vla_proxy.cpp
 	DEPENDS
-		px4_work_queue
 	MODULE_CONFIG
 		module.yaml
 )

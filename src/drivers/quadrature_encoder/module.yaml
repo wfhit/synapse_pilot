@@ -12,6 +12,20 @@ parameters:
               default: 50
               increment: 1
               unit: Hz
+          QE_VEL_ALPHA:
+              description:
+                  short: Velocity filter alpha
+                  long: |
+                      Low-pass filter coefficient for velocity smoothing.
+                      Higher values give faster response but more noise.
+                      Lower values give smoother output but more lag.
+                      velocity = alpha * raw + (1 - alpha) * previous
+              type: float
+              min: 0.01
+              max: 1.0
+              default: 0.3
+              decimal: 2
+              increment: 0.05
     - group: Quadrature Encoder 0
       definitions:
           QE_0_ENABLE:

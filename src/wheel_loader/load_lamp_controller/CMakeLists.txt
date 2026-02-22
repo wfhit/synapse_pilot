@@ -40,4 +40,5 @@ px4_add_module(
 	MODULE_CONFIG
 		module.yaml
 	DEPENDS
+		px4_work_queue
 )

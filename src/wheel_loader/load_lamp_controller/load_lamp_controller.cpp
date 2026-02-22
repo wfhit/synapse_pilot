@@ -41,14 +41,23 @@
 #warning "BOARD_HAS_LOAD_LAMP not defined - load lamp controller module will be disabled"
 #endif
 
-LoadLampController::LoadLampController() : ModuleParams(nullptr)
+LoadLampController::LoadLampController() :
+	ModuleParams(nullptr),
+	ScheduledWorkItem(MODULE_NAME, px4::wq_configurations::lp_default)
 {
 }
 
 LoadLampController::~LoadLampController()
 {
+	ScheduleClear();
 	perf_free(_loop_perf);
 	perf_free(_load_update_perf);
+}
+
+bool LoadLampController::init()
+{
+	ScheduleOnInterval(20000); // 50Hz
+	return true;
 }
 
 void LoadLampController::parameters_update()
@@ -147,52 +156,42 @@ void LoadLampController::test_mode_disable()
 	_test_mode_active = false;
 }
 
-void LoadLampController::run()
+void LoadLampController::Run()
 {
+	if (should_exit()) {
 #ifdef BOARD_HAS_LOAD_LAMP
-	// Initialize load lamp GPIOs
-	px4_arch_configgpio(GPIO_LOAD_LAMP_LEFT);
-	px4_arch_configgpio(GPIO_LOAD_LAMP_RIGHT);
-	px4_arch_configgpio(GPIO_LOAD_LAMP_GND);
-
-	// Set ground pin to 0
-	px4_arch_gpiowrite(GPIO_LOAD_LAMP_GND, 0);
-
-	// Start with lamps off
-	set_lamps(false);
-
-	PX4_INFO("Load lamp controller started:");
-	PX4_INFO("  Lamp 1 GPIO (PA4): configured");
-	PX4_INFO("  Lamp 2 GPIO (PC1): configured");
-	PX4_INFO("  Ground GPIO (PC0): configured");
-#else
-	PX4_WARN("Load lamp GPIO not available on this board - module disabled");
+		set_lamps(false);
 #endif
-
-	while (!should_exit()) {
-		perf_begin(_loop_perf);
-
-		parameters_update();
-
-		update_load();  // Check for load lamp commands
-
-		// Handle blinking (skip if in test mode with manual blink rate)
-		uint64_t now = hrt_absolute_time();
-
-		if (now - _last_toggle >= _blink_interval_us) {
-			toggle_lamps();
-			_last_toggle = now;
-		}
-
-		perf_end(_loop_perf);
-		px4_usleep(20000); // 50Hz update rate
+		ScheduleClear();
+		exit_and_cleanup();
+		return;
 	}
 
+	perf_begin(_loop_perf);
+
 #ifdef BOARD_HAS_LOAD_LAMP
-	// Shutdown sequence - turn off all lamps
-	set_lamps(false);
-	PX4_INFO("Load lamp controller shutdown complete");
+	if (!_gpio_initialized) {
+		px4_arch_configgpio(GPIO_LOAD_LAMP_LEFT);
+		px4_arch_configgpio(GPIO_LOAD_LAMP_RIGHT);
+		px4_arch_configgpio(GPIO_LOAD_LAMP_GND);
+		px4_arch_gpiowrite(GPIO_LOAD_LAMP_GND, 0);
+		set_lamps(false);
+		PX4_INFO("Load lamp controller started");
+		_gpio_initialized = true;
+	}
 #endif
+
+	parameters_update();
+	update_load();
+
+	uint64_t now = hrt_absolute_time();
+
+	if (now - _last_toggle >= _blink_interval_us) {
+		toggle_lamps();
+		_last_toggle = now;
+	}
+
+	perf_end(_loop_perf);
 }
 
 int LoadLampController::print_status()
@@ -226,25 +225,17 @@ int LoadLampController::task_spawn(int argc, char *argv[])
 
 	if (instance) {
 		_object.store(instance);
-		_task_id = px4_task_spawn_cmd("load_lamp_controller",
-					      SCHED_DEFAULT,
-					      SCHED_PRIORITY_DEFAULT - 10,
-					      1200,
-					      (px4_main_t)&run_trampoline,
-					      (char *const *)argv);
+		_task_id = task_id_is_work_queue;
 
-		if (_task_id < 0) {
-			PX4_ERR("task start failed");
-			delete instance;
-			_object.store(nullptr);
-			_task_id = -1;
-			return PX4_ERROR;
+		if (instance->init()) {
+			return PX4_OK;
 		}
-
-		return PX4_OK;
 	}
 
 	PX4_ERR("alloc failed");
+	delete instance;
+	_object.store(nullptr);
+	_task_id = -1;
 	return PX4_ERROR;
 }
 
@@ -387,17 +378,6 @@ $ load_lamp_controller normal      # Disable test mode
 	PRINT_MODULE_USAGE_COMMAND_DESCR("test <load>", "Test with motor load value (0.0-1.0)");
 	PRINT_MODULE_USAGE_COMMAND_DESCR("normal", "Return to normal operation");
 	PRINT_MODULE_USAGE_DEFAULT_COMMANDS();
-	return 0;
-}
-
-int LoadLampController::run_trampoline(int argc, char *argv[])
-{
-	LoadLampController *instance = get_instance();
-
-	if (instance) {
-		instance->run();
-	}
-
 	return 0;
 }
 

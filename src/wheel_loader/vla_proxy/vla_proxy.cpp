@@ -42,6 +42,7 @@
 #include "vla_proxy.hpp"
 #include <px4_platform_common/log.h>
 #include <px4_platform_common/getopt.h>
+#include <px4_platform_common/tasks.h>
 #include <lib/mathlib/mathlib.h>
 #include <drivers/drv_hrt.h>
 #include <cstring>
@@ -50,7 +51,6 @@
 
 VLAProxy::VLAProxy(const char *serial_port) :
 	ModuleParams(nullptr),
-	ScheduledWorkItem(MODULE_NAME, px4::serial_port_to_wq(serial_port)),
 	_loop_perf(perf_alloc(PC_ELAPSED, MODULE_NAME": loop")),
 	_comms_error_perf(perf_alloc(PC_COUNT, MODULE_NAME": comm_err"))
 {
@@ -67,15 +67,6 @@ VLAProxy::~VLAProxy()
 
 	perf_free(_loop_perf);
 	perf_free(_comms_error_perf);
-}
-
-bool VLAProxy::init()
-{
-	// Start work queue
-	ScheduleOnInterval(SCHEDULE_INTERVAL);
-
-	PX4_INFO("VLA Proxy driver started on %s", _port_name);
-	return true;
 }
 
 bool VLAProxy::configure_port()
@@ -183,80 +174,90 @@ bool VLAProxy::configure_port()
 	return true;
 }
 
-void VLAProxy::Run()
+void VLAProxy::run()
 {
-	if (should_exit()) {
-		ScheduleClear();
-		return;
-	}
+	PX4_INFO("VLA Proxy driver started on %s", _port_name);
 
-	perf_begin(_loop_perf);
+	while (!should_exit()) {
+		perf_begin(_loop_perf);
 
-	// Update parameters
-	updateParams();
+		// Update parameters
+		updateParams();
 
-	// Check if VLA is enabled
-	if (!_param_vla_enabled.get()) {
-		perf_end(_loop_perf);
-		return;
-	}
-
-	// Configure serial port if not already configured
-	if (_uart < 0) {
-		if (!configure_port()) {
-			if (_param_debug_level.get() > 0) {
-				PX4_WARN("Failed to configure VLA serial port, will retry later");
-			}
-
+		// Check if VLA is enabled
+		if (!_param_vla_enabled.get()) {
 			perf_end(_loop_perf);
-			return;
+			px4_usleep(SCHEDULE_INTERVAL_US);
+			continue;
 		}
-	}
 
-	// Send robot status at configured rate
-	hrt_abstime now = hrt_absolute_time();
-	uint32_t status_interval_us = static_cast<uint32_t>(1000000.f / math::max(_param_status_rate.get(), 1.0f));
+		// Configure serial port if not already configured
+		if (_uart < 0) {
+			if (!configure_port()) {
+				if (_param_debug_level.get() > 0) {
+					PX4_WARN("Failed to configure VLA serial port, will retry later");
+				}
 
-	if (now - _last_status_sent > status_interval_us) {
-		if (send_robot_status()) {
-			_last_status_sent = now;
-		}
-	}
-
-	// Process incoming trajectory commands
-	if (receive_trajectory_commands()) {
-		_last_waypoint_received = now;
-	}
-
-	// Check connection status
-	if (now - _last_connection_check > CONNECTION_CHECK_INTERVAL_MS * 1000) {
-		_last_connection_check = now;
-
-		// Check if we haven't received waypoints for too long
-		if (_last_waypoint_received > 0 &&
-		    (now - _last_waypoint_received) > static_cast<hrt_abstime>(_param_timeout_ms.get() * 1000)) {
-			if (_vla_active) {
-				PX4_WARN("VLA timeout - no waypoints received for %llu ms",
-					 (now - _last_waypoint_received) / 1000);
-				_vla_active = false;
+				perf_end(_loop_perf);
+				px4_usleep(SCHEDULE_INTERVAL_US);
+				continue;
 			}
 		}
 
-		// Reset error counter if connection is good
-		if (_connection_ok && _consecutive_errors > 0) {
-			_consecutive_errors = 0;
+		// Send robot status at configured rate
+		hrt_abstime now = hrt_absolute_time();
+		uint32_t status_interval_us = static_cast<uint32_t>(1000000.f / math::max(_param_status_rate.get(), 1.0f));
+
+		if (now - _last_status_sent > status_interval_us) {
+			if (send_robot_status()) {
+				_last_status_sent = now;
+			}
 		}
+
+		// Process incoming trajectory commands
+		if (receive_trajectory_commands()) {
+			_last_waypoint_received = now;
+		}
+
+		// Check connection status
+		if (now - _last_connection_check > CONNECTION_CHECK_INTERVAL_MS * 1000) {
+			_last_connection_check = now;
+
+			// Check if we haven't received waypoints for too long
+			if (_last_waypoint_received > 0 &&
+			    (now - _last_waypoint_received) > static_cast<hrt_abstime>(_param_timeout_ms.get() * 1000)) {
+				if (_vla_active) {
+					PX4_WARN("VLA timeout - no waypoints received for %llu ms",
+						 (now - _last_waypoint_received) / 1000);
+					_vla_active = false;
+				}
+			}
+
+			// Reset error counter if connection is good
+			if (_connection_ok && _consecutive_errors > 0) {
+				_consecutive_errors = 0;
+			}
+		}
+
+		// Publish all buffered waypoints when we have a full batch or timeout
+		if (_waypoint_buffer_count > 0) {
+			// Check if first waypoint time has arrived or buffer is full
+			if (_waypoint_buffer[0].timestamp_us <= now || _waypoint_buffer_count >= WAYPOINT_BUFFER_SIZE) {
+				publish_trajectory_batch();
+			}
+		}
+
+		perf_end(_loop_perf);
+		px4_usleep(SCHEDULE_INTERVAL_US);
 	}
 
-	// Publish all buffered waypoints when we have a full batch or timeout
-	if (_waypoint_buffer_count > 0) {
-		// Check if first waypoint time has arrived or buffer is full
-		if (_waypoint_buffer[0].timestamp_us <= now || _waypoint_buffer_count >= WAYPOINT_BUFFER_SIZE) {
-			publish_trajectory_batch();
-		}
+	// Cleanup
+	if (_uart >= 0) {
+		::close(_uart);
+		_uart = -1;
 	}
 
-	perf_end(_loop_perf);
+	PX4_INFO("VLA Proxy driver stopped");
 }
 
 uint8_t VLAProxy::calculate_checksum(const uint8_t *data, size_t length)
@@ -807,21 +808,37 @@ int VLAProxy::task_spawn(int argc, char *argv[])
 
 	if (instance) {
 		_object.store(instance);
-		_task_id = task_id_is_work_queue;
+		_task_id = px4_task_spawn_cmd("vla_proxy",
+					      SCHED_DEFAULT,
+					      SCHED_PRIORITY_DEFAULT,
+					      6144,
+					      (px4_main_t)&run_trampoline,
+					      (char *const *)argv);
 
-		if (instance->init()) {
-			return PX4_OK;
+		if (_task_id < 0) {
+			PX4_ERR("task start failed");
+			delete instance;
+			_object.store(nullptr);
+			_task_id = -1;
+			return PX4_ERROR;
 		}
 
-	} else {
-		PX4_ERR("VLA Proxy alloc failed");
+		return PX4_OK;
 	}
 
-	delete instance;
-	_object.store(nullptr);
-	_task_id = -1;
-
+	PX4_ERR("VLA Proxy alloc failed");
 	return PX4_ERROR;
+}
+
+int VLAProxy::run_trampoline(int argc, char *argv[])
+{
+	VLAProxy *instance = get_instance();
+
+	if (instance) {
+		instance->run();
+	}
+
+	return 0;
 }
 
 int VLAProxy::custom_command(int argc, char *argv[])

@@ -109,7 +109,7 @@ private:
 
 	// === Encoder State ===
 	struct EncoderState {
-		int32_t last_counter{0};          // Previous raw counter value for delta calculation
+		int64_t last_counter{0};          // Previous raw counter value for delta calculation
 		double position{0.0};             // Accumulated position in configured units
 		double velocity{0.0};             // Filtered velocity in configured units/sec
 		double velocity_raw{0.0};         // Instantaneous velocity before filtering
@@ -145,8 +145,8 @@ private:
 	bool init_publication();
 
 	// === Calculation Helpers ===
-	int32_t calculate_delta_counter(int32_t current_counter);
-	double apply_resolution_and_direction(int32_t delta_counter);
+	int64_t calculate_delta_counter(int64_t current_counter);
+	double apply_resolution_and_direction(int64_t delta_counter);
 	void update_position_and_velocity(double delta_position, uint64_t current_time);
 
 	// === Event Handlers ===
@@ -164,6 +164,7 @@ private:
 	DEFINE_PARAMETERS(
 		// Global parameters
 		(ParamInt<px4::params::QE_POLL_RATE>) _param_poll_rate,
+		(ParamFloat<px4::params::QE_VEL_ALPHA>) _param_vel_alpha,
 
 		// Encoder 0 parameters
 		(ParamBool<px4::params::QE_0_ENABLE>) _param_qe0_enable,

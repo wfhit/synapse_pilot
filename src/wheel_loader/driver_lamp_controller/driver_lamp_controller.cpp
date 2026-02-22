@@ -34,14 +34,22 @@
 #include "driver_lamp_controller.h"
 
 DriverLampController::DriverLampController() :
-	ModuleParams(nullptr)
+	ModuleParams(nullptr),
+	ScheduledWorkItem(MODULE_NAME, px4::wq_configurations::lp_default)
 {
 }
 
 DriverLampController::~DriverLampController()
 {
+	ScheduleClear();
 	perf_free(_loop_perf);
 	perf_free(_mode_update_perf);
+}
+
+bool DriverLampController::init()
+{
+	ScheduleOnInterval(20000); // 50Hz
+	return true;
 }
 
 void DriverLampController::parameters_update()
@@ -235,43 +243,44 @@ void DriverLampController::set_lamps(bool left_on, bool right_on)
 #endif
 }
 
-void DriverLampController::run()
+void DriverLampController::Run()
 {
-#ifdef BOARD_HAS_DRIVER_LAMP
-	// Initialize GPIO pins as outputs
-	px4_arch_configgpio(GPIO_DRIVER_LAMP_LEFT);
-	px4_arch_configgpio(GPIO_DRIVER_LAMP_RIGHT);
-	px4_arch_configgpio(GPIO_DRIVER_LAMP_GND);
-
-	// Set ground pin low
-	px4_arch_gpiowrite(GPIO_DRIVER_LAMP_GND, 0);
-#endif
-
-	while (!should_exit()) {
-		perf_begin(_loop_perf);
-
-		// Check for parameter updates
-		if (_parameter_update_sub.updated()) {
-			parameter_update_s param_update;
-			_parameter_update_sub.copy(&param_update);
-			parameters_update();
-		}
-
-		// Update lamp mode based on vehicle state (unless in test mode)
-		if (!_test_mode_active) {
-			update_lamp_mode();
-		}
-
-		// Process lamp state and update outputs
-		process_lamp_state();
-
-		perf_end(_loop_perf);
-
-		px4_usleep(20000); // 50Hz
+	if (should_exit()) {
+		set_lamps(false, false);
+		ScheduleClear();
+		exit_and_cleanup();
+		return;
 	}
 
-	// Turn off lamps before exit
-	set_lamps(false, false);
+	perf_begin(_loop_perf);
+
+#ifdef BOARD_HAS_DRIVER_LAMP
+	if (!_gpio_initialized) {
+		px4_arch_configgpio(GPIO_DRIVER_LAMP_LEFT);
+		px4_arch_configgpio(GPIO_DRIVER_LAMP_RIGHT);
+		px4_arch_configgpio(GPIO_DRIVER_LAMP_GND);
+		px4_arch_gpiowrite(GPIO_DRIVER_LAMP_GND, 0);
+		PX4_INFO("Driver lamp controller started");
+		_gpio_initialized = true;
+	}
+#endif
+
+	// Check for parameter updates
+	if (_parameter_update_sub.updated()) {
+		parameter_update_s param_update;
+		_parameter_update_sub.copy(&param_update);
+		parameters_update();
+	}
+
+	// Update lamp mode based on vehicle state (unless in test mode)
+	if (!_test_mode_active) {
+		update_lamp_mode();
+	}
+
+	// Process lamp state and update outputs
+	process_lamp_state();
+
+	perf_end(_loop_perf);
 }
 
 int DriverLampController::task_spawn(int argc, char *argv[])
@@ -280,37 +289,18 @@ int DriverLampController::task_spawn(int argc, char *argv[])
 
 	if (instance) {
 		_object.store(instance);
-		_task_id = px4_task_spawn_cmd("driver_lamp_controller",
-					      SCHED_DEFAULT,
-					      SCHED_PRIORITY_DEFAULT - 10,
-					      1200,
-					      (px4_main_t)&run_trampoline,
-					      (char *const *)argv);
+		_task_id = task_id_is_work_queue;
 
-		if (_task_id < 0) {
-			PX4_ERR("task start failed");
-			delete instance;
-			_object.store(nullptr);
-			_task_id = -1;
-			return PX4_ERROR;
+		if (instance->init()) {
+			return PX4_OK;
 		}
-
-		return PX4_OK;
 	}
 
 	PX4_ERR("alloc failed");
+	delete instance;
+	_object.store(nullptr);
+	_task_id = -1;
 	return PX4_ERROR;
-}
-
-int DriverLampController::run_trampoline(int argc, char *argv[])
-{
-	DriverLampController *instance = get_instance();
-
-	if (instance) {
-		instance->run();
-	}
-
-	return 0;
 }
 
 int DriverLampController::custom_command(int argc, char *argv[])

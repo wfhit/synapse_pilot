@@ -299,22 +299,27 @@ bool LimitSensor::debounce_switch(SwitchState &switch_state)
 
 	uint64_t now = hrt_absolute_time();
 
-	// Check if state changed
-	if (switch_state.current_state != switch_state.last_state) {
-		switch_state.last_change_time = now;
-		switch_state.debounce_count = 1;
-		switch_state.last_state = switch_state.current_state;
-		return false; // State is not stable yet
+	// If current reading matches the confirmed stable state, reset debounce
+	if (switch_state.current_state == switch_state.last_state) {
+		switch_state.debounce_count = 0;
+		return true; // State is stable (unchanged)
 	}
 
-	// Check if enough time has passed for debouncing
-	if ((now - switch_state.last_change_time) >= _debounce_time_us) {
-		if (switch_state.debounce_count < DEBOUNCE_COUNTS) {
-			switch_state.debounce_count++;
-			return false; // Need more consistent reads
-		}
+	// Current reading differs from stable state - track debounce
+	if (switch_state.debounce_count == 0) {
+		// First divergent reading - start debounce window
+		switch_state.last_change_time = now;
+	}
 
-		return true; // State is stable
+	switch_state.debounce_count++;
+
+	// Accept new state after both sufficient consistent reads AND time elapsed
+	if (switch_state.debounce_count >= DEBOUNCE_COUNTS &&
+	    (now - switch_state.last_change_time) >= _debounce_time_us) {
+		// Transition confirmed - accept the new stable state
+		switch_state.last_state = switch_state.current_state;
+		switch_state.debounce_count = 0;
+		return true; // New state confirmed stable
 	}
 
 	return false; // Still debouncing
@@ -431,6 +436,9 @@ void LimitSensor::updateParams()
 				ScheduleOnInterval(_run_interval_us);
 			}
 		}
+
+	} else {
+		PX4_WARN("LS_POLL_RATE %" PRId32 " out of range (10-1000), keeping current", poll_rate);
 	}
 
 	// Apply debounce time parameter
@@ -438,6 +446,9 @@ void LimitSensor::updateParams()
 
 	if (debounce_us >= 1000 && debounce_us <= 100000) {
 		_debounce_time_us = debounce_us;
+
+	} else {
+		PX4_WARN("LS_DEBOUNCE_US %" PRId32 " out of range (1000-100000), keeping current", debounce_us);
 	}
 
 	// Log parameter updates if diagnostics enabled

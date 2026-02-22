@@ -274,10 +274,10 @@ bool QuadratureEncoder::read_encoder_state()
 	}
 
 	// Process counter changes
-	int32_t current_counter = (int32_t)raw_data.counter;
+	int64_t current_counter = raw_data.counter;
 
 	if (_encoder_state.last_update_time != 0) { // Skip first reading
-		int32_t delta_counter = calculate_delta_counter(current_counter);
+		int64_t delta_counter = calculate_delta_counter(current_counter);
 		double delta_position = apply_resolution_and_direction(delta_counter);
 		update_position_and_velocity(delta_position, raw_data.timestamp);
 	}
@@ -291,26 +291,29 @@ bool QuadratureEncoder::read_encoder_state()
 
 // === Private Calculation Helpers ===
 
-int32_t QuadratureEncoder::calculate_delta_counter(int32_t current_counter)
+int64_t QuadratureEncoder::calculate_delta_counter(int64_t current_counter)
 {
-	int32_t delta_counter = current_counter - _encoder_state.last_counter;
+	int64_t delta_counter = current_counter - _encoder_state.last_counter;
 	int32_t overflow_count = get_instance_overflow();
 
-	// Handle counter overflow/wraparound
+	// Handle counter overflow/wraparound (only when overflow is enabled)
+	// Note: valid counter range with overflow is [0, overflow_count).
+	// This heuristic assumes movement per poll interval < overflow_count/2.
 	if (overflow_count > 0) {
-		// If delta is more than half the overflow count, assume wraparound
-		if (delta_counter > overflow_count / 2) {
-			delta_counter -= overflow_count;
+		int64_t half = overflow_count / 2;
 
-		} else if (delta_counter < -overflow_count / 2) {
-			delta_counter += overflow_count;
+		if (delta_counter > half) {
+			delta_counter -= overflow_count;  // Reverse wraparound
+
+		} else if (delta_counter < -half) {
+			delta_counter += overflow_count;  // Forward wraparound
 		}
 	}
 
 	return delta_counter;
 }
 
-double QuadratureEncoder::apply_resolution_and_direction(int32_t delta_counter)
+double QuadratureEncoder::apply_resolution_and_direction(int64_t delta_counter)
 {
 	// Convert pulses to real-world units
 	float resolution = get_instance_resolution();
@@ -337,14 +340,14 @@ void QuadratureEncoder::update_position_and_velocity(double delta_position, uint
 		PX4_INFO("Encoder %d position reset due to overflow", _instance);
 	}
 
-	// Calculate velocity with simple low-pass filter (alpha = 0.3)
+	// Calculate velocity with configurable low-pass filter
 	if (current_time > _encoder_state.last_update_time) {
 		double dt = (current_time - _encoder_state.last_update_time) * 1e-6; // Convert to seconds
 		_encoder_state.velocity_raw = delta_position / dt;
 
-		static constexpr double VELOCITY_FILTER_ALPHA = 0.3;
-		_encoder_state.velocity = VELOCITY_FILTER_ALPHA * _encoder_state.velocity_raw +
-					  (1.0 - VELOCITY_FILTER_ALPHA) * _encoder_state.velocity;
+		double alpha = static_cast<double>(_param_vel_alpha.get());
+		_encoder_state.velocity = alpha * _encoder_state.velocity_raw +
+					  (1.0 - alpha) * _encoder_state.velocity;
 	}
 }
 

@@ -42,6 +42,7 @@
 #include "st3215_servo.hpp"
 #include <px4_platform_common/log.h>
 #include <px4_platform_common/getopt.h>
+#include <px4_platform_common/tasks.h>
 #include <lib/mathlib/mathlib.h>
 #include <drivers/drv_hrt.h>
 #include <cstring>
@@ -51,7 +52,6 @@
 
 ST3215Servo::ST3215Servo(const char *serial_port) :
 	ModuleParams(nullptr),
-	ScheduledWorkItem(MODULE_NAME, px4::serial_port_to_wq(serial_port)),
 	_loop_perf(perf_alloc(PC_ELAPSED, MODULE_NAME": loop")),
 	_comms_error_perf(perf_alloc(PC_COUNT, MODULE_NAME": comm_err")),
 	_packet_count_perf(perf_alloc(PC_COUNT, MODULE_NAME": packets"))
@@ -70,15 +70,6 @@ ST3215Servo::~ST3215Servo()
 	perf_free(_loop_perf);
 	perf_free(_comms_error_perf);
 	perf_free(_packet_count_perf);
-}
-
-bool ST3215Servo::init()
-{
-	// Start work queue
-	ScheduleOnInterval(SCHEDULE_INTERVAL);
-
-	PX4_INFO("ST3215 servo driver started on %s", _port_name);
-	return true;
 }
 
 bool ST3215Servo::configure_port()
@@ -186,66 +177,75 @@ bool ST3215Servo::configure_port()
 	return true;
 }
 
-void ST3215Servo::Run()
+void ST3215Servo::run()
 {
-	if (should_exit()) {
-		ScheduleClear();
-		return;
-	}
+	PX4_INFO("ST3215 servo driver started on %s", _port_name);
 
-	perf_begin(_loop_perf);
+	while (!should_exit()) {
+		perf_begin(_loop_perf);
 
-	// Update parameters
-	updateParams();
+		// Update parameters
+		updateParams();
 
-	// Configure serial port if not already configured
-	if (_uart < 0) {
-		if (!configure_port()) {
-			PX4_WARN("Failed to configure serial port, will retry later");
-			perf_end(_loop_perf);
-			return;
-		}
-	}
-
-	// Process limit sensors for safety
-	process_limit_sensors();
-
-	// Process incoming servo commands
-	process_message();
-
-	// Process command line commands
-	process_command_line();
-
-	// Read servo status periodically (every 50ms)
-	static hrt_abstime last_status_read = 0;
-
-	if (hrt_elapsed_time(&last_status_read) > 50_ms && _uart >= 0) {
-		last_status_read = hrt_absolute_time();
-
-		uint8_t servo_id = _param_servo_id.get();
-
-		if (servo_id > 0 && read_status(servo_id)) {
-			// Successful status read
-			_connection_ok = true;
-			_last_update_time = hrt_absolute_time();
-			_consecutive_errors = 0;
-			publish_feedback();
-
-		} else {
-			// Handle communication error
-			_consecutive_errors++;
-			perf_count(_comms_error_perf);
-			PX4_WARN("Status read failed, consecutive errors: %d", _consecutive_errors);
-
-			// Mark as disconnected after multiple errors or timeout
-			if (_consecutive_errors >= 5 || hrt_elapsed_time(&_last_update_time) > 1_s) {
-				_connection_ok = false;
-				_consecutive_errors = 0;
+		// Configure serial port if not already configured
+		if (_uart < 0) {
+			if (!configure_port()) {
+				PX4_WARN("Failed to configure serial port, will retry later");
+				perf_end(_loop_perf);
+				px4_usleep(SCHEDULE_INTERVAL_US);
+				continue;
 			}
 		}
+
+		// Process limit sensors for safety
+		process_limit_sensors();
+
+		// Process incoming servo commands
+		process_message();
+
+		// Process command line commands
+		process_command_line();
+
+		// Read servo status periodically (every 50ms)
+		static hrt_abstime last_status_read = 0;
+
+		if (hrt_elapsed_time(&last_status_read) > 50_ms && _uart >= 0) {
+			last_status_read = hrt_absolute_time();
+
+			uint8_t servo_id = _param_servo_id.get();
+
+			if (servo_id > 0 && read_status(servo_id)) {
+				// Successful status read
+				_connection_ok = true;
+				_last_update_time = hrt_absolute_time();
+				_consecutive_errors = 0;
+				publish_feedback();
+
+			} else {
+				// Handle communication error
+				_consecutive_errors++;
+				perf_count(_comms_error_perf);
+				PX4_WARN("Status read failed, consecutive errors: %d", _consecutive_errors);
+
+				// Mark as disconnected after multiple errors or timeout
+				if (_consecutive_errors >= 5 || hrt_elapsed_time(&_last_update_time) > 1_s) {
+					_connection_ok = false;
+					_consecutive_errors = 0;
+				}
+			}
+		}
+
+		perf_end(_loop_perf);
+		px4_usleep(SCHEDULE_INTERVAL_US);
 	}
 
-	perf_end(_loop_perf);
+	// Cleanup
+	if (_uart >= 0) {
+		::close(_uart);
+		_uart = -1;
+	}
+
+	PX4_INFO("ST3215 servo driver stopped");
 }
 
 bool ST3215Servo::send_packet(const uint8_t *data, uint8_t length)
@@ -1082,21 +1082,37 @@ int ST3215Servo::task_spawn(int argc, char *argv[])
 
 	if (instance) {
 		_object.store(instance);
-		_task_id = task_id_is_work_queue;
+		_task_id = px4_task_spawn_cmd("st3215_servo",
+					      SCHED_DEFAULT,
+					      SCHED_PRIORITY_DEFAULT,
+					      2048,
+					      (px4_main_t)&run_trampoline,
+					      (char *const *)argv);
 
-		if (instance->init()) {
-			return PX4_OK;
+		if (_task_id < 0) {
+			PX4_ERR("task start failed");
+			delete instance;
+			_object.store(nullptr);
+			_task_id = -1;
+			return PX4_ERROR;
 		}
 
-	} else {
-		PX4_ERR("alloc failed");
+		return PX4_OK;
 	}
 
-	delete instance;
-	_object.store(nullptr);
-	_task_id = -1;
-
+	PX4_ERR("alloc failed");
 	return PX4_ERROR;
+}
+
+int ST3215Servo::run_trampoline(int argc, char *argv[])
+{
+	ST3215Servo *instance = get_instance();
+
+	if (instance) {
+		instance->run();
+	}
+
+	return 0;
 }
 
 int ST3215Servo::print_usage(const char *reason)
