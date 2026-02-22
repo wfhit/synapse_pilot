@@ -45,7 +45,6 @@
 #include <px4_platform_common/defines.h>
 #include <px4_platform_common/module.h>
 #include <px4_platform_common/module_params.h>
-#include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
 #include <lib/perf/perf_counter.h>
 #include <lib/distributed_uorb/distributed_uorb_protocol.hpp>
 #include <lib/distributed_uorb/distributed_uorb_topic_registry.hpp>
@@ -75,9 +74,41 @@ using namespace time_literals;
 using namespace distributed_uorb;
 
 /**
+ * Per-connection time synchronization state (master side)
+ */
+struct TimeSyncState {
+	bool is_synced{false};
+	uint8_t seq_id{0};              // Incrementing sequence for matching
+	hrt_abstime t1{0};              // Master send time of current request
+	int64_t offset_us{0};           // Current best offset estimate
+	uint32_t rtt_us{0};             // Current best RTT
+	uint8_t quality{0};             // 0-100 sync quality
+
+	// Median filter for offset smoothing
+	static constexpr size_t FILTER_SIZE = distributed_uorb::TIME_SYNC_FILTER_SIZE;
+	int64_t offset_samples[FILTER_SIZE]{};
+	uint32_t rtt_samples[FILTER_SIZE]{};
+	size_t sample_count{0};
+	size_t sample_index{0};
+
+	void reset() {
+		is_synced = false;
+		seq_id = 0;
+		t1 = 0;
+		offset_us = 0;
+		rtt_us = 0;
+		quality = 0;
+		sample_count = 0;
+		sample_index = 0;
+	}
+};
+
+/**
  * Connection information for each remote node
  */
 struct RemoteNodeConnection {
+	RemoteNodeConnection() = default;
+
 	NodeId node_id;
 	int uart_fd;
 	char device_path[32];
@@ -90,6 +121,9 @@ struct RemoteNodeConnection {
 	uint32_t rx_packets;
 	uint32_t tx_errors;
 	uint32_t rx_errors;
+
+	// Time synchronization state
+	TimeSyncState time_sync;
 
 	// Fixed-size circular buffer for transmission queue
 	static constexpr size_t MAX_PACKET_SIZE = 256;
@@ -116,8 +150,7 @@ struct TopicHandler {
 };
 
 class UorbUartBridge : public ModuleBase<UorbUartBridge>,
-	public ModuleParams,
-	public px4::ScheduledWorkItem
+	public ModuleParams
 {
 public:
 	UorbUartBridge();
@@ -129,9 +162,10 @@ public:
 
 	int print_status() override;
 	bool init();
+	void run();
 
 private:
-	void Run() override;
+	static int run_trampoline(int argc, char *argv[]);
 
 	// Connection management
 	bool configure_connections();
@@ -139,6 +173,10 @@ private:
 	void close_connection(RemoteNodeConnection &conn);
 	void check_connections();
 	void send_heartbeat();
+
+	// Time synchronization (via heartbeat)
+	void process_heartbeat_time_sync(RemoteNodeConnection &conn, const HeartbeatPayload &hb);
+	int64_t compute_median_offset(const TimeSyncState &state) const;
 
 	// Message processing
 	void process_outgoing_messages();
@@ -181,6 +219,10 @@ private:
 	FrameBuilder _frame_builder;
 	FrameParser _frame_parser;
 
+	// Shared frame buffer (moved from stack to class member to avoid stack overflow)
+	static constexpr size_t FRAME_BUF_SIZE = 512;
+	uint8_t _frame_buf[FRAME_BUF_SIZE];
+
 	// Communication state
 	hrt_abstime _last_heartbeat_time{0};
 	hrt_abstime _last_statistics_time{0};
@@ -203,7 +245,6 @@ private:
 	} _stats;
 
 	// Timing constants
-	static constexpr unsigned SCHEDULE_INTERVAL = 10000;  // 10ms for responsiveness
 	static constexpr uint32_t HEARTBEAT_INTERVAL_MS = 1000;
 	static constexpr uint32_t CONNECTION_TIMEOUT_MS = 3000;
 	static constexpr uint32_t STATISTICS_INTERVAL_MS = 10000;

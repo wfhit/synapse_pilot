@@ -52,7 +52,6 @@ using namespace distributed_uorb;
 
 UorbUartBridge::UorbUartBridge() :
 	ModuleParams(nullptr),
-	ScheduledWorkItem(MODULE_NAME, px4::wq_configurations::hp_default),
 	_loop_perf(perf_alloc(PC_ELAPSED, MODULE_NAME": cycle")),
 	_comms_error_perf(perf_alloc(PC_COUNT, MODULE_NAME": comm_errors")),
 	_packet_tx_perf(perf_alloc(PC_COUNT, MODULE_NAME": tx_packets")),
@@ -90,7 +89,6 @@ bool UorbUartBridge::init()
 		return false;
 	}
 
-	ScheduleOnInterval(SCHEDULE_INTERVAL);
 	PX4_INFO("uORB UART Bridge initialized");
 	return true;
 }
@@ -102,7 +100,7 @@ bool UorbUartBridge::configure_connections()
 
 	// Initialize all connections
 	for (size_t i = 0; i < MAX_CONNECTIONS; i++) {
-		memset(&_connections[i], 0, sizeof(_connections[i]));
+		_connections[i] = RemoteNodeConnection{};
 		_connections[i].uart_fd = -1;
 		_connections[i].node_id = NodeId::RESERVED;
 		_connections[i].is_connected = false;
@@ -155,7 +153,7 @@ bool UorbUartBridge::open_connection(RemoteNodeConnection &conn)
 	}
 
 	PX4_INFO("Opening connection to node %d on %s...", static_cast<int>(conn.node_id), conn.device_path);
-	conn.uart_fd = open(conn.device_path, O_RDWR | O_NOCTTY | O_NONBLOCK);
+	conn.uart_fd = open(conn.device_path, O_RDWR | O_NOCTTY);
 
 	if (conn.uart_fd < 0) {
 		handle_communication_error(conn, "Failed to open UART");
@@ -267,28 +265,28 @@ void UorbUartBridge::close_connection(RemoteNodeConnection &conn)
 	conn.is_connected = false;
 }
 
-void UorbUartBridge::Run()
+void UorbUartBridge::run()
 {
-	if (should_exit()) {
-		return;
+	while (!should_exit()) {
+		perf_begin(_loop_perf);
+
+		// Check and maintain connections
+		check_connections();
+
+		// Process messages in both directions
+		process_outgoing_messages();
+		process_incoming_messages();
+
+		// Send periodic heartbeat (includes time sync)
+		send_heartbeat();
+
+		// Update statistics
+		update_statistics();
+
+		perf_end(_loop_perf);
+
+		usleep(10000); // 10ms cycle
 	}
-
-	perf_begin(_loop_perf);
-
-	// Check and maintain connections
-	check_connections();
-
-	// Process messages in both directions
-	process_outgoing_messages();
-	process_incoming_messages();
-
-	// Send periodic heartbeat
-	send_heartbeat();
-
-	// Update statistics
-	update_statistics();
-
-	perf_end(_loop_perf);
 }
 
 void UorbUartBridge::check_connections()
@@ -327,43 +325,55 @@ void UorbUartBridge::send_heartbeat()
 {
 	const hrt_abstime now = hrt_absolute_time();
 
-	// Create heartbeat payload
-	distributed_uorb::HeartbeatPayload payload{};
-	payload.timestamp = hrt_absolute_time();
-	payload.uptime_ms = static_cast<uint32_t>(hrt_absolute_time() / 1000);
-	payload.system_health = 100;  // Assume healthy
-	payload.cpu_load = 50;        // Placeholder
-	payload.free_memory_kb = 64;  // Placeholder
-	payload.tx_packets = _stats.tx_packets;
-	payload.rx_packets = _stats.rx_packets;
-	payload.tx_errors = _stats.tx_errors;
-	payload.rx_errors = _stats.rx_errors;
+	if ((now - _last_heartbeat_time) < (HEARTBEAT_INTERVAL_MS * 1000)) {
+		return;
+	}
 
-	if ((now - _last_heartbeat_time) >= (HEARTBEAT_INTERVAL_MS * 1000)) {
-		for (size_t i = 0; i < _connection_count; i++) {
-			RemoteNodeConnection &conn = _connections[i];
+	for (size_t i = 0; i < _connection_count; i++) {
+		RemoteNodeConnection &conn = _connections[i];
 
-			if (!conn.is_connected) {
-				continue;
-			}
-
-			uint8_t buffer[512];
-			size_t frame_size = _frame_builder.build_heartbeat_frame(
-						    buffer,
-						    sizeof(buffer),
-						    NodeId::X7_MAIN,
-						    payload,
-						    conn.tx_sequence++
-					    );
-
-			if (frame_size > 0) {
-				send_frame(conn, buffer, frame_size);
-				perf_count(_packet_tx_perf);
-			}
+		if (!conn.is_connected) {
+			continue;
 		}
 
-		_last_heartbeat_time = now;
+		distributed_uorb::HeartbeatPayload payload{};
+		payload.timestamp = hrt_absolute_time();
+		payload.uptime_ms = static_cast<uint32_t>(hrt_absolute_time() / 1000);
+		payload.system_health = 100;
+		payload.cpu_load = 50;
+		payload.free_memory_kb = 64;
+		payload.tx_packets = _stats.tx_packets;
+		payload.rx_packets = _stats.rx_packets;
+		payload.tx_errors = _stats.tx_errors;
+		payload.rx_errors = _stats.rx_errors;
+
+		// Time sync: include t1 and computed offset for this connection
+		payload.ts_t1 = static_cast<int64_t>(hrt_absolute_time());
+		payload.ts_seq = conn.time_sync.seq_id++;
+		payload.ts_offset_us = conn.time_sync.offset_us;
+		payload.ts_rtt_us = conn.time_sync.rtt_us;
+		payload.ts_quality = conn.time_sync.quality;
+		payload.ts_t2 = 0;
+		payload.ts_t3 = 0;
+
+		// Record t1 for matching when response comes back
+		conn.time_sync.t1 = payload.ts_t1;
+
+		size_t frame_size = _frame_builder.build_heartbeat_frame(
+					    _frame_buf,
+					    FRAME_BUF_SIZE,
+					    NodeId::X7_MAIN,
+					    payload,
+					    conn.tx_sequence++
+				    );
+
+		if (frame_size > 0) {
+			send_frame(conn, _frame_buf, frame_size);
+			perf_count(_packet_tx_perf);
+		}
 	}
+
+	_last_heartbeat_time = now;
 }
 
 bool UorbUartBridge::setup_topic_handlers()
@@ -405,12 +415,15 @@ void UorbUartBridge::cleanup_topic_handlers()
 
 void UorbUartBridge::process_outgoing_messages()
 {
-	// Check all registered topics for updates to send to NXT nodes
-	const TopicInfo *topics[MAX_REGISTERED_TOPICS];
-	size_t topic_count = g_topic_registry.get_all_topics(topics, MAX_REGISTERED_TOPICS);
+	// Iterate registered topics by index to avoid large stack allocation
+	size_t topic_count = g_topic_registry.get_topic_count();
 
 	for (size_t i = 0; i < topic_count; i++) {
-		const TopicInfo *topic_info = topics[i];
+		const TopicInfo *topic_info = g_topic_registry.get_topic_by_index(i);
+
+		if (topic_info == nullptr || topic_info->meta == nullptr) {
+			continue;
+		}
 
 		// Create subscription if needed
 		uORB::Subscription *sub = new uORB::Subscription(topic_info->meta);
@@ -428,10 +441,8 @@ void UorbUartBridge::process_outgoing_messages()
 						continue;
 					}
 
-					uint8_t buffer[512];
-
 					size_t frame_size = _frame_builder.build_data_frame(
-								    buffer, sizeof(buffer),
+								    _frame_buf, FRAME_BUF_SIZE,
 								    topic_info->topic_id, 0,
 								    NodeId::X7_MAIN, conn.node_id,
 								    data, topic_info->meta->o_size,
@@ -439,7 +450,7 @@ void UorbUartBridge::process_outgoing_messages()
 								    conn.tx_sequence++);
 
 					if (frame_size > 0) {
-						send_frame(conn, buffer, frame_size);
+						send_frame(conn, _frame_buf, frame_size);
 						perf_count(_packet_tx_perf);
 						perf_count(_bytes_tx_perf);
 					}
@@ -484,8 +495,19 @@ bool UorbUartBridge::receive_frames(RemoteNodeConnection &conn)
 		return false;
 	}
 
-	uint8_t buffer[512];
-	ssize_t bytes_read = read(conn.uart_fd, buffer, sizeof(buffer));
+	// Poll for available data (non-blocking check)
+	struct pollfd fds{};
+	fds.fd = conn.uart_fd;
+	fds.events = POLLIN;
+
+	int ret = ::poll(&fds, 1, 0);  // timeout=0: non-blocking
+
+	if (ret <= 0 || !(fds.revents & POLLIN)) {
+		return false;  // No data available
+	}
+
+	// Use class member buffer to avoid stack allocation
+	ssize_t bytes_read = read(conn.uart_fd, _frame_buf, FRAME_BUF_SIZE);
 
 	if (bytes_read > 0) {
 		conn.last_message = hrt_absolute_time();
@@ -493,14 +515,16 @@ bool UorbUartBridge::receive_frames(RemoteNodeConnection &conn)
 
 		// Parse received data for complete frames
 		for (ssize_t i = 0; i < bytes_read;) {
-			const ProtocolFrame *frame = _frame_parser.parse_frame(&buffer[i], bytes_read - i);
+			const ProtocolFrame *frame = _frame_parser.parse_frame(&_frame_buf[i], bytes_read - i);
 
 			if (frame != nullptr) {
+				// Save frame_size BEFORE handle_received_frame, because
+				// the handler may overwrite _frame_buf (e.g. time sync
+				// response sends a reply using the same buffer)
+				size_t frame_size = sizeof(ProtocolFrame) + frame->payload_length + sizeof(uint32_t);
 				handle_received_frame(conn, frame);
 				conn.rx_packets++;
 				perf_count(_packet_rx_perf);
-				// Calculate frame size including header and footer
-				size_t frame_size = sizeof(ProtocolFrame) + frame->payload_length + sizeof(uint32_t);
 				i += frame_size;
 
 			} else {
@@ -525,13 +549,52 @@ void UorbUartBridge::handle_received_frame(RemoteNodeConnection &conn, const Pro
 
 	switch (static_cast<uint8_t>(frame->message_type)) {
 	case static_cast<uint8_t>(MessageType::DATA): {
-			// Publish received topic data to local uORB
-			publish_to_local_topic(frame->topic_id, frame->instance, frame->payload, frame->payload_length);
+			// Correct timestamp in incoming data if time is synced
+			// The first 8 bytes of every uORB message is uint64_t timestamp
+			if (conn.time_sync.is_synced && frame->payload_length >= sizeof(uint64_t)) {
+				// Work on a mutable copy of payload for timestamp correction
+				uint8_t corrected_data[MAX_PAYLOAD_SIZE];
+				size_t copy_size = (frame->payload_length <= MAX_PAYLOAD_SIZE)
+						   ? frame->payload_length : MAX_PAYLOAD_SIZE;
+				std::memcpy(corrected_data, frame->payload, copy_size);
+
+				// Read the slave timestamp
+				uint64_t slave_ts;
+				std::memcpy(&slave_ts, corrected_data, sizeof(uint64_t));
+
+				// Convert slave time to master time:
+				// offset = ((t2-t1)+(t3-t4))/2, where positive means slave ahead
+				// master_time = slave_time - offset
+				int64_t master_ts = static_cast<int64_t>(slave_ts) - conn.time_sync.offset_us;
+
+				if (master_ts > 0) {
+					uint64_t corrected_ts = static_cast<uint64_t>(master_ts);
+					std::memcpy(corrected_data, &corrected_ts, sizeof(uint64_t));
+				}
+
+				publish_to_local_topic(frame->topic_id, frame->instance,
+						      corrected_data, copy_size);
+
+			} else {
+				publish_to_local_topic(frame->topic_id, frame->instance,
+						      frame->payload, frame->payload_length);
+			}
+
 			break;
 		}
 
 	case static_cast<uint8_t>(MessageType::HEARTBEAT): {
-			// Connection is alive, no action needed
+			if (frame->payload_length >= sizeof(HeartbeatPayload)) {
+				const HeartbeatPayload *hb =
+					reinterpret_cast<const HeartbeatPayload *>(frame->payload);
+				process_heartbeat_time_sync(conn, *hb);
+			}
+
+			break;
+		}
+
+	case static_cast<uint8_t>(MessageType::TIME_SYNC): {
+			// Time sync is now handled via heartbeat, ignore legacy TIME_SYNC frames
 			break;
 		}
 
@@ -635,6 +698,83 @@ void UorbUartBridge::update_statistics()
 	}
 }
 
+void UorbUartBridge::process_heartbeat_time_sync(RemoteNodeConnection &conn, const HeartbeatPayload &hb)
+{
+	const int64_t t4 = static_cast<int64_t>(hrt_absolute_time());
+
+	// Slave echoes our t1, and provides its t2 (receive) and t3 (send)
+	const int64_t t1 = hb.ts_t1;
+	const int64_t t2 = hb.ts_t2;
+	const int64_t t3 = hb.ts_t3;
+
+	// Validate: slave must have received our heartbeat (non-zero timestamps)
+	if (t1 == 0 || t2 == 0 || t3 == 0) {
+		return;
+	}
+
+	// Calculate round-trip time: RTT = (t4 - t1) - (t3 - t2)
+	const int64_t rtt = (t4 - t1) - (t3 - t2);
+
+	if (rtt < 0 || rtt > static_cast<int64_t>(TIME_SYNC_RTT_MAX_US)) {
+		return;
+	}
+
+	// Calculate clock offset: offset = ((t2 - t1) + (t3 - t4)) / 2
+	// Positive offset means slave clock is ahead of master
+	const int64_t offset = ((t2 - t1) + (t3 - t4)) / 2;
+
+	// Add sample to median filter
+	TimeSyncState &state = conn.time_sync;
+	state.offset_samples[state.sample_index] = offset;
+	state.rtt_samples[state.sample_index] = static_cast<uint32_t>(rtt);
+	state.sample_index = (state.sample_index + 1) % TimeSyncState::FILTER_SIZE;
+
+	if (state.sample_count < TimeSyncState::FILTER_SIZE) {
+		state.sample_count++;
+	}
+
+	// Compute median-filtered offset
+	state.offset_us = compute_median_offset(state);
+	state.rtt_us = static_cast<uint32_t>(rtt);
+
+	// Quality estimate: better with more samples and lower RTT
+	uint8_t count_quality = static_cast<uint8_t>((state.sample_count * 100) / TimeSyncState::FILTER_SIZE);
+	uint8_t rtt_quality = (rtt < 5000) ? 100 : (rtt < 20000) ? 50 : 10;
+	state.quality = (count_quality + rtt_quality) / 2;
+	state.is_synced = (state.sample_count >= 3);
+}
+
+int64_t UorbUartBridge::compute_median_offset(const TimeSyncState &state) const
+{
+	if (state.sample_count == 0) {
+		return 0;
+	}
+
+	// Copy samples for sorting
+	int64_t sorted[TimeSyncState::FILTER_SIZE];
+	size_t n = state.sample_count;
+
+	for (size_t i = 0; i < n; i++) {
+		sorted[i] = state.offset_samples[i];
+	}
+
+	// Simple insertion sort (small array)
+	for (size_t i = 1; i < n; i++) {
+		int64_t key = sorted[i];
+		size_t j = i;
+
+		while (j > 0 && sorted[j - 1] > key) {
+			sorted[j] = sorted[j - 1];
+			j--;
+		}
+
+		sorted[j] = key;
+	}
+
+	// Return median
+	return sorted[n / 2];
+}
+
 void UorbUartBridge::print_connection_status(const RemoteNodeConnection &conn) const
 {
 	const char *node_name = (conn.node_id == NodeId::NXT_FRONT) ? "FRONT" : "REAR";
@@ -644,6 +784,12 @@ void UorbUartBridge::print_connection_status(const RemoteNodeConnection &conn) c
 		 conn.is_connected ? "CONNECTED" : "DISCONNECTED",
 		 (unsigned long)conn.tx_packets, (unsigned long)conn.tx_errors,
 		 (unsigned long)conn.rx_packets, (unsigned long)conn.rx_errors);
+
+	PX4_INFO("  Time sync: %s, offset=%lld us, RTT=%lu us, quality=%u%%",
+		 conn.time_sync.is_synced ? "SYNCED" : "NOT_SYNCED",
+		 (long long)conn.time_sync.offset_us,
+		 (unsigned long)conn.time_sync.rtt_us,
+		 (unsigned)conn.time_sync.quality);
 }
 
 int UorbUartBridge::print_status()
@@ -662,25 +808,40 @@ int UorbUartBridge::print_status()
 
 int UorbUartBridge::task_spawn(int argc, char *argv[])
 {
-	UorbUartBridge *instance = new UorbUartBridge();
+	_task_id = px4_task_spawn_cmd("uorb_uart_bridge",
+				      SCHED_DEFAULT,
+				      SCHED_PRIORITY_DEFAULT,
+				      4096,
+				      (px4_main_t)&UorbUartBridge::run_trampoline,
+				      (char *const *)argv);
 
-	if (instance == nullptr) {
-		PX4_ERR("Failed to allocate instance");
-		return PX4_ERROR;
-	}
-
-	_object.store(instance);
-	_task_id = task_id_is_work_queue;
-
-	if (!instance->init()) {
-		delete instance;
-		_object.store(nullptr);
+	if (_task_id < 0) {
 		_task_id = -1;
-		PX4_ERR("Failed to initialize");
-		return PX4_ERROR;
+		return -errno;
 	}
 
 	return PX4_OK;
+}
+
+int UorbUartBridge::run_trampoline(int argc, char *argv[])
+{
+	UorbUartBridge *instance = new UorbUartBridge();
+
+	if (!instance) {
+		PX4_ERR("alloc failed");
+		return -1;
+	}
+
+	_object.store(instance);
+
+	if (instance->init()) {
+		instance->run();
+	}
+
+	_object.store(nullptr);
+	_task_id = -1;
+	delete instance;
+	return 0;
 }
 
 int UorbUartBridge::custom_command(int argc, char *argv[])

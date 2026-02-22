@@ -129,6 +129,21 @@ private:
 	void publish_incoming(uint16_t topic_id, uint8_t instance, const uint8_t *data, size_t size);
 	const orb_metadata *get_topic_meta(uint16_t topic_id);
 
+	// Time synchronization (via heartbeat)
+	void process_heartbeat_time_sync(const HeartbeatPayload &hb);
+	int64_t get_time_offset() const { return _time_offset_us; }
+	bool is_time_synced() const { return _time_synced; }
+
+	int64_t _time_offset_us{0};     // Clock offset: master_time = local_time + offset
+	bool _time_synced{false};
+	uint8_t _time_sync_quality{0};
+	hrt_abstime _last_time_sync_rx{0};
+
+	// Master heartbeat echo state (for time sync round-trip)
+	int64_t _master_ts_t1{0};       // Last received master heartbeat ts_t1
+	int64_t _master_hb_rx_time{0};  // Local time when master heartbeat was received
+	uint8_t _master_ts_seq{0};      // Last received master ts_seq
+
 	// Heartbeat
 	void send_heartbeat();
 
@@ -160,6 +175,7 @@ private:
 	uint32_t _rx_frames{0};
 	uint32_t _tx_bytes{0};
 	uint32_t _rx_bytes{0};
+	uint32_t _tx_errors{0};
 	uint32_t _rx_errors{0};
 	uint32_t _parse_errors{0};
 

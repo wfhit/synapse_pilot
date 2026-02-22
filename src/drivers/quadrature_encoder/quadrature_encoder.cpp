@@ -337,10 +337,14 @@ void QuadratureEncoder::update_position_and_velocity(double delta_position, uint
 		PX4_INFO("Encoder %d position reset due to overflow", _instance);
 	}
 
-	// Calculate velocity
+	// Calculate velocity with simple low-pass filter (alpha = 0.3)
 	if (current_time > _encoder_state.last_update_time) {
 		double dt = (current_time - _encoder_state.last_update_time) * 1e-6; // Convert to seconds
-		_encoder_state.velocity = delta_position / dt;
+		_encoder_state.velocity_raw = delta_position / dt;
+
+		static constexpr double VELOCITY_FILTER_ALPHA = 0.3;
+		_encoder_state.velocity = VELOCITY_FILTER_ALPHA * _encoder_state.velocity_raw +
+					  (1.0 - VELOCITY_FILTER_ALPHA) * _encoder_state.velocity;
 	}
 }
 
@@ -397,6 +401,16 @@ void QuadratureEncoder::update_encoder_configuration()
 	if (quad_encoder_set_overflow_count(_instance, overflow_value) < 0) {
 		PX4_ERR("Failed to update encoder overflow count for instance %d", _instance);
 		perf_count(_fault_perf);
+	}
+
+	// Update polling rate
+	uint32_t poll_rate = static_cast<uint32_t>(math::constrain(_param_poll_rate.get(), static_cast<int32_t>(10),
+			     static_cast<int32_t>(1000)));
+	uint32_t new_interval = 1000000 / poll_rate;
+
+	if (new_interval != _run_interval_us) {
+		_run_interval_us = new_interval;
+		ScheduleOnInterval(_run_interval_us);
 	}
 }
 
@@ -727,14 +741,14 @@ $ uorb top quad_encoder_reset    # See reset events
     PRINT_MODULE_USAGE_NAME("quadrature_encoder", "driver");
     PRINT_MODULE_USAGE_COMMAND("start");
     PRINT_MODULE_USAGE_PARAM_INT('i', -1, 0, MAX_INSTANCES-1,
-                                 "Start specific instance (0-7), default: start all enabled", true);
+                                 "Start specific instance (0-1), default: start all enabled", true);
     PRINT_MODULE_USAGE_COMMAND_DESCR("stop_instance", "Stop a specific instance");
-    PRINT_MODULE_USAGE_ARG("instance", "Instance number to stop (0-7)", false);
+    PRINT_MODULE_USAGE_ARG("instance", "Instance number to stop (0-1)", false);
     PRINT_MODULE_USAGE_COMMAND_DESCR("set_resolution", "Set encoder resolution");
-    PRINT_MODULE_USAGE_ARG("instance", "Instance number (0-7)", false);
+    PRINT_MODULE_USAGE_ARG("instance", "Instance number (0-1)", false);
     PRINT_MODULE_USAGE_ARG("pulses_per_revolution", "Pulses per revolution (0-65535)", false);
     PRINT_MODULE_USAGE_COMMAND_DESCR("get_resolution", "Get encoder resolution");
-    PRINT_MODULE_USAGE_ARG("instance", "Instance number (0-7)", false);
+    PRINT_MODULE_USAGE_ARG("instance", "Instance number (0-1)", false);
     PRINT_MODULE_USAGE_DEFAULT_COMMANDS();
 
     return 0;

@@ -39,6 +39,7 @@ px4_add_module(
 		as5600_main.cpp
 		AS5600.cpp
 	DEPENDS
+		perf
 	MODULE_CONFIG
 		module.yaml
 )

@@ -19,7 +19,7 @@ arm_manager start
 operator_interface start
 
 # Start uORB UART bridge
-#uorb_uart_bridge start
+uorb_uart_bridge start
 
 # Start strategy executor
 #strategy_executor start
