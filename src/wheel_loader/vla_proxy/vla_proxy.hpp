@@ -44,7 +44,6 @@
 #include <px4_platform_common/defines.h>
 #include <px4_platform_common/module.h>
 #include <px4_platform_common/module_params.h>
-#include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
 #include <lib/perf/perf_counter.h>
 
 #include <uORB/Publication.hpp>
@@ -71,8 +70,7 @@
 using namespace time_literals;
 
 class VLAProxy : public ModuleBase<VLAProxy>,
-	public ModuleParams,
-	public px4::ScheduledWorkItem
+	public ModuleParams
 {
 public:
 	VLAProxy(const char *serial_port = "/dev/ttyS3");
@@ -83,10 +81,9 @@ public:
 	static int print_usage(const char *reason = nullptr);
 
 	int print_status() override;
-	bool init();
+	void run();
 
 private:
-	void Run() override;
 
 	// Serial communication (following ST3215 pattern)
 	bool configure_port();
@@ -201,10 +198,12 @@ private:
 	size_t _waypoint_buffer_count{0};
 
 	// Timing constants
-	static constexpr unsigned SCHEDULE_INTERVAL = 50000;  // 20Hz update rate
+	static constexpr uint32_t SCHEDULE_INTERVAL_US = 50000;  // 20Hz update rate
 	static constexpr uint32_t PACKET_TIMEOUT_MS = 500;  // 500ms timeout (3KB at 115200 baud = 267ms)
 	static constexpr uint32_t STATUS_SEND_INTERVAL_MS = 50;  // Send status at 20Hz
 	static constexpr uint32_t CONNECTION_CHECK_INTERVAL_MS = 1000;  // Check connection every 1s
+
+	static int run_trampoline(int argc, char *argv[]);
 
 	// Module parameters
 	DEFINE_PARAMETERS(

@@ -44,7 +44,6 @@
 #include <px4_platform_common/defines.h>
 #include <px4_platform_common/module.h>
 #include <px4_platform_common/module_params.h>
-#include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
 #include <lib/perf/perf_counter.h>
 
 #include <uORB/Publication.hpp>
@@ -63,8 +62,7 @@
 using namespace time_literals;
 
 class ST3215Servo : public ModuleBase<ST3215Servo>,
-	public ModuleParams,
-	public px4::ScheduledWorkItem
+	public ModuleParams
 {
 public:
 	ST3215Servo(const char *serial_port = "/dev/ttyS1");
@@ -75,7 +73,7 @@ public:
 	static int print_usage(const char *reason = nullptr);
 
 	int print_status() override;
-	bool init();
+	void run();
 
 	// Add SMS_STS style utility functions
 	bool wheel_mode(uint8_t servo_id);
@@ -89,7 +87,6 @@ public:
 	bool calibrate_middle_position_sts(uint8_t servo_id); // STS standard method using torque enable = 128
 
 private:
-	void Run() override;
 
 	// Serial communication (simplified like test_serial)
 	bool configure_port();
@@ -222,9 +219,11 @@ private:
 	static constexpr uint8_t ST3215_REG_PRESENT_CURRENT_L = 69;
 	static constexpr uint8_t ST3215_REG_PRESENT_CURRENT_H = 70;
 
-	// Timing constants (updated for new design)
-	static constexpr unsigned SCHEDULE_INTERVAL = 20_ms;
+	// Timing constants
+	static constexpr uint32_t SCHEDULE_INTERVAL_US = 20000;  // 20ms = 50Hz
 	static constexpr uint32_t PACKET_TIMEOUT_MS = 10;  // Changed to 10ms as requested
+
+	static int run_trampoline(int argc, char *argv[]);
 
 	// Module parameters
 	DEFINE_PARAMETERS(

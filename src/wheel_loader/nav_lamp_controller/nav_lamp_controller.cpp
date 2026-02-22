@@ -195,7 +195,7 @@ int NavLampController::task_spawn(int argc, char *argv[])
 		_task_id = px4_task_spawn_cmd("nav_lamp_controller",
 					      SCHED_DEFAULT,
 					      SCHED_PRIORITY_DEFAULT - 5,
-					      1024,
+					      2048,
 					      (px4_main_t)&run_trampoline,
 					      (char *const *)argv);
 

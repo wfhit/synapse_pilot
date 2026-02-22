@@ -35,7 +35,7 @@
 
 #include <px4_platform_common/module.h>
 #include <px4_platform_common/module_params.h>
-#include <px4_platform_common/tasks.h>
+#include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
 #include <uORB/Subscription.hpp>
 #include <uORB/topics/vehicle_control_mode.h>
 #include <uORB/topics/vehicle_status.h>
@@ -43,7 +43,7 @@
 #include <drivers/drv_hrt.h>
 #include <lib/perf/perf_counter.h>
 
-class DriverLampController : public ModuleBase<DriverLampController>, public ModuleParams
+class DriverLampController : public ModuleBase<DriverLampController>, public ModuleParams, public px4::ScheduledWorkItem
 {
 public:
 	DriverLampController();
@@ -54,10 +54,11 @@ public:
 	static int custom_command(int argc, char *argv[]);
 	static int print_usage(const char *reason = nullptr);
 
-	void run();
-	int print_status();
+	bool init();
+	int print_status() override;
 
 private:
+	void Run() override;
 	// Lamp modes
 	enum class LampMode {
 		OFF,
@@ -114,10 +115,11 @@ private:
 	// Test mode methods
 	int test_mode(int argc, char *argv[]);
 
+	// GPIO initialization state
+	bool _gpio_initialized{false};
+
 	// Parameters
 	DEFINE_PARAMETERS(
 		(ParamFloat<px4::params::DRV_LAMP_BLINK>) _param_blink_rate
 	)
-
-	static int run_trampoline(int argc, char *argv[]);
 };

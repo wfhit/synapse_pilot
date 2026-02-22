@@ -40,8 +40,9 @@
 #include <uORB/topics/parameter_update.h>
 #include <drivers/drv_hrt.h>
 #include <lib/perf/perf_counter.h>
+#include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
 
-class LoadLampController : public ModuleBase<LoadLampController>, public ModuleParams
+class LoadLampController : public ModuleBase<LoadLampController>, public ModuleParams, public px4::ScheduledWorkItem
 {
 public:
 	LoadLampController();
@@ -52,8 +53,8 @@ public:
 	static int custom_command(int argc, char *argv[]);
 	static int print_usage(const char *reason = nullptr);
 
-	void run();
-	int print_status();
+	bool init();
+	int print_status() override;
 	void set_test_blink_rate(uint32_t interval_us);
 	void set_test_load(float load);
 
@@ -62,6 +63,7 @@ public:
 	void test_mode_disable();
 
 private:
+	void Run() override;
 	// Subscriptions
 	uORB::Subscription _load_lamp_command_sub{ORB_ID(load_lamp_command)};
 	uORB::Subscription _parameter_update_sub{ORB_ID(parameter_update)};
@@ -86,12 +88,13 @@ private:
 	void toggle_lamps();
 	void set_lamps(bool on);
 
+	// GPIO initialization state
+	bool _gpio_initialized{false};
+
 	// Parameters
 	DEFINE_PARAMETERS(
 		(ParamFloat<px4::params::LOAD_LAMP_LOW>) _param_threshold_low,
 		(ParamFloat<px4::params::LOAD_LAMP_MED>) _param_threshold_med,
 		(ParamFloat<px4::params::LOAD_LAMP_HIGH>) _param_threshold_high
 	)
-
-	static int run_trampoline(int argc, char *argv[]);
 };

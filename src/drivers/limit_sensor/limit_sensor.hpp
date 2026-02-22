@@ -121,7 +121,7 @@ private:
 
 	// Debouncing parameters (configurable via parameters)
 	uint64_t _debounce_time_us{2000}; // Default 2ms, loaded from LS_DEBOUNCE_US
-	static constexpr uint8_t DEBOUNCE_COUNTS = 1; // Need 1 consistent read after debounce period
+	static constexpr uint8_t DEBOUNCE_COUNTS = 3; // Require 3 consistent reads in new state
 
 	// Performance counters
 	perf_counter_t _cycle_perf;

@@ -250,13 +250,13 @@ void AS5600::updateReadyCounter(bool success)
 
 float AS5600::normalizeAngle(float angle)
 {
-	// Normalize angle to [0, 2*PI] range
-	while (angle < 0.0f) {
+	// Normalize angle to [0, 2*PI] range using constant-time fmodf
+	angle = fmodf(angle, TWO_PI);
+
+	if (angle < 0.0f) {
 		angle += TWO_PI;
 	}
-	while (angle >= TWO_PI) {
-		angle -= TWO_PI;
-	}
+
 	return angle;
 }
 

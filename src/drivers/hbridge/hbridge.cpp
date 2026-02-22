@@ -109,14 +109,18 @@ HBridge::~HBridge()
 
 	// Unregister this instance
 	if (_instance < MAX_INSTANCES && _instances[_instance] == this) {
-		// Remove this channel from the initialized PWM channels mask
+		// Atomically remove this channel from the initialized PWM channels mask
 		if (_board_config != nullptr) {
-			uint32_t current_channels = _initialized_pwm_channels.load();
 			uint32_t this_channel_mask = (1 << _board_config->pwm_ch);
-			uint32_t new_channels = current_channels & ~this_channel_mask;
-			_initialized_pwm_channels.store(new_channels);
+			uint32_t current = _initialized_pwm_channels.load();
+			uint32_t desired = current & ~this_channel_mask;
+
+			while (!_initialized_pwm_channels.compare_exchange(&current, desired)) {
+				desired = current & ~this_channel_mask;
+			}
+
 			PX4_DEBUG("Removed PWM channel %d from initialized mask (remaining: 0x%08lx)",
-				  _board_config->pwm_ch, (unsigned long)new_channels);
+				  _board_config->pwm_ch, (unsigned long)desired);
 		}
 
 		_instances[_instance] = nullptr;
@@ -235,29 +239,41 @@ bool HBridge::configure_hardware()
 		px4_arch_gpiowrite(_board_config->dir_gpio, 0); // Default to reverse
 	}
 
-	// Read-modify-write approach for PWM channel initialization
-	// Get current initialized channels and add this channel to the mask
-	uint32_t current_channels = _initialized_pwm_channels.load();
+	// Atomically claim this PWM channel in the initialized mask
 	uint32_t this_channel_mask = (1 << _board_config->pwm_ch);
-	uint32_t new_channels = current_channels | this_channel_mask;
+	uint32_t current_channels = _initialized_pwm_channels.load();
 
 	// Only call up_motor_pwm_init if this channel isn't already initialized
 	if ((current_channels & this_channel_mask) == 0) {
+		uint32_t new_channels = current_channels | this_channel_mask;
+
+		// Atomic compare-and-exchange to prevent concurrent init races
+		if (!_initialized_pwm_channels.compare_exchange(&current_channels, new_channels)) {
+			// Another instance updated the mask concurrently; re-check
+			if ((current_channels & this_channel_mask) != 0) {
+				PX4_INFO("Motor PWM channel %d already initialized by another instance", _board_config->pwm_ch);
+				return true;
+			}
+
+			// Retry with updated value
+			new_channels = current_channels | this_channel_mask;
+			_initialized_pwm_channels.store(new_channels);
+		}
+
 		int ret = up_motor_pwm_init(new_channels);
 
 		if (ret < 0) {
 			PX4_ERR("Motor PWM init failed for channel %d: %d", _board_config->pwm_ch, ret);
+			// Revert the channel mask on failure
+			uint32_t revert = _initialized_pwm_channels.load();
+			_initialized_pwm_channels.store(revert & ~this_channel_mask);
 			return false;
 		}
-
-		// Update the initialized channels mask atomically
-		_initialized_pwm_channels.store(new_channels);
 
 		up_motor_pwm_set_rate(MOTOR_PWM_FREQ_25KHZ);
 		up_motor_pwm_arm(true, new_channels);
 		PX4_INFO("Motor PWM channel %d initialized (total channels: 0x%08lx)", _board_config->pwm_ch,
 			 (unsigned long)new_channels);
-
 	} else {
 		PX4_INFO("Motor PWM channel %d already initialized", _board_config->pwm_ch);
 	}
@@ -372,7 +388,18 @@ void HBridge::output_pwm()
 
 	// Set direction based on current duty cycle and direction reverse parameter
 	bool forward = _current_duty_cycle >= 0.0f;
+
+	// Dead-time: when direction changes at non-zero duty, zero PWM first
+	// and skip this cycle. The new direction + PWM applies next cycle.
+	if (forward != _last_direction && fabsf(_current_duty_cycle) > 0.001f) {
+		up_motor_pwm_set_duty_cycle(_board_config->pwm_ch, 0.0f);
+		set_direction(forward);
+		_last_direction = forward;
+		return;
+	}
+
 	set_direction(forward);
+	_last_direction = forward;
 
 	// Calculate PWM value
 	float abs_duty = fabsf(_current_duty_cycle);
@@ -382,7 +409,11 @@ void HBridge::output_pwm()
 	}
 
 	// Convert to PWM range and output
-	up_motor_pwm_set_duty_cycle(_board_config->pwm_ch, abs_duty);
+	int ret = up_motor_pwm_set_duty_cycle(_board_config->pwm_ch, abs_duty);
+
+	if (ret < 0) {
+		PX4_ERR("HBridge %d: PWM set_duty_cycle failed: %d", _instance, ret);
+	}
 }
 
 void HBridge::set_direction(bool forward)

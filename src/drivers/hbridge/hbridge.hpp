@@ -99,6 +99,7 @@ private:
 	bool _reverse_limit_active{false};
 	bool _initialized{false};
 	bool _manual_mode{false};
+	bool _last_direction{true};  // Track last direction for dead-time insertion
 	uint64_t _last_command_time{0};  // Last valid setpoint timestamp for timeout
 
 	// Publications
