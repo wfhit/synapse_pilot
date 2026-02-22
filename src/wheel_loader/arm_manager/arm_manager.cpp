@@ -157,24 +157,26 @@ bool ArmManager::check_can_arm(bool force)
 		}
 	}
 
-	// Check actuator status - ensure all valid
-	actuator_status_s actuator_status;
+	// Check actuator status - ensure all valid (if required)
+	if (_param_require_actuator.get()) {
+		actuator_status_s actuator_status;
 
-	if (_actuator_status_sub.copy(&actuator_status)) {
-		if (!actuator_status.chassis_left_valid ||
-		    !actuator_status.chassis_right_valid ||
-		    !actuator_status.boom_valid ||
-		    !actuator_status.tilt_valid ||
-		    !actuator_status.articulation_valid) {
+		if (_actuator_status_sub.copy(&actuator_status)) {
+			if (!actuator_status.chassis_left_valid ||
+			    !actuator_status.chassis_right_valid ||
+			    !actuator_status.boom_valid ||
+			    !actuator_status.tilt_valid ||
+			    !actuator_status.articulation_valid) {
+				_arm_status.actuators_not_ready = true;
+				can_arm = false;
+				PX4_DEBUG("Arm blocked: actuators not ready");
+			}
+
+		} else {
 			_arm_status.actuators_not_ready = true;
 			can_arm = false;
-			PX4_DEBUG("Arm blocked: actuators not ready");
+			PX4_DEBUG("Arm blocked: no actuator status");
 		}
-
-	} else {
-		_arm_status.actuators_not_ready = true;
-		can_arm = false;
-		PX4_DEBUG("Arm blocked: no actuator status");
 	}
 
 	// Check manual control (if timeout parameter is set)
@@ -252,7 +254,7 @@ void ArmManager::check_auto_disarm()
 	// Check for health failures
 	health_monitor_status_s health_status;
 
-	if (_health_monitor_status_sub.copy(&health_status)) {
+	if (_param_require_health.get() && _health_monitor_status_sub.copy(&health_status)) {
 		if (!health_status.system_healthy) {
 			disarm(arm_status_s::DISARM_REASON_HEALTH, arm_cmd_s::SOURCE_AUTO);
 			return;
