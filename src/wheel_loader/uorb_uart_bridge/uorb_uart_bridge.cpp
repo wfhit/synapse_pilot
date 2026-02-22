@@ -296,23 +296,17 @@ void UorbUartBridge::check_connections()
 	for (size_t i = 0; i < _connection_count; i++) {
 		RemoteNodeConnection &conn = _connections[i];
 
-		if (!open_connection(conn)) {
+		// Open UART once, keep it open forever (like the proxy)
+		if (conn.uart_fd < 0) {
+			open_connection(conn);
 			continue;
 		}
 
-		// Check for connection timeout
-		if (conn.last_heartbeat > 0 &&
+		// Track connected state based on heartbeat timing
+		if (conn.is_connected && conn.last_heartbeat > 0 &&
 		    (now - conn.last_heartbeat) > (CONNECTION_TIMEOUT_MS * 1000)) {
-
-			PX4_WARN("Connection timeout for node %d", static_cast<int>(conn.node_id));
-			close_connection(conn);
-
-			// Reset heartbeat so we don't immediately timeout again after reopen
-			conn.last_heartbeat = 0;
-			conn.last_message = 0;
-			conn.time_sync.reset();
-
-			open_connection(conn); // Try to reconnect
+			PX4_WARN("Node %d: connection lost", static_cast<int>(conn.node_id));
+			conn.is_connected = false;
 		}
 	}
 
@@ -338,7 +332,8 @@ void UorbUartBridge::send_heartbeat()
 	for (size_t i = 0; i < _connection_count; i++) {
 		RemoteNodeConnection &conn = _connections[i];
 
-		if (!conn.is_connected) {
+		// Send heartbeats even to disconnected nodes so they can respond
+		if (conn.uart_fd < 0) {
 			continue;
 		}
 
@@ -502,7 +497,9 @@ void UorbUartBridge::process_outgoing_messages()
 void UorbUartBridge::process_incoming_messages()
 {
 	for (size_t i = 0; i < _connection_count; i++) {
-		if (_connections[i].is_connected) {
+		// Read from all nodes with valid fd, even disconnected ones,
+		// so we can detect when they come back
+		if (_connections[i].uart_fd >= 0) {
 			receive_frames(_connections[i]);
 		}
 	}
@@ -510,7 +507,7 @@ void UorbUartBridge::process_incoming_messages()
 
 bool UorbUartBridge::send_frame(RemoteNodeConnection &conn, const uint8_t *frame_data, size_t frame_size)
 {
-	if (!conn.is_connected || conn.uart_fd < 0) {
+	if (conn.uart_fd < 0) {
 		return false;
 	}
 
@@ -528,7 +525,7 @@ bool UorbUartBridge::send_frame(RemoteNodeConnection &conn, const uint8_t *frame
 
 bool UorbUartBridge::receive_frames(RemoteNodeConnection &conn)
 {
-	if (!conn.is_connected || conn.uart_fd < 0) {
+	if (conn.uart_fd < 0) {
 		return false;
 	}
 
@@ -581,8 +578,13 @@ void UorbUartBridge::handle_received_frame(RemoteNodeConnection &conn, const Pro
 		return;
 	}
 
-	// Update heartbeat timestamp
+	// Update heartbeat timestamp — auto-recover connection if it was lost
 	conn.last_heartbeat = hrt_absolute_time();
+
+	if (!conn.is_connected) {
+		PX4_INFO("Node %d: connection recovered", static_cast<int>(conn.node_id));
+		conn.is_connected = true;
+	}
 
 	switch (static_cast<uint8_t>(frame->message_type)) {
 	case static_cast<uint8_t>(MessageType::DATA): {
