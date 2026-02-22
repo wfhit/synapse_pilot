@@ -193,43 +193,34 @@ void ManualDirectMode::publishSetpoints()
 {
 	hrt_abstime now = hrt_absolute_time();
 
-	// Publish chassis setpoint - direct velocity control
-	chassis_setpoint_s chassis_sp{};
-	chassis_sp.timestamp = now;
-	chassis_sp.velocity_x = _chassis_velocity;
-	chassis_sp.velocity_y = 0.f;  // No lateral movement
-	chassis_sp.yaw_rate = 0.f;  // No direct yaw control
-	chassis_sp.articulation_rate = _articulation_rate;
-	chassis_sp.position_valid = false;
-	chassis_sp.velocity_valid = true;
-	chassis_sp.articulation_valid = true;
-	_chassis_setpoint_pub.publish(chassis_sp);
+	// Publish traction setpoint - direct velocity control
+	traction_setpoint_s traction_sp{};
+	traction_sp.timestamp = now;
+	traction_sp.desired_velocity_ms = _chassis_velocity;
+	traction_sp.desired_steering_angle_rad = _target_articulation_angle;
+	traction_sp.desired_yaw_rate_rad_s = _articulation_rate;
+	traction_sp.enable_traction_control = false;
+	traction_sp.enable_slip_control = false;
+	traction_sp.enable_stability_control = false;
+	traction_sp.traction_mode = traction_setpoint_s::MODE_NORMAL;
+	traction_sp.max_velocity_ms = _control_params.max_chassis_velocity;
+	_traction_setpoint_pub.publish(traction_sp);
 
-	// Publish boom setpoint - velocity control
-	boom_setpoint_s boom_sp{};
+	// Publish boom control setpoint
+	boom_control_setpoint_s boom_sp{};
 	boom_sp.timestamp = now;
-	boom_sp.position = _target_boom_position;
-	boom_sp.velocity = _boom_velocity;
-	boom_sp.acceleration = 0.f;
-	boom_sp.control_mode = boom_setpoint_s::MODE_VELOCITY;
-	boom_sp.max_velocity = _control_params.max_boom_velocity;
-	boom_sp.max_acceleration = 0.5f;
-	boom_sp.setpoint_valid = true;
-	boom_sp.trajectory_complete = false;
-	_boom_setpoint_pub.publish(boom_sp);
+	boom_sp.bucket_height = _target_boom_position;
+	boom_sp.bucket_height_velocity = _boom_velocity;
+	boom_sp.valid = true;
+	_boom_control_setpoint_pub.publish(boom_sp);
 
-	// Publish tilt setpoint - rate control
-	tilt_setpoint_s tilt_sp{};
+	// Publish tilt control setpoint
+	tilt_control_setpoint_s tilt_sp{};
 	tilt_sp.timestamp = now;
 	tilt_sp.angle = _target_tilt_angle;
 	tilt_sp.angular_velocity = _tilt_rate;
-	tilt_sp.angular_acceleration = 0.f;
-	tilt_sp.control_mode = tilt_setpoint_s::MODE_VELOCITY;
-	tilt_sp.max_velocity = _control_params.max_tilt_rate;
-	tilt_sp.max_acceleration = 1.0f;
-	tilt_sp.setpoint_valid = true;
-	tilt_sp.trajectory_complete = false;
-	_tilt_setpoint_pub.publish(tilt_sp);
+	tilt_sp.valid = true;
+	_tilt_control_setpoint_pub.publish(tilt_sp);
 
 	PX4_DEBUG("Setpoints: chas_v=%.2f boom=%.2f(v=%.2f) art=%.2f(r=%.2f) tilt=%.2f(r=%.2f)",
 		  (double)_chassis_velocity,

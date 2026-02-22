@@ -53,9 +53,9 @@
 #include <uORB/Subscription.hpp>
 #include <uORB/Publication.hpp>
 #include <uORB/topics/manual_control_setpoint.h>
-#include <uORB/topics/chassis_setpoint.h>
-#include <uORB/topics/boom_setpoint.h>
-#include <uORB/topics/tilt_setpoint.h>
+#include <uORB/topics/traction_setpoint.h>
+#include <uORB/topics/boom_control_setpoint.h>
+#include <uORB/topics/tilt_control_setpoint.h>
 #include <uORB/topics/vehicle_local_position.h>
 #include <uORB/topics/vehicle_attitude.h>
 #include <matrix/matrix/math.hpp>
@@ -119,9 +119,9 @@ private:
 	uORB::Subscription _vehicle_attitude_sub{ORB_ID(vehicle_attitude)};
 
 	// Publications
-	uORB::Publication<chassis_setpoint_s> _chassis_setpoint_pub{ORB_ID(chassis_setpoint)};
-	uORB::Publication<boom_setpoint_s> _boom_setpoint_pub{ORB_ID(boom_setpoint)};
-	uORB::Publication<tilt_setpoint_s> _tilt_setpoint_pub{ORB_ID(tilt_setpoint)};
+	uORB::Publication<traction_setpoint_s> _traction_setpoint_pub{ORB_ID(traction_setpoint)};
+	uORB::Publication<boom_control_setpoint_s> _boom_control_setpoint_pub{ORB_ID(boom_control_setpoint)};
+	uORB::Publication<tilt_control_setpoint_s> _tilt_control_setpoint_pub{ORB_ID(tilt_control_setpoint)};
 
 	// RC input data
 	manual_control_setpoint_s _manual_control_setpoint{};
