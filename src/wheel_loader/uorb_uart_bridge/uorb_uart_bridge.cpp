@@ -416,50 +416,80 @@ void UorbUartBridge::cleanup_topic_handlers()
 
 void UorbUartBridge::process_outgoing_messages()
 {
-	// Iterate registered topics by index to avoid large stack allocation
-	size_t topic_count = g_topic_registry.get_topic_count();
+	// Create persistent outgoing topic handlers on first call
+	if (_topic_handler_count == 0) {
+		size_t topic_count = g_topic_registry.get_topic_count();
 
-	for (size_t i = 0; i < topic_count; i++) {
-		const TopicInfo *topic_info = g_topic_registry.get_topic_by_index(i);
+		for (size_t i = 0; i < topic_count && _topic_handler_count < MAX_TOPIC_HANDLERS; i++) {
+			const TopicInfo *topic_info = g_topic_registry.get_topic_by_index(i);
 
-		if (topic_info == nullptr || topic_info->meta == nullptr) {
+			if (topic_info == nullptr || topic_info->meta == nullptr) {
+				continue;
+			}
+
+			TopicHandler &handler = _topic_handlers[_topic_handler_count];
+			handler.topic_id = topic_info->topic_id;
+			handler.instance = 0;
+			handler.meta = topic_info->meta;
+			handler.subscription = new uORB::Subscription(topic_info->meta);
+			handler.publication = nullptr;
+			handler.last_published = 0;
+			handler.publish_count = 0;
+			handler.is_outgoing = true;
+
+			if (handler.subscription == nullptr) {
+				PX4_ERR("Failed to allocate subscription for %s", topic_info->meta->o_name);
+				continue;
+			}
+
+			_topic_handler_count++;
+		}
+
+		PX4_INFO("Created %zu outgoing topic handlers", _topic_handler_count);
+	}
+
+	// Process all outgoing topic handlers
+	for (size_t i = 0; i < _topic_handler_count; i++) {
+		TopicHandler &handler = _topic_handlers[i];
+
+		if (!handler.is_outgoing || handler.subscription == nullptr || handler.meta == nullptr) {
 			continue;
 		}
 
-		// Create subscription if needed
-		uORB::Subscription *sub = new uORB::Subscription(topic_info->meta);
+		if (!handler.subscription->updated()) {
+			continue;
+		}
 
-		// Check for new data
-		if (sub->updated()) {
-			uint8_t data[topic_info->meta->o_size];
+		// Fixed-size buffer to avoid VLA — MAX_PAYLOAD_SIZE covers all uORB messages
+		uint8_t data[MAX_PAYLOAD_SIZE];
 
-			if (sub->copy(data)) {
-				// Send to all connected nodes
-				for (size_t j = 0; j < _connection_count; j++) {
-					RemoteNodeConnection &conn = _connections[j];
+		if (handler.meta->o_size > MAX_PAYLOAD_SIZE) {
+			continue;
+		}
 
-					if (!conn.is_connected) {
-						continue;
-					}
+		if (handler.subscription->copy(data)) {
+			for (size_t j = 0; j < _connection_count; j++) {
+				RemoteNodeConnection &conn = _connections[j];
 
-					size_t frame_size = _frame_builder.build_data_frame(
-								    _frame_buf, FRAME_BUF_SIZE,
-								    topic_info->topic_id, 0,
-								    NodeId::X7_MAIN, conn.node_id,
-								    data, topic_info->meta->o_size,
-								    Priority::NORMAL, Reliability::BEST_EFFORT,
-								    conn.tx_sequence++);
+				if (!conn.is_connected) {
+					continue;
+				}
 
-					if (frame_size > 0) {
-						send_frame(conn, _frame_buf, frame_size);
-						perf_count(_packet_tx_perf);
-						perf_count(_bytes_tx_perf);
-					}
+				size_t frame_size = _frame_builder.build_data_frame(
+							    _frame_buf, FRAME_BUF_SIZE,
+							    handler.topic_id, 0,
+							    NodeId::X7_MAIN, conn.node_id,
+							    data, handler.meta->o_size,
+							    Priority::NORMAL, Reliability::BEST_EFFORT,
+							    conn.tx_sequence++);
+
+				if (frame_size > 0) {
+					send_frame(conn, _frame_buf, frame_size);
+					perf_count(_packet_tx_perf);
+					perf_count(_bytes_tx_perf);
 				}
 			}
 		}
-
-		delete sub;
 	}
 }
 
@@ -650,8 +680,14 @@ bool UorbUartBridge::publish_to_local_topic(uint16_t topic_id, uint8_t instance,
 		}
 
 	} else {
-		// Update existing publication
-		if (handler->publication != nullptr) {
+		// Update existing publication, or create one if handler only had a subscription
+		if (handler->publication == nullptr) {
+			int instance_int = static_cast<int>(instance);
+			handler->publication = orb_advertise_multi(meta, data, &instance_int);
+			handler->last_published = hrt_absolute_time();
+			handler->publish_count = 1;
+
+		} else {
 			orb_publish(meta, handler->publication, data);
 			handler->last_published = hrt_absolute_time();
 			handler->publish_count++;
