@@ -306,6 +306,12 @@ void UorbUartBridge::check_connections()
 
 			PX4_WARN("Connection timeout for node %d", static_cast<int>(conn.node_id));
 			close_connection(conn);
+
+			// Reset heartbeat so we don't immediately timeout again after reopen
+			conn.last_heartbeat = 0;
+			conn.last_message = 0;
+			conn.time_sync.reset();
+
 			open_connection(conn); // Try to reconnect
 		}
 	}
