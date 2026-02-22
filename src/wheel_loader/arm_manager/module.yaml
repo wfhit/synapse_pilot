@@ -32,6 +32,13 @@ parameters:
               type: boolean
               default: 1
 
+          ARM_REQ_ACTUATOR:
+              description:
+                  short: Require actuator status before arming
+                  long: Require all actuators to report valid status
+              type: boolean
+              default: 1
+
           ARM_AUTO_DISARM:
               description:
                   short: Enable automatic disarm

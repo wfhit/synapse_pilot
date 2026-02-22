@@ -160,6 +160,7 @@ private:
 		(ParamFloat<px4::params::ARM_IDLE_TIMEOUT>) _param_idle_timeout,
 		(ParamFloat<px4::params::ARM_IDLE_VEL>) _param_idle_velocity,
 		(ParamBool<px4::params::ARM_REQ_HEALTH>) _param_require_health,
+		(ParamBool<px4::params::ARM_REQ_ACTUATOR>) _param_require_actuator,
 		(ParamBool<px4::params::ARM_AUTO_DISARM>) _param_auto_disarm,
 		(ParamInt<px4::params::ARM_MAN_TIMEOUT>) _param_manual_timeout
 	)
