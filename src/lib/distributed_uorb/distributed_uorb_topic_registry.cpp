@@ -238,6 +238,7 @@ uint16_t TopicRegistry::generate_topic_id(const char *name) const
 		{"boom_status", TopicIdRange::BOOM_STATUS},
 		{"bucket_status", TopicIdRange::BUCKET_STATUS},
 		{"steering_status", TopicIdRange::STEERING_STATUS},
+		{"traction_setpoint", TopicIdRange::TRACTION_SETPOINT},
 	};
 
 	for (const auto &topic : predefined_topics) {
